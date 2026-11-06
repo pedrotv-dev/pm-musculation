@@ -21,7 +21,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .app { max-width: 680px; min-height: 100dvh; margin: 0 auto; padding: max(20px, env(safe-area-inset-top)) 18px calc(104px + env(safe-area-inset-bottom)); }
 .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 28px; }
 .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.brand-logo { width: 47px; height: 47px; display: grid; place-items: center; border-radius: 15px; background: linear-gradient(135deg, #23466f, #245e7a 55%, #7c4e7b); color: #fff; font-weight: 900; letter-spacing: -.07em; font-size: 20px; flex: none; }
+.brand-logo { width: 47px; height: 47px; border-radius: 12px; object-fit: cover; flex: none; background: var(--surface); }
 .brand-name { margin: 0; font-size: 18px; font-weight: 850; letter-spacing: -.03em; }
 .brand-sub { display: block; font-size: 12px; color: var(--muted); }
 .profile-switch { border: 1px solid var(--stroke); color: var(--text); border-radius: 12px; padding: 10px 12px; background: var(--surface); font-weight: 700; white-space: nowrap; }

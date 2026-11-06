@@ -7,7 +7,7 @@ import { getActiveProgram, mondayOf } from './programs.js';
 import { loadCatalog } from './catalog.js';
 import { ALL_PROFILES as KNOWN, PROFILE_INFO } from './profiles.js';
 import { getBackupStatus, backupAdvice, runBackup } from './backup.js';
-import { el, btn, clear, add, fmtNum, formatMinutes, formatDateFr, localISODate, toast } from './dom.js';
+import { el, btn, clear, add, fmtNum, formatMinutes, formatDateFr, localISODate, dialog, toast } from './dom.js';
 
 const root = document.documentElement;
 const page = document.querySelector('[data-page="accueil"]');
@@ -123,14 +123,20 @@ window.addEventListener('focus', refresh);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refresh(); });
 document.addEventListener('pm:data-changed', refresh);
 refresh();
-// Mise à jour de l'application : proposée seulement hors séance, au plus une fois toutes les 10 minutes
+// Mise à jour de l'application : « Mise à jour installée » + bouton pour redémarrer. Jamais pendant une séance.
 let updateReady = false;
-let lastOffer = 0;
-function offerUpdate() {
-  if (!updateReady || root.classList.contains('pm-workout-active') || Date.now() - lastOffer < 10 * 60 * 1000) return;
-  lastOffer = Date.now();
-  toast('Une mise à jour de l’application est prête.', { actionLabel: 'Mettre à jour', duration: 15000,
-    onAction: () => document.dispatchEvent(new CustomEvent('pm:apply-update')) });
+let asking = false;
+async function offerUpdate() {
+  if (!updateReady || asking || root.classList.contains('pm-workout-active')) return;
+  asking = true;
+  const pick = await dialog({
+    title: 'Mise à jour installée',
+    message: 'Une nouvelle version de PM Musculation est prête. Redémarre l’application pour l’utiliser. Tes données sont conservées.',
+    choices: [{ label: 'Plus tard', value: 'later' }, { label: 'Redémarrer l’application', value: 'restart', kind: 'primary' }]
+  });
+  asking = false;
+  if (pick === 'restart') document.dispatchEvent(new CustomEvent('pm:apply-update'));
+  else { updateReady = true; setTimeout(offerUpdate, 10 * 60 * 1000); } // on redemandera plus tard
 }
 document.addEventListener('pm:update-ready', () => { updateReady = true; offerUpdate(); });
 document.addEventListener('pm:workout-changed', () => setTimeout(offerUpdate, 500)); // après une séance
