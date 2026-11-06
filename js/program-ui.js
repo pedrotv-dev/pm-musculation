@@ -3,7 +3,7 @@
  * Stockage/validation : js/programs.js (Claude). Aucune ecriture hors importProgram.
  * Les sessions de demonstration sont uniquement des objets JavaScript en memoire.
  */
-import { prepareProgramImport, importProgram, listProgramWeeks, getActiveProgram } from './programs.js';
+import { prepareProgramImport, importProgram, listProgramWeeks, getActiveProgram, mondayOf } from './programs.js';
 import { getProgram } from '../storage.js';
 import { demoProgram, demoStats } from './demo-data.js';
 
@@ -13,7 +13,8 @@ const dayNow = () => DAYS[(new Date().getDay() + 6) % 7];
 const parent = document.querySelector('[data-page="programme"]');
 const state = { profile: null, names: new Map(), machines: [], known: [], source: null,
   preview: null, replacements: {}, selectedWeek: null, selectedDay: null, catalogueReady: false,
-  saved: false, busy: false };
+  saved: false, busy: false, profileVersion: 0, weekLoadVersion: 0, displayVersion: 0,
+  previewVersion: 0, importVersion: 0, lastMonday: null };
 
 function node(tag, cls = '', text = null) {
   const n = document.createElement(tag);
@@ -26,6 +27,11 @@ function wipe(n) { n.replaceChildren(); }
 function currentProfile() {
   return document.documentElement.dataset.pmProfile ||
     (() => { try { return localStorage.getItem(PROFILE_KEY); } catch (_) { return null; } })();
+}
+// Ignore les resultats asynchrones d'un profil qui n'est plus actif.
+function sameProfile(profile, version) {
+  return state.profileVersion === version && state.profile === profile &&
+    document.documentElement.dataset.pmProfile === profile;
 }
 function machineName(id) { return state.names.get(id) || id || 'Machine inconnue'; }
 function nameOf(a) {
@@ -152,7 +158,12 @@ const weekField = node('div', 'pm-week-field');
 add(weekField, node('label', 'pm-field-label', 'Semaine disponible'));
 weekField.querySelector('label').htmlFor = 'pm-week-select';
 select.id = 'pm-week-select';
-select.addEventListener('change', () => { state.selectedWeek = select.value; state.selectedDay = null; displayProgram().catch(showError); });
+select.addEventListener('change', () => {
+  ++state.weekLoadVersion; // invalide une liste en cours de chargement
+  state.selectedWeek = select.value;
+  state.selectedDay = null;
+  displayProgram().catch(showError);
+});
 weekField.append(select);
 add(weekHeader, weekInfo, weekField);
 add(infoCard, weekHeader, historyView);
@@ -161,49 +172,95 @@ parent.replaceChildren(node('div', 'eyebrow', 'Entraînement'), node('h2', '', '
   infoCard, importCard);
 
 function resetPreview() {
+  ++state.previewVersion;
   state.preview = null; state.replacements = {}; previewView.hidden = true; replacementsView.hidden = true;
   save.disabled = true; noNotify();
 }
 async function drawWeekOptions() {
-  wipe(select);
-  if (state.profile === 'demo') {
+  const profile = state.profile;
+  const generation = state.profileVersion;
+  const request = ++state.weekLoadVersion;
+  const valid = () => sameProfile(profile, generation) && request === state.weekLoadVersion;
+
+  if (profile === 'demo') {
+    wipe(select);
     add(select, new Option('Semaine démo · Exemple', demoProgram.weekStart));
-    select.disabled = true; state.selectedWeek = demoProgram.weekStart; return;
+    select.disabled = true;
+    state.selectedWeek = demoProgram.weekStart;
+    state.lastMonday = mondayOf();
+    return true;
   }
-  const weeks = await listProgramWeeks(state.profile);
+  if (!['pierre', 'manon'].includes(profile)) return false;
+
+  // Evite toute mise a jour visuelle tant que les lectures ne sont pas terminees.
+  const weeks = await listProgramWeeks(profile);
+  if (!valid()) return false;
+  let selectedWeek = state.selectedWeek;
+  if (weeks.length && (!selectedWeek || !weeks.some(w => w.weekStart === selectedWeek))) {
+    const active = await getActiveProgram(profile);
+    if (!valid()) return false;
+    selectedWeek = active?.weekStart || weeks[0].weekStart;
+  }
+  if (!valid()) return false;
+  wipe(select);
+  state.lastMonday = mondayOf();
   if (!weeks.length) {
-    add(select, new Option('Aucun programme importé', '')); select.disabled = true; state.selectedWeek = null; return;
+    add(select, new Option('Aucun programme importé', ''));
+    select.disabled = true;
+    state.selectedWeek = null;
+    return true;
   }
   select.disabled = false;
   for (const w of weeks) {
     add(select, new Option('Semaine du ' + w.weekStart + ' · ' +
-      ({ active:'En cours', upcoming:'À venir', past:'Passée' }[w.status] || w.status), w.weekStart));
+      ({ active: 'En cours', upcoming: 'À venir', past: 'Passée' }[w.status] || w.status), w.weekStart));
   }
-  if (!state.selectedWeek || !weeks.some(w => w.weekStart === state.selectedWeek)) {
-    const active = await getActiveProgram(state.profile);
-    state.selectedWeek = active?.weekStart || weeks[0].weekStart;
-  }
-  select.value = state.selectedWeek;
+  state.selectedWeek = selectedWeek;
+  select.value = selectedWeek;
+  return true;
 }
+
 async function displayProgram() {
+  const profile = state.profile;
+  const week = state.selectedWeek;
+  const generation = state.profileVersion;
+  const request = ++state.displayVersion;
+  const valid = () => sameProfile(profile, generation) &&
+    week === state.selectedWeek && request === state.displayVersion;
+
   wipe(historyView);
-  if (state.profile === 'demo') {
+  if (profile === 'demo') {
+    if (!valid()) return;
     drawDays(historyView, demoProgram, state.selectedDay || dayNow(), day => {
-      state.selectedDay = day; displayProgram().catch(showError);
+      if (!valid()) return;
+      state.selectedDay = day;
+      displayProgram().catch(showError);
     });
     return;
   }
-  if (!state.selectedWeek) {
+  if (!['pierre', 'manon'].includes(profile) || !valid()) return;
+  if (!week) {
     const blank = node('div', 'pm-empty');
     add(blank, node('strong', '', 'Aucun programme importé'),
       node('p', '', 'Ouvre « Importer un programme hebdomadaire » ci-dessous pour commencer.'));
-    historyView.append(blank); return;
+    historyView.append(blank);
+    return;
   }
-  const p = await getProgram(state.profile, state.selectedWeek);
-  if (!p) return;
-  drawDays(historyView, p, state.selectedDay || dayNow(), day => {
-    state.selectedDay = day; displayProgram().catch(showError);
-  });
+  try {
+    const program = await getProgram(profile, week);
+    if (!valid()) return; // profil, semaine ou requete obsolete : aucune modification du DOM
+    if (!program) {
+      historyView.append(node('div', 'pm-empty', 'Programme introuvable pour cette semaine.'));
+      return;
+    }
+    drawDays(historyView, program, state.selectedDay || dayNow(), day => {
+      if (!valid()) return;
+      state.selectedDay = day;
+      displayProgram().catch(showError);
+    });
+  } catch (error) {
+    if (valid()) showError(error);
+  }
 }
 function sourceForImport() { return state.source || paste.value.trim(); }
 function replacementValues() {
