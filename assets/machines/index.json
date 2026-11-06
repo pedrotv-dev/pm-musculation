@@ -1,1 +1,25 @@
-{ "available": [] }
+{
+  "available": [
+    "arm-curl",
+    "back-extension",
+    "calf-press",
+    "chest-press",
+    "converging-chest-press",
+    "converging-shoulder-press",
+    "dip-chin-assist",
+    "diverging-lat-pulldown",
+    "elliptical",
+    "hip-abduction",
+    "lat-pulldown",
+    "leg-extension",
+    "leg-press",
+    "rear-delt-pec-fly",
+    "recumbent-bike",
+    "rotary-hip",
+    "rotary-torso",
+    "rowing-machine",
+    "seated-leg-curl",
+    "shoulder-press",
+    "treadmill"
+  ]
+}

@@ -15,6 +15,11 @@ const PRECACHE = [
   'js/home-ui.js', 'js/profile-ui.js', 'js/program-ui.js', 'js/programs.js', 'js/progress-ui.js', 'js/rest-timer.js', 'js/rest-ui.js',
   'js/stats.js', 'js/version.js', 'js/weights.js', 'js/workout-ui.js', 'js/workouts.js',
   'data/machines.json', 'data/exemple-programme.json', 'assets/machines/index.json',
+  'assets/machines/back-extension.png', 'assets/machines/rotary-torso.png', 'assets/machines/shoulder-press.png', 'assets/machines/converging-chest-press.png',
+  'assets/machines/converging-shoulder-press.png', 'assets/machines/leg-extension.png', 'assets/machines/chest-press.png', 'assets/machines/seated-leg-curl.png',
+  'assets/machines/rear-delt-pec-fly.png', 'assets/machines/leg-press.png', 'assets/machines/arm-curl.png', 'assets/machines/diverging-lat-pulldown.png',
+  'assets/machines/dip-chin-assist.png', 'assets/machines/hip-abduction.png', 'assets/machines/rotary-hip.png', 'assets/machines/calf-press.png',
+  'assets/machines/lat-pulldown.png', 'assets/machines/treadmill.png', 'assets/machines/recumbent-bike.png', 'assets/machines/elliptical.png', 'assets/machines/rowing-machine.png',
   'assets/icons/icon.svg', 'assets/icons/icon-192.png', 'assets/icons/icon-512.png', 'assets/icons/icon-maskable-512.png', 'assets/icons/apple-touch-icon.png'
 ];
 const TIMEOUT_MS = 3000;

@@ -61,3 +61,18 @@ test('imports relatifs : tous les fichiers existent', () => {
     }
   }
 });
+
+test('photos des machines : index fidèle, ids du catalogue, fond transparent, légères, précachées', () => {
+  const index = JSON.parse(read('assets/machines/index.json')).available;
+  const ids = new Set(JSON.parse(read('data/machines.json')).machines.map(m => m.id));
+  const files = fs.readdirSync(path.join(ROOT, 'assets/machines')).filter(f => f.endsWith('.png')).map(f => f.slice(0, -4)).sort();
+  assert.deepEqual([...index].sort(), files); // l'index liste exactement les photos présentes
+  for (const id of index) {
+    assert.ok(ids.has(id), 'identifiant inconnu du catalogue : ' + id);
+    const buf = fs.readFileSync(path.join(ROOT, 'assets/machines', id + '.png'));
+    assert.equal(buf.readUInt32BE(16), buf.readUInt32BE(20)); // carrée
+    assert.ok(buf.length < 80 * 1024, id + ' trop lourde : ' + buf.length);
+    assert.ok(buf.includes(Buffer.from('tRNS')) || buf[25] === 6, id + ' sans transparence'); // palette+tRNS ou RGBA
+    assert.ok(precache.includes('assets/machines/' + id + '.png'), id + ' non précachée');
+  }
+});
