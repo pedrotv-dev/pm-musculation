@@ -3,8 +3,10 @@
  * Module ES, sans dependance ni appel reseau. Compatible Safari iOS / Chrome Android
  * (pas de structuredClone, Object.hasOwn, Array.at ni randomUUID obligatoire).
  *
- * Stockage : UNIQUEMENT saveSession / getSession / listSessions / getUnfinishedSessions /
- * deleteSession et getProgram de storage.js (aucun second stockage).
+ * Stockage : UNIQUEMENT storage.js (aucun second stockage). Toute lecture-verification-ecriture d'une
+ * seance se fait dans UNE transaction IndexedDB readwrite (updateSession, createSessionIfNoneOpen,
+ * deleteSessionIf) : IndexedDB serialise ces transactions, y compris entre plusieurs onglets.
+ * Il n'y a donc aucun verrou JavaScript : la protection repose sur la base de donnees.
  * Le profil « demo » est en lecture seule : toute ecriture est refusee, aucune lecture n'atteint IndexedDB.
  * Pierre et Manon sont separes : chaque fonction prend `profileId` en premier parametre et
  * les cles IndexedDB sont [profileId, id].
@@ -29,7 +31,10 @@
  * }
  */
 
-import { getProgram, saveSession, getSession, listSessions, getUnfinishedSessions, deleteSession } from '../storage.js';
+import {
+  getProgram, getSession, listSessions, getUnfinishedSessions,
+  updateSession, createSessionIfNoneOpen, deleteSessionIf
+} from '../storage.js';
 import { mondayOf } from './programs.js';
 
 export const WORKOUT_SCHEMA_VERSION = 1;
@@ -89,38 +94,23 @@ function nonEmpty(value, label) {
   return value;
 }
 
-// Serialise les modifications d'une meme seance : deux appuis rapides ne s'ecrasent pas.
-const chains = new Map();
-function locked(name, task) {
-  const previous = chains.get(name) || Promise.resolve();
-  const run = previous.then(task);
-  const tail = run.catch(() => {});
-  chains.set(name, tail);
-  tail.then(() => { if (chains.get(name) === tail) chains.delete(name); });
-  return run;
-}
-
 const isClosed = s => s.status === 'completed' || s.status === 'partial';
 
-async function load(profileId, sessionId) {
-  nonEmpty(sessionId, 'Identifiant de séance');
-  const s = await getSession(profileId, sessionId);
-  if (!s || s.profileId !== profileId) throw new WorkoutError('Séance introuvable.', 'NOT_FOUND');
-  return s;
-}
-
-/** Lit, modifie (callback synchrone), recalcule le resume, sauvegarde. Rien n'est ecrit si le callback leve. */
+/**
+ * Modification ATOMIQUE : l'etat est relu, verifie et ecrit dans la meme transaction IndexedDB, donc
+ * toujours a partir de la version la plus recente (deux onglets ne s'ecrasent pas, une seance terminee
+ * ailleurs est vue comme terminee). Rien n'est ecrit si `change` ou une verification leve une erreur.
+ */
 function mutate(profileId, sessionId, change, { now, allowPaused = false, allowClosed = false } = {}) {
   try { writable(profileId); nonEmpty(sessionId, 'Identifiant de séance'); }
   catch (error) { return Promise.reject(error); }
-  return locked(`${profileId}/${sessionId}`, async () => {
-    const s = await load(profileId, sessionId);
+  return updateSession(profileId, sessionId, s => {
+    if (!s || s.profileId !== profileId) throw new WorkoutError('Séance introuvable.', 'NOT_FOUND');
     if (!allowClosed && isClosed(s)) throw new WorkoutError('Cette séance est terminée.', 'SESSION_CLOSED');
     if (!allowPaused && s.status === 'paused') throw new WorkoutError('Séance en pause : la reprendre d\'abord.', 'SESSION_PAUSED');
     change(s);
     s.updatedAt = isoOf(now);
     s.summary = getWorkoutSummary(s);
-    await saveSession(profileId, s);
     return s;
   });
 }
@@ -187,8 +177,32 @@ export function getPostponedActivities(session) {
   return session.order.map(k => byKey[k]).filter(a => a && a.postponed && a.status === 'pending');
 }
 
-/** Totaux de la seance (series validees, volume en kg, duree hors pauses). */
-export function getWorkoutSummary(session) {
+function timeOf(value) {
+  return value instanceof Date ? value.getTime() : typeof value === 'number' ? value : Date.parse(value);
+}
+
+/**
+ * Duree ACTIVE (hors pauses) d'une seance. Pour une seance ouverte, `now` (Date, ms ou ISO) est l'heure de
+ * reference : l'interface peut appeler cette fonction chaque seconde sans rien sauvegarder. Sans `now`,
+ * la derniere modification (`updatedAt`) sert de reference. Une seance terminee utilise toujours `endedAt`.
+ * @returns {{seconds:number, minutes:number}}
+ */
+export function getWorkoutDuration(session, now) {
+  let end;
+  if (session.endedAt) end = Date.parse(session.endedAt);
+  else if (now !== undefined && now !== null) end = timeOf(now);
+  else end = Date.parse(session.updatedAt || session.startedAt);
+  let paused = session.pausedMs || 0;
+  if (session.status === 'paused' && session.pausedAt) paused += Math.max(0, end - Date.parse(session.pausedAt));
+  const seconds = Math.max(0, Math.round((end - Date.parse(session.startedAt) - paused) / 1000));
+  return { seconds, minutes: Math.max(0, Math.round(seconds / 60)) };
+}
+
+/**
+ * Totaux de la seance (series validees, volume en kg, duree hors pauses).
+ * `now` (optionnel) : heure de reference pour la duree d'une seance ouverte, sans sauvegarde.
+ */
+export function getWorkoutSummary(session, now) {
   let setsDone = 0;
   let volumeKg = 0;
   let activitiesDone = 0;
@@ -201,16 +215,12 @@ export function getWorkoutSummary(session) {
       volumeKg += set.kg * set.reps;
     }
   }
-  const end = session.endedAt ? Date.parse(session.endedAt) : Date.parse(session.updatedAt || session.startedAt);
-  let paused = session.pausedMs || 0;
-  if (session.status === 'paused' && session.pausedAt) paused += Math.max(0, end - Date.parse(session.pausedAt));
-  const minutes = Math.max(0, Math.round((end - Date.parse(session.startedAt) - paused) / 60000));
   return {
     setsDone,
     volumeKg: Math.round(volumeKg * 100) / 100,
     activitiesDone,
     activitiesTotal: session.activities.length,
-    durationMinutes: minutes
+    durationMinutes: getWorkoutDuration(session, now).minutes
   };
 }
 
@@ -219,17 +229,13 @@ export function getWorkoutSummary(session) {
 /**
  * Demarre une seance a partir d'un jour du programme enregistre (copie independante).
  * `dayId` : lundi..dimanche (par defaut le jour de `now`). `weekStart` : lundi de la semaine (par defaut celle de `now`).
- * Refuse s'il existe deja une seance non terminee (code SESSION_IN_PROGRESS, `error.sessionId`).
+ * Refuse s'il existe deja une seance non terminee, meme creee depuis un autre onglet
+ * (code SESSION_IN_PROGRESS, `error.sessionId`) : une seule seance ouverte par profil, garantie par IndexedDB.
  * @returns {Promise<session>}
  */
 export function startWorkout(profileId, { dayId, weekStart, now = new Date() } = {}) {
   try { writable(profileId); } catch (error) { return Promise.reject(error); }
-  return locked(`start/${profileId}`, async () => {
-    const unfinished = await getUnfinishedSessions(profileId);
-    if (unfinished.length) {
-      throw new WorkoutError('Une séance est déjà en cours : la reprendre ou la terminer.', 'SESSION_IN_PROGRESS',
-        { sessionId: unfinished[0].id });
-    }
+  return (async () => {
     const week = weekStart || mondayOf(now);
     const wanted = dayId || dayIdOf(now);
     const program = await getProgram(profileId, week);
@@ -272,9 +278,17 @@ export function startWorkout(profileId, { dayId, weekStart, now = new Date() } =
       activities
     };
     session.summary = getWorkoutSummary(session);
-    await saveSession(profileId, session);
-    return session;
-  });
+    try {
+      // verification « aucune seance ouverte » + ecriture dans UNE transaction : sur d'autres onglets aussi
+      return await createSessionIfNoneOpen(profileId, session);
+    } catch (error) {
+      if (error && error.code === 'SESSION_IN_PROGRESS') {
+        throw new WorkoutError('Une séance est déjà en cours : la reprendre ou la terminer.', 'SESSION_IN_PROGRESS',
+          { sessionId: error.sessionId });
+      }
+      throw error;
+    }
+  })();
 }
 
 /** Une seance par identifiant (null si absente ou en demo). */
@@ -483,12 +497,13 @@ export function finishWorkout(profileId, sessionId, mode = 'completed', { now = 
 
 /** Annule une seance demarree par erreur. Refuse si une serie ou activite est deja validee (code HAS_DATA). */
 export function discardWorkout(profileId, sessionId) {
-  try { writable(profileId); } catch (error) { return Promise.reject(error); }
-  return locked(`${profileId}/${sessionId}`, async () => {
-    const s = await load(profileId, sessionId);
+  try { writable(profileId); nonEmpty(sessionId, 'Identifiant de séance'); }
+  catch (error) { return Promise.reject(error); }
+  // verification et suppression dans la meme transaction : une serie validee ailleurs n'est jamais perdue
+  return deleteSessionIf(profileId, sessionId, s => {
+    if (!s || s.profileId !== profileId) throw new WorkoutError('Séance introuvable.', 'NOT_FOUND');
     if (isClosed(s) || s.activities.some(a => a.status !== 'pending' || a.sets.some(x => x.done))) {
       throw new WorkoutError('Cette séance contient des résultats : la terminer en partielle.', 'HAS_DATA');
     }
-    await deleteSession(profileId, sessionId);
   });
 }

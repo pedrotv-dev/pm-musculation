@@ -183,6 +183,111 @@ export function deleteSession(profileId, sessionId) {
   );
 }
 
+// SEANCES — operations ATOMIQUES (une seule transaction IndexedDB readwrite).
+// Les transactions readwrite sur un meme store sont serialisees par IndexedDB, y compris entre
+// plusieurs onglets / instances : lecture, verification et ecriture ne peuvent pas s'entrecouper.
+
+/** Execute `run(store, setResult, fail)` dans une transaction readwrite sur `sessions`. */
+async function sessionsTransaction(run) {
+  const db = await openStorage();
+  return new Promise((resolve, reject) => {
+    let tx;
+    try { tx = db.transaction(['sessions'], 'readwrite'); }
+    catch (error) { reject(error); return; }
+    let result;
+    let failure = null;
+    tx.oncomplete = () => resolve(result);
+    tx.onabort = () => reject(failure || tx.error || new Error('Enregistrement annule.'));
+    tx.onerror = () => { failure ||= tx.error; };
+    const fail = error => {
+      failure = error;
+      try { tx.abort(); } catch (_) { reject(error); }
+    };
+    try { run(tx.objectStore('sessions'), value => { result = value; }, fail); }
+    catch (error) { fail(error); }
+  });
+}
+
+function sessionRecord(profileId, session) {
+  return {
+    profileId, id: session.id, status: session.status,
+    data: session, updatedAt: new Date().toISOString()
+  };
+}
+
+/**
+ * Lit la seance, appelle `updater(donneesActuelles | null)` DANS la meme transaction, puis ecrit
+ * le resultat. `updater` doit etre synchrone. S'il leve une erreur, rien n'est ecrit et la promesse
+ * est rejetee avec cette erreur. S'il retourne undefined, rien n'est ecrit. La promesse n'est
+ * resolue qu'apres COMMIT et retourne l'objet enregistre.
+ */
+export function updateSession(profileId, sessionId, updater) {
+  validProfile(profileId);
+  nonempty(sessionId, 'Identifiant de seance');
+  if (typeof updater !== 'function') throw new TypeError('updater doit etre une fonction.');
+  return sessionsTransaction((store, setResult, fail) => {
+    const request = store.get([profileId, sessionId]);
+    request.onsuccess = () => {
+      try {
+        const record = request.result;
+        const next = updater(record ? record.data : null);
+        if (next === undefined) { setResult(record ? record.data : null); return; }
+        objectValue(next, 'Seance');
+        if (next.id !== sessionId) throw new Error('L\'identifiant de seance ne peut pas changer.');
+        nonempty(next.status, 'Etat de seance');
+        store.put(sessionRecord(profileId, next));
+        setResult(next);
+      } catch (error) { fail(error); }
+    };
+  });
+}
+
+/**
+ * Cree une seance seulement s'il n'existe AUCUNE seance ouverte (in_progress ou paused) pour ce profil,
+ * verification et ecriture dans la meme transaction : deux onglets ne peuvent pas en creer deux.
+ * Sinon rejette avec une erreur de code 'SESSION_IN_PROGRESS' portant `sessionId`.
+ */
+export function createSessionIfNoneOpen(profileId, session) {
+  validProfile(profileId);
+  objectValue(session, 'Seance');
+  nonempty(session.id, 'Identifiant de seance');
+  nonempty(session.status, 'Etat de seance');
+  return sessionsTransaction((store, setResult, fail) => {
+    const request = store.index('byProfile').getAll(IDBKeyRange.only(profileId));
+    request.onsuccess = () => {
+      try {
+        const rows = request.result;
+        const open = rows.find(r => r.status === 'in_progress' || r.status === 'paused');
+        if (open) {
+          const error = new Error('Une seance est deja en cours pour ce profil.');
+          error.code = 'SESSION_IN_PROGRESS';
+          error.sessionId = open.id;
+          throw error;
+        }
+        if (rows.some(r => r.id === session.id)) throw new Error('Identifiant de seance deja utilise.');
+        store.put(sessionRecord(profileId, session));
+        setResult(session);
+      } catch (error) { fail(error); }
+    };
+  });
+}
+
+/** Supprime une seance apres `check(donnees)` execute dans la meme transaction (leve pour refuser). */
+export function deleteSessionIf(profileId, sessionId, check) {
+  validProfile(profileId);
+  nonempty(sessionId, 'Identifiant de seance');
+  if (typeof check !== 'function') throw new TypeError('check doit etre une fonction.');
+  return sessionsTransaction((store, setResult, fail) => {
+    const request = store.get([profileId, sessionId]);
+    request.onsuccess = () => {
+      try {
+        check(request.result ? request.result.data : null);
+        if (request.result) store.delete([profileId, sessionId]);
+      } catch (error) { fail(error); }
+    };
+  });
+}
+
 // MESURES DE POIDS : un identifiant unique par saisie ; historique preserve.
 export function saveWeight(profileId, measurement) {
   validProfile(profileId);
