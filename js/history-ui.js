@@ -206,6 +206,7 @@ function renderDetail() {
 function render() {
   if (!KNOWN.includes(profile())) return;
   clear(page);
+  page.dataset.view = S.mode; // lu par js/nav-history.js (bouton retour : détail → liste)
   page.append(header());
   if (S.mode === 'detail') page.append(renderDetail()); else page.append(renderList());
 }
@@ -218,3 +219,4 @@ document.addEventListener('pm:data-changed', reload);
 window.addEventListener('focus', reload);
 document.addEventListener('click', e => { if (e.target.closest?.('.nav-btn[data-go="historique"]')) load().catch(console.error); });
 void dialog; void getResumableWorkout;
+document.addEventListener('pm:back-history', () => { if (S.mode === 'detail') { S.mode = 'list'; S.detail = null; render(); } });

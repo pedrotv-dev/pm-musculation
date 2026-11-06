@@ -12,7 +12,7 @@ Application : https://pedrotv-dev.github.io/pm-musculation/
 3. **Accueil** → *Démarrer cette séance* : une machine par écran, saisie des charges/répétitions (sauvegardées avant même la validation), chrono de repos, report d'une machine occupée, pause, reprise après fermeture, récapitulatif.
 4. **Historique** : détails, corrections (date et durée conservées), suppression confirmée, calendrier.
 5. **Progrès** : fréquence, volume, charge par machine, records, cardio, poids corporel.
-6. **Profil** : réglages du chrono, sauvegarde/restauration JSON (remplacer ou fusionner), export CSV, **bilan hebdomadaire texte** à copier dans ChatGPT, démo, données locales.
+6. **Profil** : réglages du chrono, **réglages d'usage** (écran qui reste allumé pendant une séance, bouton retour du téléphone), sauvegarde/restauration JSON (remplacer ou fusionner), export CSV, **bilan hebdomadaire texte** à copier dans ChatGPT, démo, données locales.
 
 Les programmes sportifs sont préparés par ChatGPT ; l'application ne réorganise jamais un programme et n'augmente jamais les charges seule.
 
@@ -47,6 +47,7 @@ Jours : `lundi` … `dimanche`. Les `machineId` viennent de `data/machines.json`
 | `js/stats.js`, `js/bilan.js`, `js/backup.js`, `js/weights.js` | statistiques, bilan texte, sauvegardes/CSV, poids corporel |
 | `js/demo-fixtures.js` | jeu de données fictives de la démo (30 séances / 6 semaines) |
 | `js/*-ui.js`, `js/dom.js`, `js/charts.js` | interface (provisoire, sobre) |
+| `js/nav-history.js`, `js/wakelock.js`, `js/ui-settings.js` | bouton retour du téléphone (historique du navigateur), écran allumé (Screen Wake Lock), réglages d'usage par profil |
 | `js/app.js`, `js/profiles.js` | démarrage (profil mémorisé, onglets, service worker) et définition des profils |
 | `css/base.css`, `css/app.css`, `css/workout.css`, `css/rest.css`, `css/programs.css` | styles (aucun style en ligne) |
 | `sw.js`, `manifest.webmanifest`, `assets/icons/`, `assets/machines/` | PWA hors ligne, icônes, photos des machines |
@@ -60,6 +61,7 @@ node tests/e2e/demo-flow.mjs     # démo interactive
 node tests/e2e/data-flow.mjs     # sauvegarde, restauration, bilan, deux onglets
 node tests/e2e/offline-flow.mjs  # hors ligne (service worker)
 node tests/e2e/update-flow.mjs   # mise à jour de l'application sans perte
+node tests/e2e/nav-flow.mjs      # bouton retour du téléphone + écran allumé pendant une séance
 node tests/e2e/audit-faults.mjs  # stockage plein / refusé
 node tests/e2e/audit-ui.mjs      # audit mobile : cibles < 44 px, champs < 16 px, débordements
 node tests/e2e/audit-a11y.mjs    # accessibilité WCAG 2 A/AA (axe-core, installé globalement : npm i -g axe-core)

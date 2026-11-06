@@ -92,3 +92,5 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-toast-action { min-height:44px; }
 .pm-weight-line .pm-icon-btn { min-height:44px; min-width:44px; }
 .pm-weight-form { grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; }
+.pm-profile-option { margin-top:10px; }
+.pm-profile-option .pm-muted { margin:0 0 0 30px; }

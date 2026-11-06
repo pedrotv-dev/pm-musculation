@@ -12,6 +12,8 @@ import { addDays } from './stats.js';
 import { loadCatalog } from './catalog.js';
 import { isRealProfile as real } from './profiles.js';
 import { APP_VERSION } from './version.js';
+import { getUiSettings, setUiSettings } from './ui-settings.js';
+import { isWakeLockSupported } from './wakelock.js';
 import { el, btn, clear, add, dialog, confirmDialog, toast, fmtNum, parseNum, formatDateFr } from './dom.js';
 
 const root = document.documentElement;
@@ -66,6 +68,26 @@ function chronoSection(profile, config) {
   const grid = el('div', 'pm-grid-2'); grid.append(dflt.wrap, step.wrap);
   return section('Chronomètre de récupération', 'Réglages propres à ce profil. Le temps de repos de chaque machine vient du programme.', mode, grid,
     chk('Son à la fin du repos', 'sound'), chk('Vibration (si disponible)', 'vibrate'));
+}
+
+function usageSection(profile, ui) {
+  const row = (label, hint, key, available = true) => {
+    const wrap = el('div', 'pm-profile-option');
+    const l = el('label', 'pm-check');
+    const c = document.createElement('input'); c.type = 'checkbox'; c.checked = available && ui[key]; c.disabled = !available;
+    c.addEventListener('change', async () => {
+      const r = await setUiSettings(profile, { [key]: c.checked });
+      if (r.error) { c.checked = !c.checked; toast(r.error); } else toast(c.checked ? 'Activé' : 'Désactivé', { duration: 1200 });
+    });
+    l.append(c, document.createTextNode(' ' + label));
+    wrap.append(l, el('p', 'pm-muted', hint));
+    return wrap;
+  };
+  return section('Pendant une séance', 'Deux réglages d’usage, propres à ce profil.',
+    row('Garder l’écran allumé', isWakeLockSupported()
+      ? 'L’écran ne s’éteint pas tant que la séance est en cours (libéré en pause et à la fin).'
+      : 'Non disponible sur ce navigateur : l’écran s’éteindra selon les réglages du téléphone.', 'keepAwake', isWakeLockSupported()),
+    row('Bouton retour du téléphone', 'Revient d’un niveau dans l’application (ferme un dialogue, retourne à la machine, à l’accueil…) au lieu de la quitter. À l’accueil, « retour » quitte normalement.', 'backButton'));
 }
 
 function backupSection(profile) {
@@ -224,13 +246,14 @@ async function render() {
   const profile = root.dataset.pmProfile, mine = ++S.rev;
   if (!PEOPLE[profile]) return;
   const config = await getRestConfig(profile);
+  const ui = await getUiSettings(profile);
   const bilan = await bilanSection(profile);
   if (mine !== S.rev || root.dataset.pmProfile !== profile) return;
   clear(page);
   const head = section('', '');
   head.replaceChildren(el('h3', '', PEOPLE[profile].name), el('p', 'pm-muted', profile === 'demo' ? 'Mode démo — données fictives' : PEOPLE[profile].goal.replace(/^./, c => c.toUpperCase())),
     btn('Changer de profil', 'pm-secondary', () => document.getElementById('switch-profile')?.click()));
-  add(page, el('div', 'eyebrow', 'Mon espace'), el('h2', '', 'Profil'), head, chronoSection(profile, config), backupSection(profile), bilan, localDataSection(profile), demoSection(profile));
+  add(page, el('div', 'eyebrow', 'Mon espace'), el('h2', '', 'Profil'), head, chronoSection(profile, config), usageSection(profile, ui), backupSection(profile), bilan, localDataSection(profile), demoSection(profile));
   page.append(section('À propos', null, el('p', 'pm-muted', 'PM Musculation · version ' + APP_VERSION + ' · fonctionne hors connexion après installation.')));
   const update = btn('Rechercher une mise à jour', 'pm-secondary', async () => {
     try {

@@ -48,6 +48,14 @@ export function localISODate(d = new Date()) {
 }
 
 let modalRoot = null;
+const openDialogs = []; // fermes dans l'ordre inverse par le bouton retour du telephone
+/** Ferme le dialogue le plus haut (comme « Annuler »). @returns {boolean} true s'il y en avait un. */
+export function closeTopDialog() {
+  const top = openDialogs[openDialogs.length - 1];
+  if (!top) return false;
+  top(null);
+  return true;
+}
 function root() {
   if (!modalRoot) {
     modalRoot = el('div', 'pm-modal-root');
@@ -72,6 +80,7 @@ export function dialog({ title, message, choices, content }) {
     if (content) box.append(content);
     const row = el('div', 'pm-modal-actions');
     const close = value => {
+      const i = openDialogs.indexOf(close); if (i !== -1) openDialogs.splice(i, 1);
       overlay.remove(); document.removeEventListener('keydown', onKey, true);
       try { if (previous && previous.isConnected && previous.focus) previous.focus({ preventScroll: true }); } catch (_) { /* element disparu */ }
       resolve(value);
@@ -94,6 +103,7 @@ export function dialog({ title, message, choices, content }) {
     overlay.append(box);
     overlay.addEventListener('click', e => { if (e.target === overlay) close(null); });
     document.addEventListener('keydown', onKey, true);
+    openDialogs.push(close);
     root().append(overlay);
     const first = box.querySelector('.pm-primary, .pm-danger, button');
     if (first) first.focus();
