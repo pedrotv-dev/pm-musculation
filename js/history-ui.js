@@ -210,10 +210,11 @@ function render() {
   if (S.mode === 'detail') page.append(renderDetail()); else page.append(renderList());
 }
 
-document.addEventListener('pm:profile-changed', () => { S.mode = 'list'; S.detail = null; S.day = null; load().catch(console.error); });
-document.addEventListener('pm:workout-changed', e => { if (!root.classList.contains('pm-workout-active') || (e.detail && e.detail.final)) load().catch(console.error); });
-document.addEventListener('pm:data-changed', () => load().catch(console.error));
-window.addEventListener('focus', () => load().catch(console.error));
+// Optimisation : un onglet masqué ne relit pas la base ; il se met à jour à l'ouverture (clic sur son onglet)
+const reload = () => { if (!page.hidden) load().catch(console.error); };
+document.addEventListener('pm:profile-changed', () => { S.mode = 'list'; S.detail = null; S.day = null; reload(); });
+document.addEventListener('pm:workout-changed', e => { if (!root.classList.contains('pm-workout-active') || (e.detail && e.detail.final)) reload(); });
+document.addEventListener('pm:data-changed', reload);
+window.addEventListener('focus', reload);
 document.addEventListener('click', e => { if (e.target.closest?.('.nav-btn[data-go="historique"]')) load().catch(console.error); });
-load().catch(console.error);
 void dialog; void getResumableWorkout;

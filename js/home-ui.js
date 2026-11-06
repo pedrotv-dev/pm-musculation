@@ -123,4 +123,14 @@ window.addEventListener('focus', refresh);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refresh(); });
 document.addEventListener('pm:data-changed', refresh);
 refresh();
-document.addEventListener('pm:update-ready', () => toast('Mise à jour installée : elle s’applique au prochain lancement.', { duration: 6000 }));
+// Mise à jour de l'application : proposée seulement hors séance, au plus une fois toutes les 10 minutes
+let updateReady = false;
+let lastOffer = 0;
+function offerUpdate() {
+  if (!updateReady || root.classList.contains('pm-workout-active') || Date.now() - lastOffer < 10 * 60 * 1000) return;
+  lastOffer = Date.now();
+  toast('Une mise à jour de l’application est prête.', { actionLabel: 'Mettre à jour', duration: 15000,
+    onAction: () => document.dispatchEvent(new CustomEvent('pm:apply-update')) });
+}
+document.addEventListener('pm:update-ready', () => { updateReady = true; offerUpdate(); });
+document.addEventListener('pm:workout-changed', () => setTimeout(offerUpdate, 500)); // après une séance

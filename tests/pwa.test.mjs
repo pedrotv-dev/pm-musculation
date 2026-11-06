@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { APP_VERSION } from '../js/version.js';
+import { fingerprint } from '../tools/release.mjs';
 
 const ROOT = path.resolve(new URL('..', import.meta.url).pathname);
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
@@ -25,8 +26,9 @@ test('tout fichier précaché existe, et tout fichier de code est précaché', (
 test('le service worker ne touche pas aux données et gère les mises à jour', () => {
   assert.ok(!/indexedDB|localStorage/.test(sw.replace(/\/\*[\s\S]*?\*\//g, '')));
   assert.match(sw, /caches\.delete/); // anciens caches supprimés
-  assert.match(sw, /skipWaiting/);
-  assert.match(sw, /networkFirst/);
+  assert.match(sw, /message[\s\S]*skipWaiting/); // activation seulement sur demande de l'application
+  assert.match(sw, /if \(!self\.registration\.active\) await self\.skipWaiting\(\)/); // sauf première installation
+  assert.match(sw, /cacheFirst/);
 });
 test('manifeste : chemins relatifs, icônes aux bonnes dimensions', () => {
   const m = JSON.parse(read('manifest.webmanifest'));
@@ -93,4 +95,10 @@ test('sécurité : aucun script ni style en ligne, politique CSP stricte, app.js
   assert.equal(scripts[0], 'js/app.js');
   for (const f of scripts) assert.ok(precache.includes(f), f + ' non précaché');
   for (const m of html.matchAll(/rel="stylesheet" href="\.\/(css\/[^"]+)"/g)) assert.ok(precache.includes(m[1]), m[1] + ' non précaché');
+});
+
+test('publication : la VERSION correspond à l\'empreinte des fichiers (sinon lancer node tools/release.mjs)', () => {
+  assert.match(APP_VERSION, /^\d{4}\.\d{2}\.\d{2}-[0-9a-f]{8}$/);
+  assert.equal(APP_VERSION.split('-')[1], fingerprint(),
+    'Des fichiers de l\'application ont changé sans nouvelle VERSION : les téléphones garderaient l\'ancien code. Lancer : node tools/release.mjs');
 });

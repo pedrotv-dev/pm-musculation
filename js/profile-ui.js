@@ -236,14 +236,17 @@ async function render() {
     try {
       const reg = navigator.serviceWorker && (await navigator.serviceWorker.getRegistration());
       if (!reg) { toast('Mises à jour automatiques indisponibles dans ce navigateur.'); return; }
-      await reg.update(); toast('Vérification faite : l’application se met à jour au prochain démarrage.');
+      await reg.update();
+      if (reg.waiting) document.dispatchEvent(new CustomEvent('pm:update-ready'));
+      else toast('Vérification faite : tu as la dernière version (ou elle s’installe en arrière-plan).');
     } catch (_) { toast('Vérification impossible hors connexion.'); }
   });
   page.lastChild.append(update);
 }
 
+// Optimisation : l'onglet masqué ne se reconstruit pas ; il se met à jour à l'ouverture (clic sur son onglet)
 const refresh = () => render().catch(console.error);
-document.addEventListener('pm:profile-changed', () => { S.other = null; S.bilan = ''; S.notice = ''; refresh(); });
-document.addEventListener('pm:data-changed', () => { S.bilan = ''; refresh(); });
+const reload = () => { if (!page.hidden) refresh(); };
+document.addEventListener('pm:profile-changed', () => { S.other = null; S.bilan = ''; S.notice = ''; reload(); });
+document.addEventListener('pm:data-changed', () => { S.bilan = ''; reload(); });
 document.addEventListener('click', e => { if (e.target.closest?.('.nav-btn[data-go="profil"]')) refresh(); });
-refresh();

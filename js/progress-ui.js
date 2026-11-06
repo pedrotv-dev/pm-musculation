@@ -120,9 +120,10 @@ async function render() {
   page.append(wBox);
 }
 
+// Optimisation : un onglet masqué ne relit pas la base ; il se met à jour à l'ouverture (clic sur son onglet)
 const refresh = () => render().catch(console.error);
-document.addEventListener('pm:profile-changed', refresh);
-document.addEventListener('pm:workout-changed', e => { if (!root.classList.contains('pm-workout-active') || (e.detail && e.detail.final)) refresh(); });
-document.addEventListener('pm:data-changed', refresh);
+const reload = () => { if (!page.hidden) refresh(); };
+document.addEventListener('pm:profile-changed', reload);
+document.addEventListener('pm:workout-changed', e => { if (!root.classList.contains('pm-workout-active') || (e.detail && e.detail.final)) reload(); });
+document.addEventListener('pm:data-changed', reload);
 document.addEventListener('click', e => { if (e.target.closest?.('.nav-btn[data-go="progres"]')) refresh(); });
-refresh();
