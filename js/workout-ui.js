@@ -169,8 +169,12 @@ function renderSets(container, activity) {
     row.append(el('span', 'pm-set-index', String(idx + 1)));
     const kg = numberField('Charge (kg)', set.kg, .5, 0);
     const reps = numberField('Répétitions', set.reps, 1, 1);
+    // Sur mobile, toucher « Valider » retire d'abord le focus de l'input.
+    // Ne pas lancer une sauvegarde concurrente sur blur : l'action utilisera
+    // directement la derniere charge et les repetitions saisies.
+    let actionPressed = false;
     const edit = () => {
-      if (state.busy) return;
+      if (state.busy || actionPressed) return;
       const patch = readSet(kg.input, reps.input);
       if (!patch || (patch.kg === set.kg && patch.reps === set.reps)) return;
       commit((profile, id) => updateSet(profile, id, activity.key, set.id, patch));
@@ -185,6 +189,7 @@ function renderSets(container, activity) {
         updateSet(profile, id, activity.key, set.id, { ...patch, done: false }) :
         logSet(profile, id, activity.key, set.id, patch));
     });
+    toggle.addEventListener('pointerdown', () => { actionPressed = true; });
     toggle.dataset.done = String(set.done);
     toggle.title = set.done ? 'Annuler cette validation' : 'Valider cette série';
     const remove = button('×', 'pm-set-remove', () => {
