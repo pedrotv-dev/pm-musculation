@@ -5,7 +5,7 @@
  */
 import { prepareProgramImport, importProgram, listProgramWeeks, getActiveProgram, mondayOf } from './programs.js';
 import { getProgram } from '../storage.js';
-import { demoProgram, demoStats } from './demo-data.js';
+import { getDemoProgram } from './workouts.js';
 
 const PROFILE_KEY = 'pm-musculation:profile:v2';
 const DAYS = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
@@ -75,7 +75,7 @@ function drawDays(container, program, activeDay, choose) {
   const day = program.days.find(d => d.id === chosen);
   const heading = node('h3', '', day.name || 'Séance du ' + day.id);
   body.append(heading);
-  if (state.profile === 'pierre' || state.profile === 'manon') {
+  if (state.profile === 'pierre' || state.profile === 'manon' || state.profile === 'demo') {
     const start = btn('Démarrer cette séance', 'pm-start-workout', () => {
       document.dispatchEvent(new CustomEvent('pm:start-workout', {
         detail: { profileId: state.profile, weekStart: state.selectedWeek, dayId: chosen }
@@ -191,10 +191,12 @@ async function drawWeekOptions() {
   const valid = () => sameProfile(profile, generation) && request === state.weekLoadVersion;
 
   if (profile === 'demo') {
+    const demo = await getDemoProgram();
+    if (!valid()) return false;
     wipe(select);
-    add(select, new Option('Semaine démo · Exemple', demoProgram.weekStart));
+    add(select, new Option('Semaine démo · ' + demo.weekStart + ' · En cours', demo.weekStart));
     select.disabled = true;
-    state.selectedWeek = demoProgram.weekStart;
+    state.selectedWeek = demo.weekStart;
     state.lastMonday = mondayOf();
     return true;
   }
@@ -238,8 +240,9 @@ async function displayProgram() {
 
   wipe(historyView);
   if (profile === 'demo') {
+    const demo = await getDemoProgram();
     if (!valid()) return;
-    drawDays(historyView, demoProgram, state.selectedDay || dayNow(), day => {
+    drawDays(historyView, demo, state.selectedDay || dayNow(), day => {
       if (!valid()) return;
       state.selectedDay = day;
       displayProgram().catch(showError);

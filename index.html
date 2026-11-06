@@ -4,11 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#10141d">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/icons/icon-192.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PM Muscu">
   <meta name="color-scheme" content="dark">
   <meta name="description" content="PM Musculation — entraînements de Pierre et Manon.">
   <title>PM Musculation</title>
   <link rel="stylesheet" href="./css/programs.css">
   <link rel="stylesheet" href="./css/demo.css">
+  <link rel="stylesheet" href="./css/app.css">
   <link rel="stylesheet" href="./css/workout.css">
   <link rel="stylesheet" href="./css/rest.css">
 
@@ -211,10 +219,11 @@
         const data = profiles[profile];
         document.documentElement.style.setProperty('--accent', data.accent);
         document.documentElement.style.setProperty('--accent-rgb', data.rgb);
-        $('#profile-greeting').textContent = data.name;
-        $('#profile-name').textContent = data.name;
-        $('#profile-goal').textContent = data.goal;
-        $('#profile-theme').textContent = data.theme;
+        const setText = (selector, value) => { const n = $(selector); if (n) n.textContent = value; };
+        setText('#profile-greeting', data.name);
+        setText('#profile-name', data.name);
+        setText('#profile-goal', data.goal);
+        setText('#profile-theme', data.theme);
         $('#screen-select').hidden = true;
         $('#app-pages').hidden = false;
         $('#bottom-nav').hidden = false;
@@ -243,7 +252,7 @@
       document.querySelectorAll('[data-select-profile]').forEach(button => button.addEventListener('click', () => chooseProfile(button.dataset.selectProfile)));
       document.querySelectorAll('[data-go]').forEach(button => button.addEventListener('click', () => navigate(button.dataset.go)));
       $('#switch-profile').addEventListener('click', changeProfile);
-      $('#profile-change-bottom').addEventListener('click', changeProfile);
+      $('#profile-change-bottom')?.addEventListener('click', changeProfile);
 
       let saved = null;
       try { saved = localStorage.getItem(KEY); }
@@ -252,8 +261,28 @@
     })();
   </script>
   <script type="module" src="./js/program-ui.js"></script>
-  <script type="module" src="./js/demo-ui.js"></script>
+  <script type="module" src="./js/home-ui.js"></script>
   <script type="module" src="./js/workout-ui.js"></script>
+  <script type="module" src="./js/history-ui.js"></script>
+  <script type="module" src="./js/progress-ui.js"></script>
+  <script type="module" src="./js/profile-ui.js"></script>
   <script type="module" src="./js/rest-ui.js"></script>
+  <script>
+    // Hors ligne : service worker (GitHub Pages, chemins relatifs). Ne touche jamais aux donnees IndexedDB.
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+          reg.addEventListener('updatefound', () => {
+            const worker = reg.installing;
+            if (worker) worker.addEventListener('statechange', () => {
+              if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                document.dispatchEvent(new CustomEvent('pm:update-ready'));
+              }
+            });
+          });
+        }).catch(error => console.warn('Mode hors ligne indisponible :', error));
+      });
+    }
+  </script>
 </body>
 </html>

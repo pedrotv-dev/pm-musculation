@@ -1,0 +1,237 @@
+/**
+ * PM Musculation — Profil : reglages du chrono, sauvegardes, restauration, export, bilan, demo, donnees locales.
+ */
+import { getRestConfig, setRestConfig, stopRest } from './rest-timer.js';
+import { listWorkouts, resetDemoWorkouts, getDemoProgram } from './workouts.js';
+import { getProgram } from '../storage.js';
+import { listBodyWeights, resetDemoWeights } from './weights.js';
+import { createBackupFile, parseBackupText, describeBackup, restoreBackup, clearProfileData, backupToPerson, resultsCsv, saveTextFile } from './backup.js';
+import { buildBilan } from './bilan.js';
+import { mondayOf } from './programs.js';
+import { addDays } from './stats.js';
+import { loadCatalog } from './catalog.js';
+import { APP_VERSION } from './version.js';
+import { el, btn, clear, add, dialog, confirmDialog, toast, fmtNum, parseNum, formatDateFr } from './dom.js';
+
+const root = document.documentElement;
+const page = document.querySelector('[data-page="profil"]');
+const PEOPLE = { pierre: { name: 'Pierre', goal: 'prise de muscle, force et endurance' }, manon: { name: 'Manon', goal: 'perte de graisse et renforcement musculaire' }, demo: { name: 'Démo', goal: '' } };
+const S = { other: null, week: null, bilan: '', notice: '', rev: 0 };
+const real = p => p === 'pierre' || p === 'manon';
+const emitData = profile => document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile } }));
+
+function section(title, intro, ...children) {
+  const box = el('article', 'panel pm-profile-section');
+  box.append(el('h3', '', title));
+  if (intro) box.append(el('p', 'pm-muted', intro));
+  box.append(...children);
+  return box;
+}
+function readFile(input) {
+  return new Promise((resolve, reject) => {
+    const f = input.files && input.files[0];
+    if (!f) return reject(new Error('Aucun fichier choisi.'));
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result)); r.onerror = () => reject(new Error('Lecture du fichier impossible.'));
+    r.readAsText(f);
+  });
+}
+async function copyText(text, area) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (_) { /* repli */ }
+  try { area.focus(); area.select(); return document.execCommand('copy'); } catch (_) { return false; }
+}
+
+function chronoSection(profile, config) {
+  const mode = el('select', 'pm-select'); mode.setAttribute('aria-label', 'Mode du chronomètre');
+  [['auto', 'Automatique : démarre après chaque série validée'], ['manual', 'Manuel : bouton « Lancer le repos »'], ['off', 'Désactivé']]
+    .forEach(([v, l]) => { const o = document.createElement('option'); o.value = v; o.textContent = l; mode.append(o); });
+  mode.value = config.mode;
+  const num = (label, value) => {
+    const wrap = el('label', 'pm-field'); wrap.append(el('span', 'pm-field-name', label));
+    const i = el('input', 'pm-input'); i.type = 'text'; i.inputMode = 'numeric'; i.value = String(value); wrap.append(i); return { wrap, i };
+  };
+  const dflt = num('Repos par défaut (secondes)', config.defaultSeconds), step = num('Pas des boutons + / − (secondes)', config.stepSeconds);
+  const chk = (label, key) => {
+    const l = el('label', 'pm-check'); const c = document.createElement('input'); c.type = 'checkbox'; c.checked = config[key];
+    c.addEventListener('change', () => save({ [key]: c.checked })); l.append(c, document.createTextNode(' ' + label)); return l;
+  };
+  const save = async patch => {
+    const r = await setRestConfig(profile, patch);
+    if (r.error) toast('Réglage refusé : ' + r.error);
+    else toast('Réglage enregistré', { duration: 1500 });
+  };
+  mode.addEventListener('change', () => save({ mode: mode.value }));
+  dflt.i.addEventListener('change', () => { const v = parseNum(dflt.i.value); if (Number.isInteger(v)) save({ defaultSeconds: v }); else toast('Nombre entier attendu.'); });
+  step.i.addEventListener('change', () => { const v = parseNum(step.i.value); if (Number.isInteger(v)) save({ stepSeconds: v }); else toast('Nombre entier attendu.'); });
+  const grid = el('div', 'pm-grid-2'); grid.append(dflt.wrap, step.wrap);
+  return section('Chronomètre de récupération', 'Réglages propres à ce profil. Le temps de repos de chaque machine vient du programme.', mode, grid,
+    chk('Son à la fin du repos', 'sound'), chk('Vibration (si disponible)', 'vibrate'));
+}
+
+function backupSection(profile) {
+  if (!real(profile)) return section('Sauvegardes', 'Le mode démo n’a rien à sauvegarder : ses données sont fictives et restent en mémoire.');
+  const status = el('p', 'pm-muted', S.notice);
+  const dl = btn('Télécharger ma sauvegarde', 'pm-secondary', async () => {
+    try {
+      const f = await createBackupFile(profile);
+      const how = await saveTextFile(f.filename, f.text);
+      status.textContent = 'Sauvegarde ' + (how === 'shared' ? 'partagée' : 'téléchargée') + ' : ' + f.summary.sessions + ' séance(s), ' + f.summary.weights + ' mesure(s) de poids, ' + f.summary.programs + ' programme(s).';
+    } catch (e) { status.textContent = 'Échec : ' + (e.message || e); }
+  });
+  const csv = btn('Exporter mes résultats (CSV)', 'pm-secondary', async () => {
+    try {
+      const [rows, cat] = await Promise.all([listWorkouts(profile), loadCatalog()]);
+      const names = new Map([...cat.byId].map(([id, m]) => [id, m.name]));
+      await saveTextFile('pm-musculation-' + profile + '-resultats.csv', resultsCsv(rows, names), 'text/csv');
+      status.textContent = rows.length + ' séance(s) exportée(s).';
+    } catch (e) { status.textContent = 'Échec : ' + (e.message || e); }
+  });
+  const file = el('input'); file.type = 'file'; file.accept = '.json,application/json'; file.setAttribute('aria-label', 'Fichier de sauvegarde à restaurer');
+  const restore = btn('Restaurer ce fichier', 'pm-secondary', async () => {
+    try {
+      const backup = parseBackupText(await readFile(file));
+      if (backup.profileId !== profile) throw new Error('Cette sauvegarde est celle de ' + PEOPLE[backup.profileId].name + ' : elle ne peut pas être restaurée dans le profil ' + PEOPLE[profile].name + '.');
+      const d = describeBackup(backup);
+      const pick = await dialog({
+        title: 'Restaurer la sauvegarde',
+        message: 'Sauvegarde du ' + (d.exportedAt ? formatDateFr(d.exportedAt.slice(0, 10)) : '?') + ' : ' + d.sessions + ' séance(s), ' + d.weights + ' mesure(s), ' + d.programs + ' programme(s).',
+        choices: [{ label: 'Annuler', value: null }, { label: 'Fusionner (garder l’existant)', value: 'merge', kind: 'primary' }, { label: 'Remplacer tout', value: 'replace', kind: 'danger' }]
+      });
+      if (!pick) return;
+      if (pick === 'replace' && !(await confirmDialog('Remplacer TOUTES les données de ' + PEOPLE[profile].name + ' par celles du fichier ? Les données actuelles de ce profil seront perdues.', { title: 'Remplacer les données', ok: 'Remplacer', danger: true }))) return;
+      await restoreBackup(profile, backup, pick);
+      file.value = '';
+      S.notice = 'Restauration terminée (' + (pick === 'merge' ? 'fusion' : 'remplacement') + ') : ' + d.sessions + ' séance(s) dans le fichier.';
+      status.textContent = S.notice;
+      toast('Sauvegarde restaurée'); emitData(profile);
+    } catch (e) { status.textContent = 'Restauration impossible : ' + (e.message || e); }
+  });
+  const fileLine = el('div', 'pm-file-line'); add(fileLine, file, restore);
+  return section('Sauvegardes', 'Tes données restent sur cet appareil. Fais une sauvegarde régulièrement et avant tout changement de téléphone.',
+    add(el('div', 'pm-row-actions'), dl, csv), fileLine, status);
+}
+
+async function bilanSection(profile) {
+  const monday = mondayOf();
+  const weeks = Array.from({ length: 8 }, (_, i) => addDays(monday, -7 * i));
+  if (!S.week || !weeks.includes(S.week)) S.week = weeks[0];
+  const select = el('select', 'pm-select'); select.setAttribute('aria-label', 'Semaine du bilan');
+  weeks.forEach((w, i) => { const o = document.createElement('option'); o.value = w; o.textContent = 'Semaine du ' + formatDateFr(w) + (i === 0 ? ' (en cours)' : ''); select.append(o); });
+  select.value = S.week;
+  select.addEventListener('change', () => { S.week = select.value; S.bilan = ''; draw(); });
+  const out = el('textarea', 'pm-bilan'); out.readOnly = true; out.setAttribute('aria-label', 'Bilan à copier'); out.value = S.bilan; out.hidden = !S.bilan;
+  const info = el('p', 'pm-muted');
+  const other = S.other;
+  const draw = () => { out.value = S.bilan; out.hidden = !S.bilan; };
+  const generate = btn('Générer le bilan', 'pm-validate', async () => {
+    try {
+      const [cat, sessions, weights] = await Promise.all([loadCatalog(), listWorkouts(profile), listBodyWeights(profile)]);
+      const program = profile === 'demo' ? await getDemoProgram().catch(() => null) : await getProgram(profile, S.week).catch(() => null);
+      const names = new Map([...cat.byId].map(([id, m]) => [id, m.name]));
+      const people = [{ profileId: profile, name: PEOPLE[profile].name, goal: PEOPLE[profile].goal, sessions, weights, program: program && program.weekStart === S.week ? program : null }];
+      if (S.other) {
+        const prog = S.other.programs.find(p => p.weekStart === S.week) || null;
+        people.push({ profileId: S.other.profileId, name: PEOPLE[S.other.profileId].name, goal: PEOPLE[S.other.profileId].goal, sessions: S.other.sessions, weights: S.other.weights, program: prog });
+        people.sort((a, b) => (a.profileId === 'pierre' ? 0 : 1) - (b.profileId === 'pierre' ? 0 : 1));
+      }
+      S.bilan = buildBilan({ weekStart: S.week, people, machineNames: names });
+      draw(); out.scrollIntoView({ block: 'nearest' });
+    } catch (e) { toast(e.message || 'Bilan impossible.'); }
+  });
+  const copy = btn('Copier le bilan', 'pm-secondary', async () => {
+    if (!S.bilan) { toast('Génère d’abord le bilan.'); return; }
+    toast((await copyText(S.bilan, out)) ? 'Bilan copié : colle-le dans ChatGPT.' : 'Copie impossible : sélectionne le texte à la main.');
+  });
+  const share = btn('Partager / enregistrer', 'pm-secondary', async () => { if (S.bilan) await saveTextFile('bilan-' + S.week + '.txt', S.bilan, 'text/plain'); else toast('Génère d’abord le bilan.'); });
+  // données de l'autre profil, en memoire seulement
+  const otherId = profile === 'pierre' ? 'manon' : profile === 'manon' ? 'pierre' : null;
+  const wrap = section('Bilan hebdomadaire', 'Texte à copier dans ChatGPT pour préparer la semaine suivante. Pour un bilan commun, ajoute le fichier de sauvegarde de l’autre personne (il reste en mémoire et n’écrase rien).', select);
+  if (otherId) {
+    const file = el('input'); file.type = 'file'; file.accept = '.json,application/json'; file.setAttribute('aria-label', 'Sauvegarde de ' + PEOPLE[otherId].name);
+    const line = el('div', 'pm-file-line');
+    const load = btn('Ajouter les données de ' + PEOPLE[otherId].name, 'pm-secondary', async () => {
+      try {
+        const b = parseBackupText(await readFile(file));
+        if (b.profileId !== otherId) throw new Error('Ce fichier est la sauvegarde de ' + PEOPLE[b.profileId].name + ', pas celle de ' + PEOPLE[otherId].name + '.');
+        S.other = backupToPerson(b); S.bilan = '';
+        info.textContent = 'Données de ' + PEOPLE[otherId].name + ' chargées en mémoire : ' + S.other.sessions.length + ' séance(s).';
+        toast('Données chargées (temporaires)'); draw();
+      } catch (e) { info.textContent = e.message || String(e); }
+    });
+    add(line, file, load);
+    if (other) add(line, btn('Retirer', 'pm-secondary', () => { S.other = null; S.bilan = ''; info.textContent = 'Données retirées.'; draw(); }));
+    wrap.append(line);
+    if (other) info.textContent = 'Données de ' + PEOPLE[other.profileId].name + ' chargées en mémoire : ' + other.sessions.length + ' séance(s).';
+  }
+  wrap.append(info, generate, add(el('div', 'pm-row-actions'), copy, share), out);
+  return wrap;
+}
+
+function localDataSection(profile) {
+  const info = el('p', 'pm-muted', 'Vérification du stockage…');
+  (async () => {
+    try {
+      const persisted = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : null;
+      const est = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
+      info.textContent = 'Stockage protégé : ' + (persisted === null ? 'inconnu' : persisted ? 'oui' : 'non (le navigateur peut effacer les données si l’appareil manque de place)') +
+        (est && est.usage !== undefined ? ' · ' + fmtNum(est.usage / 1024) + ' Ko utilisés' : '') + '.';
+    } catch (_) { info.textContent = 'Stockage : état indisponible.'; }
+  })();
+  const persist = btn('Protéger les données', 'pm-secondary', async () => {
+    try { const ok = navigator.storage && navigator.storage.persist ? await navigator.storage.persist() : false; toast(ok ? 'Stockage protégé ✓' : 'Le navigateur n’a pas accordé la protection : fais des sauvegardes.'); } catch (_) { toast('Non disponible.'); }
+  });
+  const kids = [info, persist];
+  if (real(profile)) {
+    kids.push(btn('Effacer toutes les données de ' + PEOPLE[profile].name, 'pm-warning pm-block', async () => {
+      if (!(await confirmDialog('Effacer définitivement programmes, séances, poids et réglages de ' + PEOPLE[profile].name + ' sur cet appareil ? Fais d’abord une sauvegarde. L’autre profil n’est pas touché.', { title: 'Effacer les données', ok: 'Continuer', danger: true }))) return;
+      if (!(await confirmDialog('Dernière confirmation : tout effacer pour ' + PEOPLE[profile].name + ' ?', { title: 'Irréversible', ok: 'Tout effacer', danger: true }))) return;
+      try { await clearProfileData(profile); toast('Données effacées'); emitData(profile); } catch (e) { toast(e.message || 'Échec.'); }
+    }));
+  }
+  return section('Données locales', 'Tout est stocké sur cet appareil (aucun compte, aucun serveur).', ...kids);
+}
+
+function demoSection(profile) {
+  if (profile === 'demo') {
+    return section('Mode démo', 'Données fictives, enregistrées uniquement en mémoire. Ne touche jamais aux profils de Pierre et Manon.',
+      btn('Réinitialiser la démo', 'pm-secondary', async () => {
+        if (!(await confirmDialog('Remettre la démo dans son état de départ ?', { ok: 'Réinitialiser' }))) return;
+        resetDemoWeights(); await stopRest('demo').catch(() => {}); await resetDemoWorkouts();
+        toast('Démo réinitialisée'); emitData('demo');
+      }),
+      btn('Quitter la démo', 'pm-secondary pm-block', () => document.getElementById('switch-profile')?.click()));
+  }
+  return section('Mode démo', 'Teste toute l’application avec de fausses données, sans toucher aux vraies.',
+    btn('Explorer la démo', 'pm-secondary', () => {
+      document.getElementById('switch-profile')?.click();
+      setTimeout(() => document.querySelector('[data-select-profile="demo"]')?.click(), 0);
+    }));
+}
+
+async function render() {
+  const profile = root.dataset.pmProfile, mine = ++S.rev;
+  if (!PEOPLE[profile]) return;
+  const config = await getRestConfig(profile);
+  const bilan = await bilanSection(profile);
+  if (mine !== S.rev || root.dataset.pmProfile !== profile) return;
+  clear(page);
+  const head = section('', '');
+  head.replaceChildren(el('h3', '', PEOPLE[profile].name), el('p', 'pm-muted', profile === 'demo' ? 'Mode démo — données fictives' : PEOPLE[profile].goal.replace(/^./, c => c.toUpperCase())),
+    btn('Changer de profil', 'pm-secondary', () => document.getElementById('switch-profile')?.click()));
+  add(page, el('div', 'eyebrow', 'Mon espace'), el('h2', '', 'Profil'), head, chronoSection(profile, config), backupSection(profile), bilan, localDataSection(profile), demoSection(profile));
+  page.append(section('À propos', null, el('p', 'pm-muted', 'PM Musculation · version ' + APP_VERSION + ' · fonctionne hors connexion après installation.')));
+  const update = btn('Rechercher une mise à jour', 'pm-secondary', async () => {
+    try {
+      const reg = navigator.serviceWorker && (await navigator.serviceWorker.getRegistration());
+      if (!reg) { toast('Mises à jour automatiques indisponibles dans ce navigateur.'); return; }
+      await reg.update(); toast('Vérification faite : l’application se met à jour au prochain démarrage.');
+    } catch (_) { toast('Vérification impossible hors connexion.'); }
+  });
+  page.lastChild.append(update);
+}
+
+const refresh = () => render().catch(console.error);
+document.addEventListener('pm:profile-changed', () => { S.other = null; S.bilan = ''; S.notice = ''; refresh(); });
+document.addEventListener('pm:data-changed', () => { S.bilan = ''; refresh(); });
+document.addEventListener('click', e => { if (e.target.closest?.('.nav-btn[data-go="profil"]')) refresh(); });
+refresh();
