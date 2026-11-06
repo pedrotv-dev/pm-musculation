@@ -122,7 +122,7 @@ async function render() {
 
 const refresh = () => render().catch(console.error);
 document.addEventListener('pm:profile-changed', refresh);
-document.addEventListener('pm:workout-changed', refresh);
+document.addEventListener('pm:workout-changed', e => { if (!root.classList.contains('pm-workout-active') || (e.detail && e.detail.final)) refresh(); });
 document.addEventListener('pm:data-changed', refresh);
 document.addEventListener('click', e => { if (e.target.closest?.('.nav-btn[data-go="progres"]')) refresh(); });
 refresh();

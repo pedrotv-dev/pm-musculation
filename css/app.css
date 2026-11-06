@@ -84,3 +84,11 @@
 .pm-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
 .pm-check { display:flex; align-items:center; gap:8px; margin-top:10px; font-size:14px; min-height:36px; }
 .pm-check input { width:22px; height:22px; accent-color:var(--turq); }
+
+/* Audit mobile : cibles tactiles >= 44 px, champs >= 16 px (pas de zoom automatique sur iPhone), pas de délai de double-tap */
+button, summary, select, input, textarea, label { touch-action: manipulation; }
+.pm-select, select.pm-select, .pm-textarea-note, .pm-textarea, textarea { font-size:16px; }
+.pm-seg-btn { min-height:44px; }
+.pm-toast-action { min-height:44px; }
+.pm-weight-line .pm-icon-btn { min-height:44px; min-width:44px; }
+.pm-weight-form { grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; }

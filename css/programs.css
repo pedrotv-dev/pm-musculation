@@ -68,3 +68,5 @@
  .pm-textarea { min-height:170px; }
 }
 @media(prefers-reduced-motion:reduce) { .pm-session-days { scroll-behavior:auto; } }
+.pm-day-tab { min-height:44px; }
+.pm-select { font-size:16px; }

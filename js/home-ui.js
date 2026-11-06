@@ -93,7 +93,8 @@ export async function renderHome() {
 
 const refresh = () => renderHome().catch(console.error);
 document.addEventListener('pm:profile-changed', refresh);
-document.addEventListener('pm:workout-changed', refresh);
+// pendant une séance, les autres onglets sont masqués : inutile de relire tout l'historique à chaque série
+document.addEventListener('pm:workout-changed', e => { if (!root.classList.contains('pm-workout-active') || (e.detail && e.detail.final)) refresh(); });
 window.addEventListener('focus', refresh);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refresh(); });
 document.addEventListener('pm:data-changed', refresh);
