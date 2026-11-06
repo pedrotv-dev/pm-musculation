@@ -1,12 +1,15 @@
 /*
  * PM Musculation — Service Worker (GitHub Pages, sous-repertoire /pm-musculation/).
- * - Precache de tous les fichiers de l'application : demarrage et seance possibles sans connexion.
- * - Reseau d'abord (3 s max) pour le code : une mise a jour est visible des que le reseau repond, sans ancien JS durable ;
- *   le cache sert de secours hors ligne. Photos / icones : cache d'abord.
+ * - Precache ATOMIQUE de tous les fichiers de l'application dans un cache propre a la VERSION :
+ *   demarrage immediat et complet sans connexion, jamais de melange entre deux versions.
+ * - Cache d'abord (instantane) ; le reseau n'est utilise que pour un fichier absent du cache.
+ * - Mise a jour : le navigateur recompare sw.js a chaque ouverture. Une nouvelle VERSION s'installe en arriere-plan
+ *   puis ATTEND ; elle ne s'applique qu'apres accord de l'utilisateur (« Mettre a jour » dans l'application),
+ *   donc jamais au milieu d'une seance. Les anciens caches sont alors supprimes.
  * - Ne touche JAMAIS a IndexedDB ni a localStorage : une mise a jour du code ne supprime aucune donnee.
- * VERSION doit rester identique a APP_VERSION dans js/version.js (verifie par tests/pwa.test.mjs).
+ * VERSION est recalculee par `node tools/release.mjs` (date + empreinte des fichiers) ; tests/pwa.test.mjs verifie qu'elle est a jour.
  */
-const VERSION = '1.0.0-rc1';
+const VERSION = '2026.11.06-fb441ce2';
 const CACHE = 'pm-musculation-' + VERSION;
 const PRECACHE = [
   './', 'index.html', 'manifest.webmanifest', 'storage.js',
@@ -22,16 +25,16 @@ const PRECACHE = [
   'assets/machines/lat-pulldown.png', 'assets/machines/treadmill.png', 'assets/machines/recumbent-bike.png', 'assets/machines/elliptical.png', 'assets/machines/rowing-machine.png',
   'assets/icons/icon.svg', 'assets/icons/icon-192.png', 'assets/icons/icon-512.png', 'assets/icons/icon-maskable-512.png', 'assets/icons/apple-touch-icon.png'
 ];
-const TIMEOUT_MS = 3000;
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    // addAll echoue en bloc si un fichier manque : on tolere un fichier absent pour ne jamais bloquer l'installation
+    // un fichier absent n'empeche pas l'installation (l'application reste utilisable, il sera pris sur le reseau)
     await Promise.all(PRECACHE.map(async url => {
       try { await cache.add(new Request(url, { cache: 'reload' })); } catch (_) { /* fichier optionnel */ }
     }));
-    await self.skipWaiting();
+    // Premiere installation (aucune version active) : on active tout de suite. Sinon on ATTEND l'accord de l'utilisateur.
+    if (!self.registration.active) await self.skipWaiting();
   })());
 });
 
@@ -42,38 +45,25 @@ self.addEventListener('activate', event => {
   })());
 });
 
-async function networkFirst(request) {
+async function cacheFirst(request) {
   const cache = await caches.open(CACHE);
+  const cached = await cache.match(request, { ignoreSearch: true });
+  if (cached) return cached;
   try {
-    const response = await Promise.race([
-      fetch(request, { cache: 'no-cache' }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS))
-    ]);
+    const response = await fetch(request);
     if (response && response.ok) cache.put(request, response.clone());
     return response;
   } catch (error) {
-    const cached = await cache.match(request, { ignoreSearch: true });
-    if (cached) return cached;
     if (request.mode === 'navigate') { const home = await cache.match('index.html') || await cache.match('./'); if (home) return home; }
     throw error;
   }
-}
-async function cacheFirst(request) {
-  const cache = await caches.open(CACHE);
-  const cached = await cache.match(request);
-  if (cached) return cached;
-  const response = await fetch(request);
-  if (response && response.ok) cache.put(request, response.clone());
-  return response;
 }
 
 self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET') return;
-  const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
-  if (/\.(png|jpg|jpeg|webp|svg|ico)$/i.test(url.pathname)) event.respondWith(cacheFirst(request));
-  else event.respondWith(networkFirst(request));
+  if (new URL(request.url).origin !== self.location.origin) return;
+  event.respondWith(cacheFirst(request));
 });
 
 self.addEventListener('message', event => { if (event.data === 'skipWaiting') self.skipWaiting(); });

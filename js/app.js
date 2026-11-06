@@ -65,17 +65,31 @@ catch (error) { console.warn('Stockage de profil indisponible.', error); }
 if (saved && isKnownProfile(saved)) chooseProfile(saved, false);
 
 // Hors ligne : service worker (GitHub Pages, chemins relatifs). Ne touche jamais aux données IndexedDB.
+// Mise à jour : la nouvelle version s'installe en arrière-plan puis attend l'accord de l'utilisateur
+// (événement pm:update-ready → bouton « Mettre à jour » → pm:apply-update), jamais au milieu d'une séance.
 if ('serviceWorker' in navigator) {
+  let waiting = null;
+  const announce = worker => { waiting = worker; document.dispatchEvent(new CustomEvent('pm:update-ready')); };
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').then(reg => {
+      if (reg.waiting && navigator.serviceWorker.controller) announce(reg.waiting);
       reg.addEventListener('updatefound', () => {
         const worker = reg.installing;
         if (worker) worker.addEventListener('statechange', () => {
-          if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-            document.dispatchEvent(new CustomEvent('pm:update-ready'));
-          }
+          if (worker.state === 'installed' && navigator.serviceWorker.controller) announce(worker);
         });
       });
+      // application gardée ouverte longtemps : revérifie au retour au premier plan (au plus toutes les 30 min)
+      let lastCheck = Date.now();
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && Date.now() - lastCheck > 30 * 60 * 1000) { lastCheck = Date.now(); reg.update().catch(() => {}); }
+      });
     }).catch(error => console.warn('Mode hors ligne indisponible :', error));
+  });
+  document.addEventListener('pm:apply-update', () => {
+    if (!waiting) return;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloaded) { reloaded = true; location.reload(); } });
+    waiting.postMessage('skipWaiting');
   });
 }

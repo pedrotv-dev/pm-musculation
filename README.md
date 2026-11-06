@@ -59,13 +59,19 @@ node tests/e2e/pierre-flow.mjs   # parcours complet dans un vrai navigateur (Pla
 node tests/e2e/demo-flow.mjs     # démo interactive
 node tests/e2e/data-flow.mjs     # sauvegarde, restauration, bilan, deux onglets
 node tests/e2e/offline-flow.mjs  # hors ligne (service worker)
+node tests/e2e/update-flow.mjs   # mise à jour de l'application sans perte
 node tests/e2e/audit-faults.mjs  # stockage plein / refusé
 node tests/e2e/audit-ui.mjs      # audit mobile : cibles < 44 px, champs < 16 px, débordements
 ```
 
-## Mises à jour sans perte de données
+## Publier une mise à jour (sans perte de données)
 
-Le service worker ne touche jamais à IndexedDB. Le code est servi **réseau d'abord** (3 s max) avec le cache en secours : un ancien JavaScript ne reste pas durablement affiché. À chaque publication, incrémenter `VERSION` dans `sw.js` **et** `APP_VERSION` dans `js/version.js` (vérifié par les tests).
+Le service worker ne touche jamais à IndexedDB. Le code est servi **depuis le cache** (démarrage instantané, même hors ligne) dans un cache **propre à chaque version** : jamais de mélange entre deux versions.
+
+1. Modifier le code.
+2. `node tools/release.mjs` — recalcule `VERSION` (date + empreinte des fichiers) dans `sw.js` et `js/version.js`.
+3. `node --test` — le test PWA **échoue** si l'étape 2 a été oubliée (les téléphones garderaient l'ancien code).
+4. Publier. À l'ouverture suivante, la nouvelle version s'installe en arrière-plan ; l'application propose **« Mettre à jour »** (jamais pendant une séance) ; l'ancien cache est supprimé à l'activation.
 
 ## Sécurité
 
