@@ -75,6 +75,7 @@ function restoreShell() {
 }
 function closeWorkout() {
   if (state.busy) return; // attente du COMMIT avant de quitter l'ecran
+  document.dispatchEvent(new CustomEvent('pm:workout-close'));
   state.session = null;
   state.selected = null;
   ++state.revision;
@@ -93,6 +94,9 @@ function showWorkout(session) {
   header.hidden = true;
   panel.hidden = false;
   render();
+  document.dispatchEvent(new CustomEvent('pm:workout-open', {
+    detail: { profile, sessionId: session.id, activityKey: state.selected }
+  }));
   window.scrollTo(0, 0);
 }
 async function commit(change, { after } = {}) {
@@ -100,6 +104,7 @@ async function commit(change, { after } = {}) {
   const profile = state.profile;
   const id = state.session.id;
   const revision = state.revision;
+  const beforeSelected = state.selected;
   state.busy = true;
   status('Enregistrement…');
   try {
@@ -107,6 +112,7 @@ async function commit(change, { after } = {}) {
     if (!isCurrent(profile, revision) || state.session?.id !== id) return;
     if (next) state.session = next;
     if (after) after(next);
+    if (state.selected !== beforeSelected) emitActivityChange();
     render();
     status('✓ Sauvegardé', 'ok');
     document.dispatchEvent(new CustomEvent('pm:workout-changed', { detail: { profile } }));
@@ -130,9 +136,18 @@ function nextKey(session, fromKey) {
   const candidates = [...order.slice(pos + 1), ...order.slice(0, pos + 1)];
   return candidates.find(key => activityByKey(session, key)?.status === 'pending') || null;
 }
+function emitActivityChange() {
+  if (!state.session || !state.selected) return;
+  const a = activityByKey(state.session, state.selected);
+  document.dispatchEvent(new CustomEvent('pm:workout-activity-change', {
+    detail: { profile: state.profile, sessionId: state.session.id,
+      activityKey: state.selected, machineId: a?.machineId || null }
+  }));
+}
 function setSelected(key) {
-  if (state.busy || !state.session || !activityByKey(state.session, key)) return;
+  if (state.busy || !state.session || !activityByKey(state.session, key) || key === state.selected) return;
   state.selected = key;
+  emitActivityChange();
   render();
   window.scrollTo(0, 0);
 }
@@ -187,7 +202,16 @@ function renderSets(container, activity) {
       if (!patch) return;
       commit((profile, id) => set.done ?
         updateSet(profile, id, activity.key, set.id, { ...patch, done: false }) :
-        logSet(profile, id, activity.key, set.id, patch));
+        logSet(profile, id, activity.key, set.id, patch), {
+        after: () => {
+          // Seulement apres le COMMIT de la serie. Une annulation n'active pas le chrono.
+          if (!set.done) document.dispatchEvent(new CustomEvent('pm:workout-set-validated', {
+            detail: { profile: state.profile, sessionId: state.session.id,
+              activityKey: activity.key, machineId: activity.machineId,
+              setId: set.id, restSeconds: activity.restSeconds }
+          }));
+        }
+      });
     });
     toggle.addEventListener('pointerdown', () => { actionPressed = true; });
     toggle.dataset.done = String(set.done);
@@ -352,6 +376,7 @@ async function askFinish() {
     if (!isCurrent(profile, revision)) return;
     state.session = result;
     state.busy = false;
+    document.dispatchEvent(new CustomEvent('pm:workout-close'));
     restoreShell(); state.session = null; state.selected = null; ++state.revision;
     await refreshHistory(profile, state.revision);
     await refreshHome(profile, state.revision);
@@ -370,6 +395,7 @@ async function tryDiscard() {
     await discardWorkout(profile, id);
     if (!isCurrent(profile, revision)) return;
     state.busy = false;
+    document.dispatchEvent(new CustomEvent('pm:workout-close'));
     state.session = null; ++state.revision;
     restoreShell();
     await refreshHome(profile, state.revision);
@@ -474,6 +500,7 @@ async function loadCatalogue() {
   } catch (error) { console.warn('Catalogue de machines non disponible.', error); }
 }
 function changeProfile(id) {
+  document.dispatchEvent(new CustomEvent('pm:workout-close'));
   ++state.revision;
   state.profile = realProfile(id) ? id : null;
   state.session = null;
