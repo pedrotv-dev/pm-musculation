@@ -46,8 +46,10 @@ Jours : `lundi` … `dimanche`. Les `machineId` viennent de `data/machines.json`
 | `js/rest-timer.js` | moteur du chronomètre de récupération (timestamps réels) |
 | `js/stats.js`, `js/bilan.js`, `js/backup.js`, `js/weights.js` | statistiques, bilan texte, sauvegardes/CSV, poids corporel |
 | `js/demo-fixtures.js` | jeu de données fictives de la démo (30 séances / 6 semaines) |
-| `js/*-ui.js`, `js/dom.js`, `js/charts.js`, `css/` | interface (provisoire, sobre) |
-| `sw.js`, `manifest.webmanifest`, `assets/icons/` | PWA hors ligne |
+| `js/*-ui.js`, `js/dom.js`, `js/charts.js` | interface (provisoire, sobre) |
+| `js/app.js`, `js/profiles.js` | démarrage (profil mémorisé, onglets, service worker) et définition des profils |
+| `css/base.css`, `css/app.css`, `css/workout.css`, `css/rest.css`, `css/programs.css` | styles (aucun style en ligne) |
+| `sw.js`, `manifest.webmanifest`, `assets/icons/`, `assets/machines/` | PWA hors ligne, icônes, photos des machines |
 
 ## Tests
 
@@ -57,8 +59,20 @@ node tests/e2e/pierre-flow.mjs   # parcours complet dans un vrai navigateur (Pla
 node tests/e2e/demo-flow.mjs     # démo interactive
 node tests/e2e/data-flow.mjs     # sauvegarde, restauration, bilan, deux onglets
 node tests/e2e/offline-flow.mjs  # hors ligne (service worker)
+node tests/e2e/audit-faults.mjs  # stockage plein / refusé
+node tests/e2e/audit-ui.mjs      # audit mobile : cibles < 44 px, champs < 16 px, débordements
 ```
 
 ## Mises à jour sans perte de données
 
 Le service worker ne touche jamais à IndexedDB. Le code est servi **réseau d'abord** (3 s max) avec le cache en secours : un ancien JavaScript ne reste pas durablement affiché. À chaque publication, incrémenter `VERSION` dans `sw.js` **et** `APP_VERSION` dans `js/version.js` (vérifié par les tests).
+
+## Sécurité
+
+`index.html` ne contient **aucun script ni style en ligne** : une politique CSP stricte (`default-src 'self'`, pas de `unsafe-inline`) interdit tout code ou ressource venant de l'extérieur. Un futur service externe (sauvegarde cloud) devra ajouter son domaine à `connect-src` dans `index.html`.
+
+## Documentation
+
+- `docs/prompt-design-chatgpt.md` : prompt complet pour confier l'habillage visuel à ChatGPT.
+- `docs/sauvegarde-persistante.md` : sauvegarde des données à 0 € (état actuel et options).
+- `docs/screens/` : captures des écrans.

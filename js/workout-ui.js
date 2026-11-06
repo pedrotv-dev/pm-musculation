@@ -13,6 +13,7 @@ import {
 } from './workouts.js';
 import { el, btn, clear, add, dialog, confirmDialog, toast, formatClock, formatMinutes, fmtNum, parseNum } from './dom.js';
 import { loadCatalog, machineImage } from './catalog.js';
+import { ALL_PROFILES as KNOWN, isRealProfile } from './profiles.js';
 import { machineHistory, isClosed } from './stats.js';
 import { runBackup } from './backup.js';
 
@@ -27,7 +28,6 @@ panel.hidden = true;
 panel.setAttribute('aria-label', 'Suivi de la séance');
 main.append(panel);
 
-const KNOWN = ['pierre', 'manon', 'demo'];
 const S = { profile: null, session: null, selected: null, view: 'activity', rev: 0, queue: Promise.resolve(),
   catalog: { byId: new Map(), strength: [], list: [], images: new Set() }, history: [], flushers: new Set(), clock: null, undo: null, busy: false };
 const valid = (profile, rev) => S.profile === profile && root.dataset.pmProfile === profile && S.rev === rev;
@@ -509,7 +509,7 @@ function renderDone(session) {
   add(box, el('div', 'pm-done-icon', '✓'),
     el('h2', '', session.status === 'completed' ? 'Séance terminée' : 'Séance partielle enregistrée'),
     el('p', 'pm-muted', sum.setsDone + ' séries · ' + fmtNum(sum.volumeKg) + ' kg de volume · ' + formatMinutes(sum.durationMinutes)));
-  if (S.profile === 'pierre' || S.profile === 'manon') {
+  if (isRealProfile(S.profile)) {
     const note = el('p', 'pm-muted', 'Conseil : sauvegarde tes données de temps en temps (Fichiers, Drive, e-mail…).');
     const save = btn('Sauvegarder mes données', 'pm-secondary', async () => {
       try {

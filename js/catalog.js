@@ -26,7 +26,7 @@ export function loadCatalog() {
   }
   return loading;
 }
-export const machineImageUrl = id => new URL('../assets/machines/' + encodeURIComponent(id) + '.png', import.meta.url).href;
+const machineImageUrl = id => new URL('../assets/machines/' + encodeURIComponent(id) + '.png', import.meta.url).href;
 
 /** <img> avec repli visuel si le fichier n'existe pas (`available` : ensemble des ids ayant une photo, catalog.images). */
 export function machineImage(id, alt = '', available = null) {

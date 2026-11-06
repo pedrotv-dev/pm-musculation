@@ -10,9 +10,9 @@ const VERSION = '1.0.0-rc1';
 const CACHE = 'pm-musculation-' + VERSION;
 const PRECACHE = [
   './', 'index.html', 'manifest.webmanifest', 'storage.js',
-  'css/app.css', 'css/demo.css', 'css/programs.css', 'css/rest.css', 'css/workout.css',
-  'js/backup.js', 'js/bilan.js', 'js/catalog.js', 'js/charts.js', 'js/demo-fixtures.js', 'js/dom.js', 'js/history-ui.js',
-  'js/home-ui.js', 'js/profile-ui.js', 'js/program-ui.js', 'js/programs.js', 'js/progress-ui.js', 'js/rest-timer.js', 'js/rest-ui.js',
+  'css/app.css', 'css/base.css', 'css/programs.css', 'css/rest.css', 'css/workout.css',
+  'js/app.js', 'js/backup.js', 'js/bilan.js', 'js/catalog.js', 'js/charts.js', 'js/demo-fixtures.js', 'js/dom.js', 'js/history-ui.js',
+  'js/home-ui.js', 'js/profiles.js', 'js/profile-ui.js', 'js/program-ui.js', 'js/programs.js', 'js/progress-ui.js', 'js/rest-timer.js', 'js/rest-ui.js',
   'js/stats.js', 'js/version.js', 'js/weights.js', 'js/workout-ui.js', 'js/workouts.js',
   'data/machines.json', 'data/exemple-programme.json', 'assets/machines/index.json',
   'assets/machines/back-extension.png', 'assets/machines/rotary-torso.png', 'assets/machines/shoulder-press.png', 'assets/machines/converging-chest-press.png',

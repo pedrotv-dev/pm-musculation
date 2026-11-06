@@ -40,7 +40,7 @@ import {
 } from '../storage.js';
 import { mondayOf } from './programs.js';
 
-export const WORKOUT_SCHEMA_VERSION = 1;
+const WORKOUT_SCHEMA_VERSION = 1;
 
 const PROFILES = ['pierre', 'manon'];
 const DEMO = 'demo';

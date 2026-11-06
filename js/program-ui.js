@@ -6,8 +6,10 @@
 import { prepareProgramImport, importProgram, listProgramWeeks, getActiveProgram, mondayOf } from './programs.js';
 import { getProgram } from '../storage.js';
 import { getDemoProgram } from './workouts.js';
+import { el as node, add, clear as wipe, btn } from './dom.js';
+import { loadCatalog } from './catalog.js';
+import { PROFILE_STORAGE_KEY, isKnownProfile, isRealProfile } from './profiles.js';
 
-const PROFILE_KEY = 'pm-musculation:profile:v2';
 const DAYS = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
 const dayNow = () => DAYS[(new Date().getDay() + 6) % 7];
 const parent = document.querySelector('[data-page="programme"]');
@@ -16,17 +18,9 @@ const state = { profile: null, names: new Map(), machines: [], known: [], source
   saved: false, busy: false, profileVersion: 0, weekLoadVersion: 0, displayVersion: 0,
   previewVersion: 0, importVersion: 0, lastMonday: null };
 
-function node(tag, cls = '', text = null) {
-  const n = document.createElement(tag);
-  if (cls) n.className = cls;
-  if (text !== null) n.textContent = String(text);
-  return n;
-}
-function add(to, ...children) { to.append(...children); return to; }
-function wipe(n) { n.replaceChildren(); }
 function currentProfile() {
   return document.documentElement.dataset.pmProfile ||
-    (() => { try { return localStorage.getItem(PROFILE_KEY); } catch (_) { return null; } })();
+    (() => { try { return localStorage.getItem(PROFILE_STORAGE_KEY); } catch (_) { return null; } })();
 }
 // Ignore les resultats asynchrones d'un profil qui n'est plus actif.
 function sameProfile(profile, version) {
@@ -44,9 +38,6 @@ function metaOf(a) {
   }
   const minutes = a.durationMinutes ?? (a.durationSeconds == null ? null : Math.round(a.durationSeconds / 6) / 10);
   return minutes == null ? (a.type === 'warmup' ? 'Échauffement' : 'Cardio') : minutes + ' min';
-}
-function btn(label, cls, fn) {
-  const b = node('button', cls, label); b.type = 'button'; if (fn) b.addEventListener('click', fn); return b;
 }
 function makeActivity(a, i) {
   const item = node('div', 'pm-activity');
@@ -75,7 +66,7 @@ function drawDays(container, program, activeDay, choose) {
   const day = program.days.find(d => d.id === chosen);
   const heading = node('h3', '', day.name || 'Séance du ' + day.id);
   body.append(heading);
-  if (state.profile === 'pierre' || state.profile === 'manon' || state.profile === 'demo') {
+  if (isKnownProfile(state.profile)) {
     const start = btn('Démarrer cette séance', 'pm-start-workout', () => {
       document.dispatchEvent(new CustomEvent('pm:start-workout', {
         detail: { profileId: state.profile, weekStart: state.selectedWeek, dayId: chosen }
@@ -104,13 +95,11 @@ function showError(e) {
   notify(e?.message || 'Une erreur est survenue.', 'error', e?.errors || []);
 }
 async function catalogue() {
-  const response = await fetch('./data/machines.json', { cache: 'no-cache' });
-  if (!response.ok) throw new Error('Catalogue des machines non disponible.');
-  const data = await response.json();
-  if (!Array.isArray(data.machines) || !data.machines.length) throw new Error('Catalogue des machines invalide.');
-  state.machines = data.machines;
-  state.known = data.machines.filter(m => m.kind === 'strength').map(m => m.id);
-  state.names = new Map(data.machines.map(m => [m.id, m.name]));
+  const catalog = await loadCatalog(); // catalogue partagé avec les autres écrans
+  if (!catalog.list.length) throw new Error('Catalogue des machines non disponible.');
+  state.machines = catalog.list;
+  state.known = catalog.strength.map(m => m.id);
+  state.names = new Map(catalog.list.map(m => [m.id, m.name]));
   state.catalogueReady = true;
 }
 
@@ -200,7 +189,7 @@ async function drawWeekOptions() {
     state.lastMonday = mondayOf();
     return true;
   }
-  if (!['pierre', 'manon'].includes(profile)) return false;
+  if (!isRealProfile(profile)) return false;
 
   // Evite toute mise a jour visuelle tant que les lectures ne sont pas terminees.
   const weeks = await listProgramWeeks(profile);
@@ -249,7 +238,7 @@ async function displayProgram() {
     });
     return;
   }
-  if (!['pierre', 'manon'].includes(profile) || !valid()) return;
+  if (!isRealProfile(profile) || !valid()) return;
   if (!week) {
     const blank = node('div', 'pm-empty');
     add(blank, node('strong', '', 'Aucun programme importé'),
@@ -405,7 +394,7 @@ async function saveImport() {
   }
 }
 async function setProfile(profileId) {
-  const recognized = ['pierre', 'manon', 'demo'].includes(profileId);
+  const recognized = isKnownProfile(profileId);
   // Invalide tous les chargements precedents, y compris quand on revient au selecteur.
   ++state.profileVersion;
   ++state.weekLoadVersion;
@@ -439,7 +428,7 @@ async function init() {
 async function refreshOnForeground() {
   const profile = state.profile;
   const generation = state.profileVersion;
-  if (!['pierre', 'manon'].includes(profile)) return;
+  if (!isRealProfile(profile)) return;
   const todayMonday = mondayOf();
   if (state.lastMonday !== todayMonday) {
     state.selectedWeek = null; // re-selection automatique du programme de la nouvelle semaine
