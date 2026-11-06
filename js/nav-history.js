@@ -14,6 +14,7 @@ import { getUiSettings, peekUiSettings } from './ui-settings.js';
 const root = document.documentElement;
 let guardPresent = !!(history.state && history.state.pmGuard);
 let ignorePops = 0;
+let frozen = false; // gelé juste avant un rechargement de la page (mise à jour) : plus aucune manipulation de l'historique
 
 const enabled = () => peekUiSettings(root.dataset.pmProfile || '').backButton !== false;
 const workoutVisible = () => { const w = document.getElementById('pm-workout-screen'); return !!w && !w.hidden; };
@@ -34,6 +35,7 @@ function hasLayer() {
 
 /** Aligne l'historique du navigateur sur l'état de l'application (garde présente ⇔ niveau à fermer). */
 function sync() {
+  if (frozen) return;
   const want = enabled() && hasLayer();
   if (want && !guardPresent) {
     try { history.pushState({ pmGuard: true }, ''); guardPresent = true; } catch (_) { /* historique indisponible */ }
@@ -42,6 +44,24 @@ function sync() {
     try { history.back(); } catch (_) { ignorePops--; }
   }
 }
+
+/**
+ * Retire la garde (si présente) et gèle la gestion du retour. À appeler AVANT de recharger la page : sinon la fermeture
+ * d'un dialogue retirerait la garde en plein rechargement et pourrait l'annuler. Ne bloque jamais plus de 600 ms.
+ */
+export function releaseGuard() {
+  frozen = true;
+  setTimeout(() => { frozen = false; schedule(); }, 5000); // si le rechargement n'a pas lieu, la gestion du retour reprend
+  if (!guardPresent) return Promise.resolve();
+  return new Promise(resolve => {
+    guardPresent = false; ignorePops++;
+    const done = () => { window.removeEventListener('popstate', done); resolve(); };
+    window.addEventListener('popstate', done);
+    setTimeout(done, 600);
+    try { history.back(); } catch (_) { ignorePops--; done(); }
+  });
+}
+document.addEventListener('pm:before-reload', e => { if (e.detail && e.detail.waitFor) e.detail.waitFor(releaseGuard()); });
 
 function goBackOneLevel() {
   if (closeTopDialog()) return;

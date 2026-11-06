@@ -86,8 +86,14 @@ if ('serviceWorker' in navigator) {
       });
     }).catch(error => console.warn('Mode hors ligne indisponible :', error));
   });
-  document.addEventListener('pm:apply-update', () => {
-    if (!waiting) return;
+  let applying = false;
+  document.addEventListener('pm:apply-update', async () => {
+    if (!waiting || applying) return;
+    applying = true;
+    // les autres modules (bouton retour) se mettent au repos avant le rechargement ; jamais plus de 800 ms d'attente
+    const waits = [];
+    document.dispatchEvent(new CustomEvent('pm:before-reload', { detail: { waitFor: p => waits.push(p) } }));
+    await Promise.race([Promise.all(waits), new Promise(r => setTimeout(r, 800))]);
     let reloaded = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloaded) { reloaded = true; location.reload(); } });
     waiting.postMessage('skipWaiting');

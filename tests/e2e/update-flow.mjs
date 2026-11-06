@@ -55,6 +55,22 @@ await step('aucune donnée perdue par la mise à jour', async () => {
   const probe = await page.evaluate(async () => { const s = await import('./storage.js'); return s.getSetting('pierre', 'probe'); });
   assert.deepEqual(probe, { ok: 42 });
 });
+await step('2e mise à jour appliquée depuis l’onglet Profil (garde du bouton retour présente) : un seul rechargement, historique propre', async () => {
+  await page.waitForFunction(() => navigator.serviceWorker.controller);
+  await page.click('[data-select-profile="demo"]').catch(() => {});
+  await page.waitForSelector('.nav-btn[data-go="profil"]');
+  await page.click('.nav-btn[data-go="profil"]'); await page.waitForSelector('[data-page="profil"] .pm-profile-section');
+  await page.waitForTimeout(300);
+  assert.equal(await page.evaluate(() => !!(history.state && history.state.pmGuard)), true); // garde posée
+  let loads = 0; page.on('load', () => { loads++; }); // chargements de document (la sortie de la garde par l'historique n'en est pas un)
+  srv.setSwVersion('9999.02.02-feedface'); await triggerUpdate();
+  await page.waitForSelector('.pm-modal:has-text("Mise à jour installée")');
+  await Promise.all([page.waitForEvent('load'), page.click('.pm-modal-btn:has-text("Redémarrer l’application")')]);
+  await page.waitForFunction(async () => (await caches.keys()).length === 1 && (await caches.keys())[0] === 'pm-musculation-9999.02.02-feedface');
+  await page.waitForTimeout(1000);
+  assert.equal(loads, 1); // un seul rechargement : pas de second chargement causé par l'historique
+  assert.equal(await page.evaluate(() => !!(history.state && history.state.pmGuard)), false);
+});
 await step('aucune erreur JavaScript', async () => { assert.deepEqual(errors, [], JSON.stringify(errors)); });
 await browser.close(); srv.close();
 process.exit(summary() ? 1 : 0);
