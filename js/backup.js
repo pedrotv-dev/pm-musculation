@@ -3,7 +3,7 @@
  * S'appuie sur exportProfileData / restoreProfileData de storage.js (transactions atomiques).
  * Le profil « demo » n'est jamais sauvegarde ni restaure.
  */
-import { exportProfileData, restoreProfileData } from '../storage.js';
+import { exportProfileData, restoreProfileData, saveSetting, getSetting } from '../storage.js';
 
 export const BACKUP_FORMAT = 'pm-musculation-backup';
 const PROFILES = ['pierre', 'manon'];
@@ -82,17 +82,56 @@ export function resultsCsv(sessions, names = new Map()) {
   }
   return '﻿' + rows.map(r => r.map(csv).join(';')).join('\n') + '\n';
 }
-/** Telecharge ou partage un fichier texte (feuille de partage sur mobile si disponible). @returns {Promise<'shared'|'downloaded'>} */
-export async function saveTextFile(filename, text, mime = 'application/json') {
-  const file = typeof File === 'function' ? new File([text], filename, { type: mime }) : null;
-  if (file && navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
-    try { await navigator.share({ files: [file], title: filename }); return 'shared'; }
-    catch (error) { if (error && error.name === 'AbortError') return 'shared'; /* sinon : telechargement classique */ }
+/**
+ * Partage (feuille de partage mobile : Fichiers, iCloud Drive, Google Drive, e-mail, messagerie…) ou telecharge
+ * un ou plusieurs fichiers : [{ filename, text, mime? }]. @returns {Promise<'shared'|'downloaded'|'cancelled'>}
+ */
+export async function saveFiles(list) {
+  const files = typeof File === 'function' ? list.map(f => new File([f.text], f.filename, { type: f.mime || 'application/json' })) : [];
+  if (files.length && navigator.canShare && navigator.canShare({ files }) && navigator.share) {
+    try { await navigator.share({ files, title: list[0].filename }); return 'shared'; }
+    catch (error) { if (error && error.name === 'AbortError') return 'cancelled'; /* sinon : telechargement classique */ }
   }
-  const url = URL.createObjectURL(new Blob([text], { type: mime }));
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.rel = 'noopener';
-  document.body.append(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 30000);
+  for (const f of list) {
+    const url = URL.createObjectURL(new Blob([f.text], { type: f.mime || 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = f.filename; a.rel = 'noopener';
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
   return 'downloaded';
+}
+/** Un seul fichier. @returns {Promise<'shared'|'downloaded'|'cancelled'>} */
+export function saveTextFile(filename, text, mime = 'application/json') { return saveFiles([{ filename, text, mime }]); }
+
+// ---------------------------------------------------------------- rappel de sauvegarde (reglage du profil, via storage.js)
+
+const LAST_KEY = 'backup.last';
+/** Derniere sauvegarde du profil : { at: ISO, sessions: nombre de seances a ce moment-la, how } ou null. */
+export async function getBackupStatus(profileId) {
+  if (PROFILES.indexOf(profileId) === -1) return null;
+  try { return await getSetting(profileId, LAST_KEY, null); } catch (_) { return null; }
+}
+export async function markBackupDone(profileId, { sessions = 0, how = 'manual', now = new Date() } = {}) {
+  realProfile(profileId);
+  await saveSetting(profileId, LAST_KEY, { at: now.toISOString(), sessions, how });
+}
+/**
+ * Faut-il rappeler de sauvegarder ? Oui s'il y a des seances et : jamais sauvegarde, ou 3 nouvelles seances
+ * depuis la derniere sauvegarde, ou 7 jours et au moins 1 nouvelle seance. Fonction pure.
+ * @returns {{due:boolean, never:boolean, daysSince:number|null, newSessions:number}}
+ */
+export function backupAdvice(status, sessionCount, now = new Date()) {
+  if (!sessionCount) return { due: false, never: !status, daysSince: null, newSessions: 0 };
+  if (!status || !status.at) return { due: true, never: true, daysSince: null, newSessions: sessionCount };
+  const daysSince = Math.floor((now.getTime() - Date.parse(status.at)) / 86400000);
+  const newSessions = Math.max(0, sessionCount - (status.sessions || 0));
+  return { due: newSessions >= 3 || (daysSince >= 7 && newSessions >= 1), never: false, daysSince, newSessions };
+}
+/** Sauvegarde en un geste : cree le fichier, le partage / telecharge, et memorise la date si ce n'est pas annule. */
+export async function runBackup(profileId, { extraFiles = [] } = {}) {
+  const f = await createBackupFile(profileId);
+  const how = await saveFiles([{ filename: f.filename, text: f.text }, ...extraFiles]);
+  if (how !== 'cancelled') await markBackupDone(profileId, { sessions: f.summary.sessions, how });
+  return { ...f, how };
 }

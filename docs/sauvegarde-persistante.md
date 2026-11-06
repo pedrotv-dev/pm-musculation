@@ -1,6 +1,34 @@
 # Sauvegarde persistante — réflexion (coût 0 €, hébergement GitHub Pages uniquement)
 
-> Document de réflexion : **rien de ce qui suit (sauf l'état actuel) n'est implémenté.** Les options B à E demandent ton accord.
+> Les options marquées « implémenté » ci-dessous sont dans l'application ; les autres demandent ton accord.
+
+## 0. Mise à jour : solution sans GitHub (aucun dépôt privé disponible)
+
+L'option E (dépôt GitHub privé) est **écartée**. Voici ce qui la remplace, toujours à **0 €** et sans serveur :
+
+### Déjà implémenté (PR « Sauvegarde sûre »)
+| Fonction | Où | Effet |
+| --- | --- | --- |
+| **Sauvegarde en un geste** | Accueil, fin de séance, Profil | ouvre la feuille de partage du téléphone → tu choisis **Fichiers / iCloud Drive / Google Drive / e-mail à toi-même / WhatsApp « message à soi-même »** : l'historique complet est alors hors du téléphone |
+| **Rappel automatique** | Accueil | bandeau « Pense à sauvegarder » après 3 nouvelles séances, ou 7 jours avec au moins 1 nouvelle séance, ou si jamais sauvegardé |
+| **Date de dernière sauvegarde** | Profil | visible en permanence (et conservée dans le fichier : un nouveau téléphone repart du bon état) |
+| **Partager bilan + sauvegarde** | Profil → Bilan | un seul envoi contient le bilan texte **et** la sauvegarde → la routine hebdomadaire Pierre ↔ Manon sert aussi de **copie de secours croisée** |
+| **Stockage protégé** | automatique + Profil | demande au navigateur de ne pas effacer les données (Chrome Android l'accorde souvent ; iPhone : installer l'appli sur l'écran d'accueil) |
+
+**Routine recommandée (30 secondes par semaine)** : en fin de semaine, *Profil → Générer le bilan → Partager bilan + sauvegarde* → choisir « Enregistrer dans Fichiers (iCloud Drive) » ou « Drive » ou « e-mail à soi-même ». Les fichiers s'accumulent : tu gardes **toutes les performances précédentes**, restaurables à tout moment (Profil → Restaurer ce fichier, *fusionner* ou *remplacer*).
+
+### Option automatique à 0 € (à valider) : Dropbox
+Pour une sauvegarde **sans aucun geste**, la seule voie réaliste sans serveur ni GitHub est un espace cloud gratuit accessible depuis le navigateur :
+
+| Service | Verdict |
+| --- | --- |
+| **Dropbox** (gratuit, 2 Go) | **Retenu** : connexion unique par « OAuth PKCE » (sans secret), jeton de renouvellement durable côté navigateur, dossier privé « Applications/PM Musculation » limité à l'appli, aucun serveur à nous |
+| Google Drive | Écarté : sur iPhone, le jeton expire après 1 h et ne se renouvelle pas sans réouverture de fenêtre |
+| iCloud / OneDrive | Écartés : pas d'accès navigateur simple (iCloud) ou inscription Azure plus lourde (OneDrive) |
+
+Ce qu'il faut de ta part (≈ 5 min, gratuit) : un compte Dropbox, et créer une « application » dans la console développeurs Dropbox (accès *App folder*, URL de redirection `https://pedrotv-dev.github.io/pm-musculation/`) puis me donner la **clé d'application** (publique, ce n'est pas un secret). Je m'occupe du reste : connexion, envoi après chaque séance, file d'attente hors ligne, restauration, lecture du fichier de l'autre profil pour le bilan commun. **Je ne le développe pas sans ton accord.**
+
+---
 
 ## 1. Le risque réel
 

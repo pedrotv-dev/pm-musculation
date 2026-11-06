@@ -5,7 +5,7 @@ import { importProgram } from '../js/programs.js';
 import { startWorkout, logSet, finishWorkout, listWorkouts, getWorkout, deleteWorkout } from '../js/workouts.js';
 import { setRestConfig, getRestConfig } from '../js/rest-timer.js';
 import { addBodyWeight, listBodyWeights, removeBodyWeight } from '../js/weights.js';
-import { createBackupFile, parseBackupText, restoreBackup, clearProfileData, describeBackup, backupToPerson, resultsCsv } from '../js/backup.js';
+import { createBackupFile, parseBackupText, restoreBackup, clearProfileData, describeBackup, backupToPerson, resultsCsv, getBackupStatus, markBackupDone, backupAdvice } from '../js/backup.js';
 
 const idb = installFakeIndexedDB();
 const NOW = new Date(2026, 10, 10, 10, 0, 0);
@@ -108,4 +108,31 @@ test('donnees de l\'autre profil lues en memoire pour le bilan, export CSV, poid
   const d = await addBodyWeight('demo', 69.9, '2026-11-12');
   assert.ok((await listBodyWeights('demo')).find(x => x.id === d.id));
   assert.equal(Object.values(idb.stores).reduce((n, s) => n + s.rows.size, 0), rows);
+});
+
+test('rappel de sauvegarde : règles, mémorisation par profil, conservée dans la sauvegarde', async () => {
+  reset();
+  const now = new Date(2026, 10, 20, 12, 0, 0);
+  const day = n => new Date(now.getTime() - n * 86400000).toISOString();
+  // règles (fonction pure)
+  assert.deepEqual(backupAdvice(null, 0, now), { due: false, never: true, daysSince: null, newSessions: 0 }); // rien à protéger
+  assert.equal(backupAdvice(null, 1, now).due, true); // jamais sauvegardé
+  assert.equal(backupAdvice({ at: day(1), sessions: 5 }, 7, now).due, false); // 2 séances, 1 jour
+  assert.equal(backupAdvice({ at: day(2), sessions: 5 }, 8, now).due, true); // 3 nouvelles séances
+  assert.equal(backupAdvice({ at: day(8), sessions: 5 }, 5, now).due, false); // 8 jours mais rien de nouveau
+  assert.equal(backupAdvice({ at: day(8), sessions: 5 }, 6, now).due, true); // 7 jours + 1 séance
+  assert.equal(backupAdvice({ at: day(3), sessions: 9 }, 4, now).newSessions, 0); // jamais négatif
+  // mémorisation par profil
+  assert.equal(await getBackupStatus('pierre'), null);
+  await markBackupDone('pierre', { sessions: 4, how: 'shared', now });
+  assert.deepEqual(await getBackupStatus('pierre'), { at: now.toISOString(), sessions: 4, how: 'shared' });
+  assert.equal(await getBackupStatus('manon'), null);
+  assert.equal(await getBackupStatus('demo'), null);
+  await assert.rejects(markBackupDone('demo'), /Pierre et Manon/);
+  // la date fait partie de la sauvegarde : sur un nouveau téléphone, le rappel repart du bon état
+  const backup = parseBackupText((await createBackupFile('pierre')).text);
+  await clearProfileData('pierre');
+  assert.equal(await getBackupStatus('pierre'), null);
+  await restoreBackup('pierre', backup, 'replace');
+  assert.equal((await getBackupStatus('pierre')).sessions, 4);
 });
