@@ -75,6 +75,14 @@ function drawDays(container, program, activeDay, choose) {
   const day = program.days.find(d => d.id === chosen);
   const heading = node('h3', '', day.name || 'Séance du ' + day.id);
   body.append(heading);
+  if (state.profile === 'pierre' || state.profile === 'manon') {
+    const start = btn('Démarrer cette séance', 'pm-start-workout', () => {
+      document.dispatchEvent(new CustomEvent('pm:start-workout', {
+        detail: { profileId: state.profile, weekStart: state.selectedWeek, dayId: chosen }
+      }));
+    });
+    body.append(start);
+  }
   day.activities.forEach((a, i) => body.append(makeActivity(a, i)));
   add(container, days, body);
 }
