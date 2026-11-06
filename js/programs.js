@@ -257,7 +257,7 @@ export async function prepareProgramImport(profileId, source, { knownMachineIds,
     const at = new Date().toISOString();
     for (const day of days) {
       for (const a of day.activities) {
-        if (a.type === 'strength' && Object.hasOwn(machineReplacements, a.machineId)) a.machineId = machineReplacements[a.machineId];
+        if (a.type === 'strength' && Object.prototype.hasOwnProperty.call(machineReplacements, a.machineId)) a.machineId = machineReplacements[a.machineId];
       }
     }
     for (const [from, to] of Object.entries(machineReplacements)) replacements.push({ from, to, at });
