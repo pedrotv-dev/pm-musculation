@@ -99,9 +99,12 @@ await step('pause puis reprise de la séance', async () => {
 await step('ajouter une machine ponctuellement', async () => {
   await page.click(screen + ' .pm-footer button:has-text("Machines")');
   await page.click(screen + ' button:has-text("Ajouter une machine")');
+  // accessibilité : le clavier reste dans le dialogue, et le focus revient au bouton à la fermeture
+  for (let i = 0; i < 12; i++) { await page.keyboard.press('Tab'); assert.ok(await page.evaluate(() => !!document.activeElement.closest('.pm-modal'))); }
   await page.selectOption('.pm-modal select', 'arm-curl');
   await page.click('.pm-modal .pm-primary');
   await page.waitForSelector(screen + ' .pm-list-item:has-text("Arm Curl")');
+  assert.match(await page.evaluate(() => document.activeElement.textContent), /Ajouter une machine/);
   await page.click(screen + ' button:has-text("Retour à la machine")');
 });
 await step('terminer en partielle depuis le récapitulatif', async () => {

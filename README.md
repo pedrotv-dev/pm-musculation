@@ -62,6 +62,7 @@ node tests/e2e/offline-flow.mjs  # hors ligne (service worker)
 node tests/e2e/update-flow.mjs   # mise à jour de l'application sans perte
 node tests/e2e/audit-faults.mjs  # stockage plein / refusé
 node tests/e2e/audit-ui.mjs      # audit mobile : cibles < 44 px, champs < 16 px, débordements
+node tests/e2e/audit-a11y.mjs    # accessibilité WCAG 2 A/AA (axe-core, installé globalement : npm i -g axe-core)
 ```
 
 ## Publier une mise à jour (sans perte de données)
@@ -71,7 +72,7 @@ Le service worker ne touche jamais à IndexedDB. Le code est servi **depuis le c
 1. Modifier le code.
 2. `node tools/release.mjs` — recalcule `VERSION` (date + empreinte des fichiers) dans `sw.js` et `js/version.js`.
 3. `node --test` — le test PWA **échoue** si l'étape 2 a été oubliée (les téléphones garderaient l'ancien code).
-4. Publier. À l'ouverture suivante, la nouvelle version s'installe en arrière-plan ; l'application propose **« Mettre à jour »** (jamais pendant une séance) ; l'ancien cache est supprimé à l'activation.
+4. Publier. À l'ouverture suivante, la nouvelle version s'installe en arrière-plan ; l'application affiche **« Mise à jour installée »** avec un bouton **« Redémarrer l'application »** (jamais pendant une séance) ; l'ancien cache est supprimé à l'activation.
 
 ## Sécurité
 

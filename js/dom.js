@@ -63,6 +63,7 @@ function root() {
  */
 export function dialog({ title, message, choices, content }) {
   return new Promise(resolve => {
+    const previous = document.activeElement; // le focus y retournera a la fermeture
     const overlay = el('div', 'pm-modal-overlay');
     const box = el('div', 'pm-modal');
     box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
@@ -70,8 +71,22 @@ export function dialog({ title, message, choices, content }) {
     if (message) box.append(el('p', 'pm-modal-message', message));
     if (content) box.append(content);
     const row = el('div', 'pm-modal-actions');
-    const close = value => { overlay.remove(); document.removeEventListener('keydown', onKey, true); resolve(value); };
-    const onKey = e => { if (e.key === 'Escape') { e.stopPropagation(); close(null); } };
+    const close = value => {
+      overlay.remove(); document.removeEventListener('keydown', onKey, true);
+      try { if (previous && previous.isConnected && previous.focus) previous.focus({ preventScroll: true }); } catch (_) { /* element disparu */ }
+      resolve(value);
+    };
+    const onKey = e => {
+      if (e.key === 'Escape') { e.stopPropagation(); close(null); return; }
+      if (e.key !== 'Tab') return;
+      // le clavier reste dans la boite de dialogue (accessibilite)
+      const items = [...box.querySelectorAll('button, input, select, textarea, [href], [tabindex]:not([tabindex="-1"])')].filter(n => !n.disabled && n.offsetParent !== null);
+      if (!items.length) { e.preventDefault(); return; }
+      const first = items[0], last = items[items.length - 1];
+      if (!box.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
     (choices || [{ label: 'OK', value: true, kind: 'primary' }]).forEach(c => {
       row.append(btn(c.label, 'pm-modal-btn' + (c.kind ? ' pm-' + c.kind : ''), () => close(c.value)));
     });

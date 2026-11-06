@@ -75,3 +75,7 @@ p { margin: 0; }
 .pm-sprite { position:absolute; overflow:hidden; width:0; height:0; }
 .pm-stack-top { margin-top:16px; }
 .pm-note-top { margin-top:15px; }
+
+/* Détails mobiles : pas de rechargement accidentel par glissement vers le bas (séance en cours), pas de sélection de texte en tapant vite */
+html, body { overscroll-behavior-y: none; }
+button, summary, .nav-btn { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
