@@ -174,7 +174,7 @@ const isClosed = s => s.status === 'completed' || s.status === 'partial';
  * toujours a partir de la version la plus recente (deux onglets ne s'ecrasent pas, une seance terminee
  * ailleurs est vue comme terminee). Rien n'est ecrit si `change` ou une verification leve une erreur.
  */
-function mutate(profileId, sessionId, change, { now, allowPaused = false, allowClosed = false, store } = {}) {
+function mutate(profileId, sessionId, change, { now, allowPaused = false, allowClosed = false, keepUpdatedAt = false, store } = {}) {
   try { writable(profileId); nonEmpty(sessionId, 'Identifiant de séance'); }
   catch (error) { return Promise.reject(error); }
   return backend(profileId, store).update(profileId, sessionId, s => {
@@ -182,7 +182,7 @@ function mutate(profileId, sessionId, change, { now, allowPaused = false, allowC
     if (!allowClosed && isClosed(s)) throw new WorkoutError('Cette séance est terminée.', 'SESSION_CLOSED');
     if (!allowPaused && s.status === 'paused') throw new WorkoutError('Séance en pause : la reprendre d\'abord.', 'SESSION_PAUSED');
     change(s);
-    s.updatedAt = isoOf(now);
+    if (!keepUpdatedAt) s.updatedAt = isoOf(now);
     s.summary = getWorkoutSummary(s);
     return s;
   });
@@ -397,10 +397,13 @@ export function pauseWorkout(profileId, sessionId, { now = new Date() } = {}) {
 }
 
 /** Reprend une seance en pause ou interrompue (fermeture de l'appli) ; sans effet si deja en cours. */
-export function resumeWorkout(profileId, sessionId, { now = new Date() } = {}) {
+export function resumeWorkout(profileId, sessionId, { now = new Date(), excludeGap = false } = {}) {
   return mutate(profileId, sessionId, s => {
     if (s.status === 'paused' && s.pausedAt) {
       s.pausedMs = (s.pausedMs || 0) + Math.max(0, now.getTime() - Date.parse(s.pausedAt));
+    } else if (s.status === 'in_progress' && excludeGap) {
+      // seance interrompue sans pause (application fermee) : l'utilisateur dit qu'il ne s'entrainait pas
+      s.pausedMs = (s.pausedMs || 0) + Math.max(0, now.getTime() - Date.parse(s.updatedAt || s.startedAt));
     }
     s.status = 'in_progress';
     s.pausedAt = null;
@@ -578,6 +581,175 @@ export function discardWorkout(profileId, sessionId) {
     if (isClosed(s) || s.activities.some(a => a.status !== 'pending' || a.sets.some(x => x.done))) {
       throw new WorkoutError('Cette séance contient des résultats : la terminer en partielle.', 'HAS_DATA');
     }
+  });
+}
+
+// ---------------------------------------------------------------- modifications ponctuelles (cette seance seulement)
+
+const nextKeyNumber = s => s.activities.reduce((n, a) => Math.max(n, parseInt(String(a.key).slice(1), 10) || 0), 0) + 1;
+
+function newActivity(s, spec) {
+  if (!isObj(spec) || ['warmup', 'strength', 'cardio'].indexOf(spec.type) === -1) {
+    throw new WorkoutError('Type d\'activité invalide.', 'INVALID_ARGUMENT');
+  }
+  const planned = clone(spec);
+  const a = {
+    key: `a${nextKeyNumber(s)}`, type: spec.type, status: 'pending', postponed: false, wasPostponed: false,
+    added: true, planned, sets: [], actual: null
+  };
+  if (spec.name !== undefined) a.name = String(spec.name);
+  if (spec.type === 'strength') {
+    nonEmpty(spec.machineId, 'Machine');
+    const sets = Array.isArray(spec.sets) && spec.sets.length ? spec.sets : [{ kg: 20, reps: 10 }, { kg: 20, reps: 10 }, { kg: 20, reps: 10 }];
+    if (sets.length > MAX_SETS) throw new WorkoutError(`Maximum ${MAX_SETS} séries.`, 'INVALID_SET');
+    planned.sets = sets.map(t => ({ kg: checkKg(t.kg), reps: checkReps(t.reps) }));
+    planned.shared = spec.shared === true;
+    planned.restSeconds = Number.isInteger(spec.restSeconds) && spec.restSeconds >= 0 && spec.restSeconds <= 3600 ? spec.restSeconds : 90;
+    a.machineId = spec.machineId; a.shared = planned.shared; a.restSeconds = planned.restSeconds;
+    a.sets = planned.sets.map((t, j) => ({ id: `s${j + 1}`, kg: t.kg, reps: t.reps, done: false, doneAt: null }));
+    a.nextSetId = a.sets.length + 1;
+  }
+  return a;
+}
+
+/**
+ * Ajoute ponctuellement une activite A CETTE SEANCE (le programme n'est pas modifie).
+ * spec : { type:'strength', machineId, sets?:[{kg,reps}], restSeconds?, shared? } ou { type:'cardio'|'warmup', name, durationMinutes? }
+ * options : { afterKey?, now? } (par defaut a la fin).
+ */
+export function addActivity(profileId, sessionId, spec, options) {
+  return mutate(profileId, sessionId, s => {
+    const a = newActivity(s, spec);
+    s.activities.push(a);
+    const after = options && options.afterKey ? s.order.indexOf(options.afterKey) : -1;
+    if (after >= 0) s.order.splice(after + 1, 0, a.key); else s.order.push(a.key);
+  }, options);
+}
+
+/** Retire une activite non commencee de CETTE seance (sinon : la passer). */
+export function removeActivity(profileId, sessionId, activityKey, options) {
+  return mutate(profileId, sessionId, s => {
+    const a = findActivity(s, activityKey);
+    if (a.status === 'done' || a.sets.some(x => x.done)) {
+      throw new WorkoutError('Cette activité contient déjà des résultats : la passer plutôt que la retirer.', 'HAS_DATA');
+    }
+    s.activities = s.activities.filter(x => x.key !== a.key);
+    s.order = s.order.filter(k => k !== a.key);
+    if (s.cursor === a.key) s.cursor = null;
+  }, options);
+}
+
+/** Deplace une activite a la position `toIndex` (0 = premiere) de l'ordre d'execution de cette seance. */
+export function moveActivity(profileId, sessionId, activityKey, toIndex, options) {
+  return mutate(profileId, sessionId, s => {
+    findActivity(s, activityKey);
+    if (!Number.isInteger(toIndex) || toIndex < 0 || toIndex >= s.order.length) {
+      throw new WorkoutError('Position invalide.', 'INVALID_ARGUMENT');
+    }
+    s.order = s.order.filter(k => k !== activityKey);
+    s.order.splice(toIndex, 0, activityKey);
+  }, options);
+}
+
+/** Memorise la derniere activite consultee (retrouvee a la reprise). */
+export function setCursor(profileId, sessionId, activityKey, options) {
+  return mutate(profileId, sessionId, s => { findActivity(s, activityKey); s.cursor = activityKey; },
+    { ...(options || {}), allowPaused: true });
+}
+
+/**
+ * Ressenti et remarques de la seance : { feeling?: 1..5|null, note?: string }.
+ * Modifiable aussi apres la fin (historique).
+ */
+export function setWorkoutFeedback(profileId, sessionId, { feeling, note } = {}, options) {
+  return mutate(profileId, sessionId, s => {
+    const f = s.feedback || { feeling: null, note: '' };
+    if (feeling !== undefined) {
+      if (feeling !== null && !(Number.isInteger(feeling) && feeling >= 1 && feeling <= 5)) {
+        throw new WorkoutError('Ressenti : de 1 à 5.', 'INVALID_ARGUMENT');
+      }
+      f.feeling = feeling;
+    }
+    if (note !== undefined) f.note = String(note).slice(0, 1000);
+    s.feedback = f;
+  }, { ...(options || {}), allowPaused: true, allowClosed: true });
+}
+
+// ---------------------------------------------------------------- corrections d'une seance passee
+
+/** Statut d'une seance terminee apres correction : complete si tout est fait, sinon partielle. Dates et duree d'origine conservees. */
+function settleClosedStatus(s) {
+  if (!isClosed(s)) return;
+  s.status = s.activities.every(a => a.status === 'done') ? 'completed' : 'partial';
+}
+
+/** Corrige une serie d'une seance (meme terminee) : { kg?, reps?, done? }. N'affecte ni la date ni la duree. */
+export function correctSet(profileId, sessionId, activityKey, setId, patch = {}, options) {
+  return mutate(profileId, sessionId, s => {
+    if (!isObj(patch)) throw new WorkoutError('Modification invalide.', 'INVALID_SET');
+    const a = findActivity(s, activityKey);
+    requireStrength(a);
+    const set = findSet(a, setId);
+    if (patch.kg !== undefined) set.kg = checkKg(patch.kg);
+    if (patch.reps !== undefined) set.reps = checkReps(patch.reps);
+    if (patch.done !== undefined) {
+      if (typeof patch.done !== 'boolean') throw new WorkoutError('« done » doit être true ou false.', 'INVALID_SET');
+      if (patch.done && !set.done) set.doneAt = set.doneAt || isoOf(options && options.now);
+      if (!patch.done) set.doneAt = null;
+      set.done = patch.done;
+    }
+    refresh(a);
+    settleClosedStatus(s);
+  }, { ...(options || {}), allowPaused: true, allowClosed: true, keepUpdatedAt: true });
+}
+
+/** Ajoute / retire une serie d'une seance passee (correction). */
+export function correctAddSet(profileId, sessionId, activityKey, { kg, reps, done = true } = {}, options) {
+  return mutate(profileId, sessionId, s => {
+    const a = findActivity(s, activityKey);
+    requireStrength(a);
+    if (a.sets.length >= MAX_SETS) throw new WorkoutError(`Maximum ${MAX_SETS} séries.`, 'INVALID_SET');
+    const last = a.sets.length ? a.sets[a.sets.length - 1] : a.planned.sets[0];
+    a.sets.push({
+      id: `s${a.nextSetId}`, kg: kg === undefined ? last.kg : checkKg(kg),
+      reps: reps === undefined ? last.reps : checkReps(reps), done: done === true,
+      doneAt: done === true ? (s.endedAt || isoOf(options && options.now)) : null
+    });
+    a.nextSetId += 1;
+    refresh(a); settleClosedStatus(s);
+  }, { ...(options || {}), allowPaused: true, allowClosed: true, keepUpdatedAt: true });
+}
+
+export function correctRemoveSet(profileId, sessionId, activityKey, setId, options) {
+  return mutate(profileId, sessionId, s => {
+    const a = findActivity(s, activityKey);
+    requireStrength(a);
+    findSet(a, setId);
+    a.sets = a.sets.filter(x => x.id !== setId);
+    refresh(a); settleClosedStatus(s);
+  }, { ...(options || {}), allowPaused: true, allowClosed: true, keepUpdatedAt: true });
+}
+
+/** Corrige la duree reelle d'un echauffement / cardio d'une seance (meme terminee). */
+export function correctActivityDuration(profileId, sessionId, activityKey, durationMinutes, options) {
+  return mutate(profileId, sessionId, s => {
+    const a = findActivity(s, activityKey);
+    if (a.type === 'strength') throw new WorkoutError('Cette activité n\'a pas de durée.', 'INVALID_STATE');
+    if (!(typeof durationMinutes === 'number' && Number.isFinite(durationMinutes) && durationMinutes >= 0 && durationMinutes <= 300)) {
+      throw new WorkoutError('Durée invalide : entre 0 et 300 minutes.', 'INVALID_ARGUMENT');
+    }
+    a.actual = { ...(a.actual || {}), durationMinutes };
+    a.status = 'done';
+    settleClosedStatus(s);
+  }, { ...(options || {}), allowPaused: true, allowClosed: true, keepUpdatedAt: true });
+}
+
+/** Supprime DEFINITIVEMENT une seance (ouverte ou terminee). La confirmation est geree par l'interface. */
+export function deleteWorkout(profileId, sessionId) {
+  try { writable(profileId); nonEmpty(sessionId, 'Identifiant de séance'); }
+  catch (error) { return Promise.reject(error); }
+  return backend(profileId).removeIf(profileId, sessionId, s => {
+    if (!s || s.profileId !== profileId) throw new WorkoutError('Séance introuvable.', 'NOT_FOUND');
   });
 }
 
