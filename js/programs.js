@@ -31,7 +31,8 @@ export const PROGRAM_SCHEMA_VERSION = 1;
 const PROFILES = ['pierre', 'manon'];
 const ACTIVITY_TYPES = ['warmup', 'strength', 'cardio'];
 const MAX_FILE_BYTES = 1024 * 1024;
-const MAX_DAYS = 7;
+const DAY_IDS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+const MAX_DAYS = DAY_IDS.length;
 const MACHINE_ID = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -157,7 +158,7 @@ function checkProfileProgram(program, label, errors) {
   program.days.forEach((day, i) => {
     const dl = `${label}, jour ${i + 1}`;
     if (!isObj(day)) { errors.push(`${dl} : jour invalide.`); return; }
-    if (!isStr(day.id)) errors.push(`${dl} : id absent.`);
+    if (!DAY_IDS.includes(day.id)) errors.push(`${dl} : id "${day.id}" invalide (${DAY_IDS.join(', ')}).`);
     else if (ids.has(day.id)) errors.push(`${dl} : id "${day.id}" en double.`);
     else ids.add(day.id);
     if (day.name !== undefined && !isStr(day.name)) errors.push(`${dl} : name doit etre un texte non vide.`);
@@ -226,16 +227,43 @@ export function validateProgramFile(data, { profileId, knownMachineIds } = {}) {
 
 /**
  * Valide et prepare l'enregistrement du profil actif, SANS ecrire (apercu / tests).
- * @returns {Promise<{weekStart, program, unknownMachines, warnings, status}>}
+ * Ne lance PAS d'erreur pour les machines inconnues : elles sont listees dans `unknownMachines`
+ * pour que l'interface propose un remplacement.
+ * `machineReplacements` : { idInconnu: idDuCatalogue } applique au programme avant le controle ;
+ * chaque cible doit appartenir a `knownMachineIds` (si fourni). L'ordre des activites ne change pas.
+ * @returns {Promise<{weekStart, program, unknownMachines, usedMachines, warnings, status}>}
  * @throws {ProgramImportError}
  */
-export async function prepareProgramImport(profileId, source, { knownMachineIds, date } = {}) {
+export async function prepareProgramImport(profileId, source, { knownMachineIds, machineReplacements, date } = {}) {
   const data = await toObject(source);
   const report = validateProgramFile(data, { profileId, knownMachineIds });
   if (!report.ok) {
     throw new ProgramImportError(`Programme refuse (${report.errors.length} probleme(s)).`, report.errors);
   }
   const days = JSON.parse(JSON.stringify(data.programs[profileId].days)); // copie, ordre intact
+  const known = knownSet(knownMachineIds);
+  const replacements = [];
+
+  if (machineReplacements != null) {
+    if (!isObj(machineReplacements)) throw new ProgramImportError('machineReplacements doit etre un objet {ancien: nouveau}.');
+    const used = collectMachines({ days });
+    const problems = [];
+    for (const [from, to] of Object.entries(machineReplacements)) {
+      if (!used.has(from)) problems.push(`Remplacement : la machine "${from}" n'est pas dans ce programme.`);
+      else if (!isStr(to) || !MACHINE_ID.test(to)) problems.push(`Remplacement de "${from}" : identifiant cible invalide.`);
+      else if (known && !known.has(to)) problems.push(`Remplacement de "${from}" : "${to}" n'est pas dans le catalogue.`);
+    }
+    if (problems.length) throw new ProgramImportError(`Remplacements refuses (${problems.length}).`, problems, 'INVALID_REPLACEMENT');
+    const at = new Date().toISOString();
+    for (const day of days) {
+      for (const a of day.activities) {
+        if (a.type === 'strength' && Object.hasOwn(machineReplacements, a.machineId)) a.machineId = machineReplacements[a.machineId];
+      }
+    }
+    for (const [from, to] of Object.entries(machineReplacements)) replacements.push({ from, to, at });
+  }
+
+  const usedMachines = [...collectMachines({ days })];
   return {
     weekStart: data.weekStart,
     program: {
@@ -244,9 +272,10 @@ export async function prepareProgramImport(profileId, source, { knownMachineIds,
       profileId,
       importedAt: new Date().toISOString(),
       days,
-      replacements: []
+      replacements
     },
-    unknownMachines: report.unknownMachines,
+    unknownMachines: known ? usedMachines.filter(m => !known.has(m)) : [],
+    usedMachines,
     warnings: report.warnings,
     status: getProgramStatus(data.weekStart, date)
   };
@@ -254,17 +283,23 @@ export async function prepareProgramImport(profileId, source, { knownMachineIds,
 
 /**
  * Importe un fichier / texte colle / objet et n'enregistre QUE le profil actif.
- * Si la semaine existe deja, refuse sauf `overwrite: true` (code 'WEEK_EXISTS').
- * @returns {Promise<{weekStart, program, unknownMachines, warnings, status}>}
+ * - Une importation REMPLACE directement le programme existant de la meme semaine
+ *   (les seances enregistrees ne sont jamais touchees).
+ * - Si `knownMachineIds` est fourni, l'importation definitive est refusee (code 'UNKNOWN_MACHINES',
+ *   liste dans `error.unknownMachines`) tant qu'il reste des machines hors catalogue :
+ *   utiliser prepareProgramImport pour l'apercu, puis repasser `machineReplacements`.
+ * @returns {Promise<{weekStart, program, unknownMachines, usedMachines, warnings, status}>}
  */
 export async function importProgram(profileId, source, options = {}) {
   const prepared = await prepareProgramImport(profileId, source, options);
-  if (!options.overwrite && await getProgram(profileId, prepared.weekStart)) {
-    throw new ProgramImportError(
-      `Un programme existe deja pour la semaine du ${prepared.weekStart}.`,
-      [`Un programme existe deja pour la semaine du ${prepared.weekStart}.`],
-      'WEEK_EXISTS'
+  if (prepared.unknownMachines.length) {
+    const err = new ProgramImportError(
+      `Machines inconnues : ${prepared.unknownMachines.join(', ')}. Les remplacer avant d'importer.`,
+      prepared.unknownMachines.map(m => `Machine inconnue : ${m}`),
+      'UNKNOWN_MACHINES'
     );
+    err.unknownMachines = prepared.unknownMachines;
+    throw err;
   }
   await saveProgram(profileId, prepared.weekStart, prepared.program);
   return prepared;
@@ -314,11 +349,13 @@ export async function getUnknownMachines(profileId, weekStart, knownMachineIds) 
 
 /**
  * Remplace une machine par une autre dans un programme enregistre (ex. machine inconnue).
+ * `knownMachineIds` (optionnel) : la cible doit appartenir au catalogue.
  * Ne change ni l'ordre ni les series/charges ; les performances (seances) ne sont pas touchees.
  * @returns {Promise<{weekStart, replaced:number}>} nombre d'activites modifiees
  */
-export async function replaceMachine(profileId, weekStart, fromId, toId) {
-  if (!isStr(fromId) || !isStr(toId) || !MACHINE_ID.test(toId)) {
+export async function replaceMachine(profileId, weekStart, fromId, toId, knownMachineIds) {
+  if (!isStr(fromId) || !isStr(toId) || !MACHINE_ID.test(toId) ||
+      (knownMachineIds != null && !new Set(knownMachineIds).has(toId))) {
     throw new ProgramImportError('Identifiants de machine invalides.', undefined, 'INVALID_MACHINE');
   }
   const program = await getProgram(profileId, weekStart);
