@@ -7,7 +7,7 @@ import {
   startWorkout, getWorkout, getResumableWorkout, listWorkouts, pauseWorkout, resumeWorkout,
   logSet, updateSet, addSet, removeSet, completeActivity, skipActivity,
   postponeActivity, returnToPostponed, finishWorkout, discardWorkout,
-  getNextActivity, getPostponedActivities, getWorkoutSummary, isWorkoutOpen, dayIdOf, WorkoutError
+  getNextActivity, getPostponedActivities, getWorkoutSummary, isWorkoutOpen, dayIdOf, WorkoutError, resetDemoWorkouts
 } from '../js/workouts.js';
 
 const idb = installFakeIndexedDB();
@@ -228,18 +228,20 @@ test('Pierre et Manon restent separes', async () => {
   assert.equal((await getResumableWorkout('manon')).id, m.id);
 });
 
-test('profil demo : aucune ecriture, lectures vides, base intacte', async () => {
+test('profil demo : fonctionne en memoire, aucune ecriture en base, aucun lien avec Pierre ni Manon', async () => {
   await setup();
   const rowsBefore = Object.values(idb.stores).reduce((n, st) => n + st.rows.size, 0);
-  await assert.rejects(startWorkout('demo', { now: NOW }), e => e.code === 'DEMO_READ_ONLY');
-  await assert.rejects(logSet('demo', 'x', 'a1', 's1', { kg: 1, reps: 1 }), e => e.code === 'DEMO_READ_ONLY');
-  await assert.rejects(finishWorkout('demo', 'x', 'partial'), e => e.code === 'DEMO_READ_ONLY');
-  await assert.rejects(discardWorkout('demo', 'x'), e => e.code === 'DEMO_READ_ONLY');
-  assert.equal(await getWorkout('demo', 'x'), null);
-  assert.equal(await getResumableWorkout('demo'), null);
-  assert.deepEqual(await listWorkouts('demo'), []);
+  await resetDemoWorkouts({ now: NOW });
+  const resumable = await getResumableWorkout('demo');
+  assert.equal(resumable.profileId, 'demo');
+  const s = await logSet('demo', resumable.id, 'a3', 's2', { kg: 20, reps: 10 }, { now: NOW });
+  assert.equal(s.profileId, 'demo');
+  const done = await finishWorkout('demo', resumable.id, 'partial', { now: NOW });
+  assert.equal(done.status, 'partial');
   const rowsAfter = Object.values(idb.stores).reduce((n, st) => n + st.rows.size, 0);
-  assert.equal(rowsAfter, rowsBefore);
+  assert.equal(rowsAfter, rowsBefore); // base strictement inchangee
+  assert.equal(await getResumableWorkout('pierre'), null);
+  assert.deepEqual((await listWorkouts('manon')), []);
   await assert.rejects(startWorkout('inconnu', { now: NOW }), e => e.code === 'UNKNOWN_PROFILE');
 });
 
