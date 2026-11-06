@@ -14,6 +14,7 @@ import {
 import { el, btn, clear, add, dialog, confirmDialog, toast, formatClock, formatMinutes, fmtNum, parseNum } from './dom.js';
 import { loadCatalog, machineImage } from './catalog.js';
 import { machineHistory, isClosed } from './stats.js';
+import { runBackup } from './backup.js';
 
 const root = document.documentElement;
 const appPages = document.getElementById('app-pages');
@@ -64,8 +65,8 @@ async function commit(call, { silent = false, after } = {}) {
     if (!valid(profile, rev) || S.session?.id !== id) return next;
     if (next && next.id === id) S.session = next;
     if (after) after(next);
+    if (!silent) render(); // l'écran est reconstruit d'abord : sinon le message de sauvegarde serait effacé
     setStatus('✓ Sauvegardé', 'ok');
-    if (!silent) render();
     emit('pm:workout-changed', { profile });
     return next;
   } catch (error) {
@@ -487,7 +488,7 @@ async function finish(complete) {
     const result = await op(() => finishWorkout(profile, s.id, complete ? 'completed' : 'partial'));
     if (!valid(profile, rev)) return;
     S.session = result;
-    emit('pm:workout-changed', { profile });
+    emit('pm:workout-changed', { profile, final: true }); // séance terminée : les autres écrans doivent se mettre à jour
     renderDone(result);
   } catch (error) {
     if (error?.code === 'INCOMPLETE') { await commitPartial(); }
@@ -497,7 +498,7 @@ async function finish(complete) {
 async function commitPartial() {
   const profile = S.profile, rev = S.rev, id = S.session.id;
   const result = await op(() => finishWorkout(profile, id, 'partial'));
-  if (valid(profile, rev)) { S.session = result; renderDone(result); emit('pm:workout-changed', { profile }); }
+  if (valid(profile, rev)) { S.session = result; renderDone(result); emit('pm:workout-changed', { profile, final: true }); }
 }
 function renderDone(session) {
   clearInterval(S.clock); S.clock = null;
@@ -508,6 +509,16 @@ function renderDone(session) {
   add(box, el('div', 'pm-done-icon', '✓'),
     el('h2', '', session.status === 'completed' ? 'Séance terminée' : 'Séance partielle enregistrée'),
     el('p', 'pm-muted', sum.setsDone + ' séries · ' + fmtNum(sum.volumeKg) + ' kg de volume · ' + formatMinutes(sum.durationMinutes)));
+  if (S.profile === 'pierre' || S.profile === 'manon') {
+    const note = el('p', 'pm-muted', 'Conseil : sauvegarde tes données de temps en temps (Fichiers, Drive, e-mail…).');
+    const save = btn('Sauvegarder mes données', 'pm-secondary', async () => {
+      try {
+        const r = await runBackup(S.profile);
+        note.textContent = r.how === 'cancelled' ? 'Sauvegarde annulée.' : '✓ Sauvegarde ' + (r.how === 'shared' ? 'partagée' : 'téléchargée') + ' (' + r.summary.sessions + ' séance(s)).';
+      } catch (e) { note.textContent = 'Sauvegarde impossible : ' + (e.message || e); }
+    });
+    box.append(save, note);
+  }
   box.append(btn('Voir l’historique', 'pm-validate', () => closeWorkout({ goTo: 'historique' })));
   box.append(btn('Retour à l’accueil', 'pm-secondary', () => closeWorkout({ goTo: 'accueil' })));
   panel.append(box);

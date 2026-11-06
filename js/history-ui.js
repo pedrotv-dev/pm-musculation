@@ -211,7 +211,7 @@ function render() {
 }
 
 document.addEventListener('pm:profile-changed', () => { S.mode = 'list'; S.detail = null; S.day = null; load().catch(console.error); });
-document.addEventListener('pm:workout-changed', () => load().catch(console.error));
+document.addEventListener('pm:workout-changed', e => { if (!root.classList.contains('pm-workout-active') || (e.detail && e.detail.final)) load().catch(console.error); });
 document.addEventListener('pm:data-changed', () => load().catch(console.error));
 window.addEventListener('focus', () => load().catch(console.error));
 document.addEventListener('click', e => { if (e.target.closest?.('.nav-btn[data-go="historique"]')) load().catch(console.error); });

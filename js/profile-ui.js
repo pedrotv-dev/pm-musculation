@@ -5,7 +5,7 @@ import { getRestConfig, setRestConfig, stopRest } from './rest-timer.js';
 import { listWorkouts, resetDemoWorkouts, getDemoProgram } from './workouts.js';
 import { getProgram } from '../storage.js';
 import { listBodyWeights, resetDemoWeights } from './weights.js';
-import { createBackupFile, parseBackupText, describeBackup, restoreBackup, clearProfileData, backupToPerson, resultsCsv, saveTextFile } from './backup.js';
+import { createBackupFile, parseBackupText, describeBackup, restoreBackup, clearProfileData, backupToPerson, resultsCsv, saveTextFile, getBackupStatus, runBackup } from './backup.js';
 import { buildBilan } from './bilan.js';
 import { mondayOf } from './programs.js';
 import { addDays } from './stats.js';
@@ -71,11 +71,16 @@ function chronoSection(profile, config) {
 function backupSection(profile) {
   if (!real(profile)) return section('Sauvegardes', 'Le mode démo n’a rien à sauvegarder : ses données sont fictives et restent en mémoire.');
   const status = el('p', 'pm-muted', S.notice);
-  const dl = btn('Télécharger ma sauvegarde', 'pm-secondary', async () => {
+  const last = el('p', 'pm-muted', 'Dernière sauvegarde : …');
+  getBackupStatus(profile).then(st => {
+    last.textContent = st && st.at ? 'Dernière sauvegarde : ' + formatDateFr(st.at.slice(0, 10)) + ' (' + st.sessions + ' séance(s) à ce moment-là)' : 'Dernière sauvegarde : jamais — pense à en faire une.';
+  });
+  const dl = btn('Sauvegarder maintenant', 'pm-validate', async () => {
     try {
-      const f = await createBackupFile(profile);
-      const how = await saveTextFile(f.filename, f.text);
-      status.textContent = 'Sauvegarde ' + (how === 'shared' ? 'partagée' : 'téléchargée') + ' : ' + f.summary.sessions + ' séance(s), ' + f.summary.weights + ' mesure(s) de poids, ' + f.summary.programs + ' programme(s).';
+      const f = await runBackup(profile);
+      if (f.how === 'cancelled') { status.textContent = 'Sauvegarde annulée.'; return; }
+      status.textContent = 'Sauvegarde ' + (f.how === 'shared' ? 'partagée' : 'téléchargée') + ' : ' + f.summary.sessions + ' séance(s), ' + f.summary.weights + ' mesure(s) de poids, ' + f.summary.programs + ' programme(s). Garde ce fichier dans un endroit sûr (Fichiers, Drive, e-mail…).';
+      last.textContent = 'Dernière sauvegarde : aujourd’hui (' + f.summary.sessions + ' séance(s) à ce moment-là)';
     } catch (e) { status.textContent = 'Échec : ' + (e.message || e); }
   });
   const csv = btn('Exporter mes résultats (CSV)', 'pm-secondary', async () => {
@@ -108,7 +113,7 @@ function backupSection(profile) {
   });
   const fileLine = el('div', 'pm-file-line'); add(fileLine, file, restore);
   return section('Sauvegardes', 'Tes données restent sur cet appareil. Fais une sauvegarde régulièrement et avant tout changement de téléphone.',
-    add(el('div', 'pm-row-actions'), dl, csv), fileLine, status);
+    last, dl, add(el('div', 'pm-row-actions'), csv), fileLine, status);
 }
 
 async function bilanSection(profile) {
@@ -142,7 +147,14 @@ async function bilanSection(profile) {
     if (!S.bilan) { toast('Génère d’abord le bilan.'); return; }
     toast((await copyText(S.bilan, out)) ? 'Bilan copié : colle-le dans ChatGPT.' : 'Copie impossible : sélectionne le texte à la main.');
   });
-  const share = btn('Partager / enregistrer', 'pm-secondary', async () => { if (S.bilan) await saveTextFile('bilan-' + S.week + '.txt', S.bilan, 'text/plain'); else toast('Génère d’abord le bilan.'); });
+  const share = btn('Partager bilan + sauvegarde', 'pm-secondary', async () => {
+    if (!S.bilan) { toast('Génère d’abord le bilan.'); return; }
+    try {
+      const extra = [{ filename: 'bilan-' + S.week + '.txt', text: S.bilan, mime: 'text/plain' }];
+      if (real(profile)) { const r = await runBackup(profile, { extraFiles: extra }); toast(r.how === 'cancelled' ? 'Partage annulé.' : 'Bilan et sauvegarde partagés ✓'); }
+      else await saveTextFile(extra[0].filename, extra[0].text, 'text/plain');
+    } catch (e) { toast(e.message || 'Partage impossible.'); }
+  });
   // données de l'autre profil, en memoire seulement
   const otherId = profile === 'pierre' ? 'manon' : profile === 'manon' ? 'pierre' : null;
   const wrap = section('Bilan hebdomadaire', 'Texte à copier dans ChatGPT pour préparer la semaine suivante. Pour un bilan commun, ajoute le fichier de sauvegarde de l’autre personne (il reste en mémoire et n’écrase rien).', select);

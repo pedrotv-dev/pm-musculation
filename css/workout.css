@@ -54,3 +54,11 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-start-workout { width:100%; min-height:50px; border:0; border-radius:14px; margin-bottom:12px; background:var(--turq); color:var(--turq-dark); font-weight:850; font-size:16px; }
 @media (max-width:420px) { .pm-machine-image { width:76px; height:76px; } .pm-set-row { grid-template-columns:22px minmax(0,1fr) minmax(0,1fr) auto; gap:6px; padding:8px 6px; } }
 .pm-progress-line { font-size:12px; color:var(--turq); margin:0 0 10px; }
+/* points de progression : zone tactile agrandie, trait visuel inchangé */
+.pm-dot { width:36px; height:32px; padding:10px 4px; background-clip:content-box; background-color:var(--stroke); border:0; }
+.pm-dot-done { background-color:var(--ok); }
+.pm-dot-skipped { background-color:var(--warn); }
+.pm-dot-postponed { background-color:#7d8bdd; }
+.pm-dots { gap:2px; }
+.pm-set-tools .pm-icon-btn { min-width:44px; }
+@media (max-width:420px) { .pm-set-row { grid-template-columns:22px minmax(0,1fr) minmax(0,1fr) auto; } .pm-set-tools { gap:3px; } }
