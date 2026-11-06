@@ -6,13 +6,14 @@
  * Evenements ecoutes : pm:profile-changed, pm:start-workout {profileId, weekStart, dayId}, pm:resume-workout.
  */
 import {
-  startWorkout, getResumableWorkout, logSet, updateSet, addSet, removeSet, completeActivity, skipActivity,
+  startWorkout, getResumableWorkout, listWorkouts, logSet, updateSet, addSet, removeSet, completeActivity, skipActivity,
   postponeActivity, returnToPostponed, pauseWorkout, resumeWorkout, finishWorkout, discardWorkout, deleteWorkout,
   addActivity, removeActivity, moveActivity, setCursor, setWorkoutFeedback, getNextActivity, getWorkoutSummary,
   getWorkoutDuration, getPostponedActivities
 } from './workouts.js';
 import { el, btn, clear, add, dialog, confirmDialog, toast, formatClock, formatMinutes, fmtNum, parseNum } from './dom.js';
 import { loadCatalog, machineImage } from './catalog.js';
+import { machineHistory, isClosed } from './stats.js';
 
 const root = document.documentElement;
 const appPages = document.getElementById('app-pages');
@@ -27,7 +28,7 @@ main.append(panel);
 
 const KNOWN = ['pierre', 'manon', 'demo'];
 const S = { profile: null, session: null, selected: null, view: 'activity', rev: 0, queue: Promise.resolve(),
-  catalog: { byId: new Map(), strength: [], images: new Set() }, flushers: new Set(), clock: null, undo: null, busy: false };
+  catalog: { byId: new Map(), strength: [], images: new Set() }, history: [], flushers: new Set(), clock: null, undo: null, busy: false };
 const valid = (profile, rev) => S.profile === profile && root.dataset.pmProfile === profile && S.rev === rev;
 const act = (session, key) => session.activities.find(a => a.key === key);
 const nameOf = a => a.type === 'strength' ? (S.catalog.byId.get(a.machineId)?.name || a.machineId)
@@ -104,6 +105,9 @@ function showWorkout(session) {
   appPages.hidden = true; bottomNav.hidden = true; header.hidden = true; panel.hidden = false;
   clearInterval(S.clock);
   S.clock = setInterval(tickClock, 1000);
+  S.history = [];
+  const profile = S.profile, rev = S.rev;
+  listWorkouts(profile).then(rows => { if (valid(profile, rev)) { S.history = rows.filter(r => r.id !== session.id && isClosed(r)); render(); } }).catch(() => {});
   render();
   emit('pm:workout-open', { profile: S.profile, sessionId: session.id, activityKey: S.selected });
   window.scrollTo(0, 0);
@@ -270,6 +274,12 @@ function renderMachine(a) {
   card.append(head);
 
   if (a.type === 'strength') {
+    const past = machineHistory(S.history, a.machineId);
+    if (past.length) {
+      const last = past[past.length - 1], best = Math.max(...past.map(x => x.topKg));
+      card.append(el('p', 'pm-progress-line', 'Dernière fois (' + last.date.slice(8, 10) + '/' + last.date.slice(5, 7) + ') : ' +
+        fmtNum(last.topKg) + ' kg · ' + last.reps.join(' / ') + ' reps' + (best > last.topKg ? ' · record ' + fmtNum(best) + ' kg' : '')));
+    }
     renderSets(card, a);
   } else {
     const dur = inputField('minutes', a.actual?.durationMinutes ?? a.planned?.durationMinutes ?? 10, { kind: 'kg' });

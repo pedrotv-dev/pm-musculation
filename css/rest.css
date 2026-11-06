@@ -36,3 +36,5 @@ html.pm-workout-active .pm-workout-screen{padding-bottom:205px}
 .pm-rest-ui[data-collapsed="true"] .pm-rest-actions,.pm-rest-ui[data-collapsed="true"] .pm-rest-settings,.pm-rest-ui[data-collapsed="true"] .pm-rest-notice{display:none}
 .pm-rest-ui[data-collapsed="true"]{padding:7px 12px}
 .pm-rest-ui[data-collapsed="true"] .pm-rest-time{font-size:21px}
+/* Le réglage du mode est dans Profil : la barre flottante reste compacte pour ne pas masquer la validation */
+.pm-rest-settings{display:none!important}
