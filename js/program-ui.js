@@ -288,9 +288,10 @@ async function saveImport() {
     });
     state.selectedWeek = prepared.weekStart; state.selectedDay = null;
     await drawWeekOptions(); await displayProgram();
-    notify('Programme de ' + state.profile + ' enregistré pour la semaine du ' + prepared.weekStart + '.', 'success');
     importCard.open = false;
-    resetPreview();
+    state.preview = null; state.replacements = {};
+    previewView.hidden = true; replacementsView.hidden = true;
+    notify('Programme de ' + state.profile + ' enregistré pour la semaine du ' + prepared.weekStart + '.', 'success');
   } catch (e) { showError(e); }
   finally { state.busy = false; }
 }
