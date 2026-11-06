@@ -3,7 +3,7 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-workout-screen[hidden] { display:none!important; }
 .pm-workout-bar { display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:12px; }
 .pm-bar-title { display:flex; flex-direction:column; min-width:0; }
-.pm-bar-title strong { font-size:16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pm-bar-title strong, .pm-bar-title .pm-bar-h1 { font-size:16px; margin:0; font-weight:700; letter-spacing:normal; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .pm-bar-actions { display:flex; align-items:center; gap:8px; }
 .pm-badge { font-size:11px; font-weight:800; color:var(--accent); letter-spacing:.07em; text-transform:uppercase; }
 .pm-clock { font-size:19px; font-weight:850; font-variant-numeric:tabular-nums; padding:0 4px; }
@@ -43,7 +43,7 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-recap-block { border-top:1px solid var(--stroke); padding:11px 0; }
 .pm-recap-title { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; }
 .pm-recap-set { display:grid; grid-template-columns:26px minmax(0,1fr) minmax(0,1fr) auto; gap:8px; align-items:end; margin-bottom:6px; }
-.pm-recap-set.pm-undone { opacity:.65; }
+.pm-recap-set.pm-undone { opacity:.85; }
 .pm-feelings { display:flex; flex-wrap:wrap; gap:7px; }
 .pm-feeling { flex:1 1 90px; min-height:44px; border-radius:11px; border:1px solid var(--stroke); background:var(--surface-raised); color:var(--text); font:inherit; font-size:12px; font-weight:750; }
 .pm-feeling.pm-on { background:rgba(46,211,192,.18); border-color:var(--turq); color:var(--turq); }

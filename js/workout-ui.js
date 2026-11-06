@@ -536,7 +536,7 @@ function render() {
 
   const bar = el('div', 'pm-workout-bar');
   const left = el('div', 'pm-bar-title');
-  add(left, el('span', 'pm-badge', (S.profile === 'demo' ? 'DÉMO · ' : '') + (s.dayId || '')), el('strong', '', s.dayName || 'Entraînement'));
+  add(left, el('span', 'pm-badge', (S.profile === 'demo' ? 'DÉMO · ' : '') + (s.dayId || '')), el('h1', 'pm-bar-h1', s.dayName || 'Entraînement'));
   const clock = el('span', 'pm-clock', formatClock(getWorkoutDuration(s, new Date()).seconds));
   clock.id = 'pm-clock'; clock.title = 'Durée de la séance (hors pauses)';
   const right = el('div', 'pm-bar-actions');
