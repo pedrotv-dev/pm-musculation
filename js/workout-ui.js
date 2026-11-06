@@ -16,6 +16,8 @@ import { loadCatalog, machineImage } from './catalog.js';
 import { ALL_PROFILES as KNOWN, isRealProfile } from './profiles.js';
 import { machineHistory, isClosed } from './stats.js';
 import { runBackup } from './backup.js';
+import { holdAwake } from './wakelock.js';
+import { getUiSettings, peekUiSettings } from './ui-settings.js';
 
 const root = document.documentElement;
 const appPages = document.getElementById('app-pages');
@@ -29,7 +31,7 @@ panel.setAttribute('aria-label', 'Suivi de la séance');
 main.append(panel);
 
 const S = { profile: null, session: null, selected: null, view: 'activity', rev: 0, queue: Promise.resolve(),
-  catalog: { byId: new Map(), strength: [], list: [], images: new Set() }, history: [], flushers: new Set(), clock: null, undo: null, busy: false };
+  catalog: { byId: new Map(), strength: [], list: [], images: new Set() }, history: [], finished: false, keepAwake: true, leaving: false, flushers: new Set(), clock: null, undo: null, busy: false };
 const valid = (profile, rev) => S.profile === profile && root.dataset.pmProfile === profile && S.rev === rev;
 const act = (session, key) => session.activities.find(a => a.key === key);
 const nameOf = a => a.type === 'strength' ? (S.catalog.byId.get(a.machineId)?.name || a.machineId)
@@ -79,6 +81,7 @@ async function commit(call, { silent = false, after } = {}) {
 
 function leaveScreen() {
   clearInterval(S.clock); S.clock = null;
+  holdAwake(false); // l'écran peut de nouveau s'éteindre
   if (S.undo) { S.undo.dismiss(); S.undo = null; }
   root.classList.remove('pm-workout-active');
   panel.hidden = true; clear(panel);
@@ -101,7 +104,9 @@ function startPosition(session) {
 function showWorkout(session) {
   if (!KNOWN.includes(S.profile) || session.profileId !== S.profile || root.dataset.pmProfile !== S.profile) return;
   ++S.rev;
-  S.session = session; S.view = 'activity'; S.selected = startPosition(session);
+  S.session = session; S.view = 'activity'; S.selected = startPosition(session); S.finished = false;
+  S.keepAwake = peekUiSettings(S.profile).keepAwake; // valeur connue tout de suite, puis relue depuis la base
+  getUiSettings(S.profile).then(st => { if (S.session && S.session.id === session.id) { S.keepAwake = st.keepAwake; applyAwake(); } });
   root.classList.add('pm-workout-active');
   appPages.hidden = true; bottomNav.hidden = true; header.hidden = true; panel.hidden = false;
   clearInterval(S.clock);
@@ -112,6 +117,11 @@ function showWorkout(session) {
   render();
   emit('pm:workout-open', { profile: S.profile, sessionId: session.id, activityKey: S.selected });
   window.scrollTo(0, 0);
+}
+/** Écran allumé seulement pendant une séance EN COURS (pas en pause, pas terminée) et si le réglage est actif. */
+function applyAwake() {
+  const open = !!S.session && S.session.status === 'in_progress' && !S.finished && !panel.hidden;
+  holdAwake(S.keepAwake && open);
 }
 function tickClock() {
   const n = panel.querySelector('#pm-clock');
@@ -502,6 +512,7 @@ async function commitPartial() {
 }
 function renderDone(session) {
   clearInterval(S.clock); S.clock = null;
+  S.finished = true; holdAwake(false);
   emit('pm:workout-close', {});
   clear(panel);
   const sum = session.summary || getWorkoutSummary(session);
@@ -530,6 +541,7 @@ function renderDone(session) {
 function render() {
   if (!S.session || panel.hidden) return;
   const s = S.session;
+  applyAwake();
   S.flushers.clear();
   clear(panel);
   if (S.selected && !act(s, S.selected)) S.selected = getNextActivity(s)?.key || s.order[0] || null;
@@ -663,9 +675,27 @@ function changeProfile(id) {
   emit('pm:workout-close', {});
   ++S.rev;
   S.profile = KNOWN.includes(id) ? id : null;
-  S.session = null; S.selected = null; S.busy = false; S.flushers.clear();
+  S.session = null; S.selected = null; S.busy = false; S.flushers.clear(); S.finished = false;
   leaveScreen();
 }
+// Bouton retour du téléphone (voir js/nav-history.js) : vue précédente, sinon confirmation de sortie (séance conservée)
+async function confirmLeave() {
+  if (S.leaving) return;
+  S.leaving = true;
+  const ok = await confirmDialog('Quitter l’écran de séance ? Elle est conservée : tu pourras la reprendre depuis l’accueil.',
+    { title: 'Quitter la séance', ok: 'Quitter', cancel: 'Rester' });
+  S.leaving = false;
+  if (!ok || !S.session) return;
+  await flushAll();
+  toast('Séance conservée : reprends-la depuis l’accueil.');
+  closeWorkout({ goTo: 'accueil' });
+}
+document.addEventListener('pm:back-workout', () => {
+  if (!S.session || panel.hidden) return;
+  if (S.finished) { closeWorkout({ goTo: 'accueil' }); return; }
+  if (S.view !== 'activity') { S.view = 'activity'; render(); return; }
+  confirmLeave();
+});
 document.addEventListener('pm:profile-changed', e => changeProfile(e.detail.profile));
 document.addEventListener('pm:start-workout', e => begin(e.detail));
 document.addEventListener('pm:resume-workout', () => resumeExisting());

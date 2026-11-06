@@ -9,14 +9,14 @@
  * - Ne touche JAMAIS a IndexedDB ni a localStorage : une mise a jour du code ne supprime aucune donnee.
  * VERSION est recalculee par `node tools/release.mjs` (date + empreinte des fichiers) ; tests/pwa.test.mjs verifie qu'elle est a jour.
  */
-const VERSION = '2026.11.06-93339d23';
+const VERSION = '2026.11.06-32918ce1';
 const CACHE = 'pm-musculation-' + VERSION;
 const PRECACHE = [
   './', 'index.html', 'manifest.webmanifest', 'storage.js',
   'css/app.css', 'css/base.css', 'css/programs.css', 'css/rest.css', 'css/workout.css',
   'js/app.js', 'js/backup.js', 'js/bilan.js', 'js/catalog.js', 'js/charts.js', 'js/demo-fixtures.js', 'js/dom.js', 'js/history-ui.js',
-  'js/home-ui.js', 'js/profiles.js', 'js/profile-ui.js', 'js/program-ui.js', 'js/programs.js', 'js/progress-ui.js', 'js/rest-timer.js', 'js/rest-ui.js',
-  'js/stats.js', 'js/version.js', 'js/weights.js', 'js/workout-ui.js', 'js/workouts.js',
+  'js/home-ui.js', 'js/nav-history.js', 'js/profiles.js', 'js/profile-ui.js', 'js/program-ui.js', 'js/programs.js', 'js/progress-ui.js', 'js/rest-timer.js', 'js/rest-ui.js',
+  'js/stats.js', 'js/ui-settings.js', 'js/version.js', 'js/wakelock.js', 'js/weights.js', 'js/workout-ui.js', 'js/workouts.js',
   'data/machines.json', 'data/exemple-programme.json', 'assets/machines/index.json',
   'assets/machines/back-extension.png', 'assets/machines/rotary-torso.png', 'assets/machines/shoulder-press.png', 'assets/machines/converging-chest-press.png',
   'assets/machines/converging-shoulder-press.png', 'assets/machines/leg-extension.png', 'assets/machines/chest-press.png', 'assets/machines/seated-leg-curl.png',

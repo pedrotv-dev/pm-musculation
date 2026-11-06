@@ -128,7 +128,7 @@ Structure (de haut en bas) :
 - Lisibilité des graphiques sur petit écran : étiquettes ≥ 10 px, contraste suffisant, couleurs distinctes bleu/violet selon profil possible via `--accent`.
 
 ## 8. Profil (`11-profil`)
-- Cartes `.pm-profile-section` : identité du profil + « Changer de profil » ; **chronomètre** (mode, durées, cases son/vibration) ; **sauvegardes** (dernière sauvegarde, « Sauvegarder maintenant » principal, export CSV, restauration depuis un fichier) ; **bilan hebdomadaire** (semaine, ajout des données de l'autre profil, « Générer le bilan », « Copier », « Partager bilan + sauvegarde », zone de texte monospace `.pm-bilan`) ; **données locales** (stockage protégé, « Effacer toutes les données » en ton d'avertissement) ; **démo** ; à propos.
+- Cartes `.pm-profile-section` : identité du profil + « Changer de profil » ; **chronomètre** (mode, durées, cases son/vibration) ; **« Pendant une séance »** (deux cases à cocher avec une phrase d'explication : écran allumé, bouton retour — `.pm-profile-option`, `.pm-check`) ; **sauvegardes** (dernière sauvegarde, « Sauvegarder maintenant » principal, export CSV, restauration depuis un fichier) ; **bilan hebdomadaire** (semaine, ajout des données de l'autre profil, « Générer le bilan », « Copier », « Partager bilan + sauvegarde », zone de texte monospace `.pm-bilan`) ; **données locales** (stockage protégé, « Effacer toutes les données » en ton d'avertissement) ; **démo** ; à propos.
 - Les actions **destructives** (effacer, remplacer, supprimer) doivent **se distinguer** des actions normales (couleur d'avertissement, jamais la couleur d'action principale).
 
 ## 9. Dialogues et notifications (transversal)
