@@ -282,5 +282,18 @@ test('moteur : la seance interrompue se reprend et se termine', { skip }, async 
   s = await engine.skipActivity('pierre', copy.id, 'a4');
   const done = await engine.finishWorkout('pierre', copy.id, 'partial');
   assert.equal(done.status, 'partial');
-  await assert.rejects(engine.startWorkout('demo'), e => e.code === 'DEMO_READ_ONLY');
+  // le profil demo a son propre stockage memoire : ces ecritures sous « pierre » ne l'ont pas modifie
+  assert.equal((await engine.getResumableWorkout('demo')).profileId, 'demo');
+});
+
+test('closeInterrupted : historique entierement termine, rien d\'autre ne change', () => {
+  const closed = buildDemoFixtures({ closeInterrupted: true });
+  assert.equal(closed.sessions.filter(s => s.status === 'in_progress').length, 0);
+  assert.equal(closed.sessions.filter(s => s.status === 'partial').length, 6);
+  const last = closed.sessions[29];
+  assert.equal(last.status, 'partial');
+  assert.ok(last.endedAt);
+  assert.deepEqual(last.summary, summarizeSession(last));
+  assert.deepEqual(closed.sessions.slice(0, 29), F.sessions.slice(0, 29));
+  assert.equal(closed.sessions[29].id, F.sessions[29].id);
 });

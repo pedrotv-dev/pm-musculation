@@ -199,9 +199,10 @@ export function summarizeSession(session) {
 
 // ---------------------------------------------------------------- generation d'une seance
 
-function buildSession(w, d, weekStart) {
+function buildSession(w, d, weekStart, closeInterrupted) {
   const day = DAYS[d];
-  const special = SPECIAL[`${w}-${d}`] || {};
+  let special = SPECIAL[`${w}-${d}`] || {};
+  if (closeInterrupted && special.status === 'in_progress') special = { ...special, status: 'partial' };
   const status = special.status || 'completed';
   const rnd = mulberry32(20261102 + w * 100 + d);
   const date = addDays(weekStart, d);
@@ -392,14 +393,15 @@ function buildStats(sessions) {
 /**
  * Construit le jeu complet, fige (Object.freeze profond), identique a chaque appel.
  * `lastWeekStart` : lundi de la semaine la plus recente (defaut 2026-11-02) ; la seance interrompue est
- * le vendredi de cette semaine. Les dates s'echelonnent sur les 6 semaines precedentes.
+ * le vendredi de cette semaine (avec `closeInterrupted:true` elle est cloturee en partielle : historique
+ * entierement termine). Les dates s'echelonnent sur les 6 semaines precedentes.
  * @returns {{profileId, weeks: string[], program, sessions, weights, records, recordEvents, stats}}
  */
-export function buildDemoFixtures({ lastWeekStart = DEFAULT_LAST_WEEK_START } = {}) {
+export function buildDemoFixtures({ lastWeekStart = DEFAULT_LAST_WEEK_START, closeInterrupted = false } = {}) {
   assertMonday(lastWeekStart);
   const weeks = Array.from({ length: DEMO_WEEKS }, (_, w) => addDays(lastWeekStart, (w - (DEMO_WEEKS - 1)) * 7));
   const sessions = [];
-  weeks.forEach((weekStart, w) => DAYS.forEach((_, d) => sessions.push(buildSession(w, d, weekStart))));
+  weeks.forEach((weekStart, w) => DAYS.forEach((_, d) => sessions.push(buildSession(w, d, weekStart, closeInterrupted))));
   const { records, recordEvents } = computeRecords(sessions);
   const program = {
     schemaVersion: 1,

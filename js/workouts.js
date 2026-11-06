@@ -7,7 +7,10 @@
  * seance se fait dans UNE transaction IndexedDB readwrite (updateSession, createSessionIfNoneOpen,
  * deleteSessionIf) : IndexedDB serialise ces transactions, y compris entre plusieurs onglets.
  * Il n'y a donc aucun verrou JavaScript : la protection repose sur la base de donnees.
- * Le profil « demo » est en lecture seule : toute ecriture est refusee, aucune lecture n'atteint IndexedDB.
+ * Le profil « demo » utilise les MEMES fonctions mais un stockage en MEMOIRE (jete au rechargement) :
+ * il n'appelle jamais IndexedDB, donc n'ecrit rien pour Pierre ni Manon. Il est pre-rempli avec un
+ * programme actif cette semaine, 6 semaines d'historique et une seance du jour DEJA COMMENCEE a reprendre
+ * (resetDemoWorkouts() rejoue ce scenario).
  * Pierre et Manon sont separes : chaque fonction prend `profileId` en premier parametre et
  * les cles IndexedDB sont [profileId, id].
  *
@@ -75,16 +78,15 @@ function newId(profileId, now) {
   return `${profileId}-${now.getTime().toString(36)}-${rand}`;
 }
 
-/** Profil autorise a ECRIRE (pierre ou manon). La demo est refusee. */
+/** Profil connu (pierre, manon ou demo). La demo vit en MEMOIRE : jamais ecrite dans IndexedDB. */
 function writable(profileId) {
-  if (profileId === DEMO) throw new WorkoutError('Mode démo : aucune donnée n\'est enregistrée.', 'DEMO_READ_ONLY');
-  if (!PROFILES.includes(profileId)) throw new WorkoutError('Profil inconnu : sélectionner Pierre ou Manon.', 'UNKNOWN_PROFILE');
+  if (profileId !== DEMO && !PROFILES.includes(profileId)) {
+    throw new WorkoutError('Profil inconnu : sélectionner Pierre ou Manon.', 'UNKNOWN_PROFILE');
+  }
   return profileId;
 }
 
-/** Profil autorise a LIRE ; retourne false pour la demo (rien en base). */
 function readable(profileId) {
-  if (profileId === DEMO) return false;
   writable(profileId);
   return true;
 }
@@ -94,6 +96,77 @@ function nonEmpty(value, label) {
   return value;
 }
 
+// ---------------------------------------------------------------- stockage : IndexedDB ou memoire (demo)
+
+const storageBackend = {
+  program: (p, week) => getProgram(p, week),
+  get: (p, id) => getSession(p, id),
+  list: p => listSessions(p),
+  unfinished: p => getUnfinishedSessions(p),
+  update: (p, id, updater) => updateSession(p, id, updater),
+  create: (p, session) => createSessionIfNoneOpen(p, session),
+  removeIf: (p, id, check) => deleteSessionIf(p, id, check)
+};
+
+const isOpenStatus = st => st === 'in_progress' || st === 'paused';
+
+/** Stockage memoire du profil demo : memes garanties (copie, tout-ou-rien) mais RIEN n'est persiste. */
+function makeDemoStore() {
+  const programs = new Map();
+  const sessions = new Map();
+  const record = data => ({ profileId: DEMO, id: data.id, status: data.status, data: clone(data), updatedAt: data.updatedAt });
+  return {
+    programs,
+    sessions,
+    get: id => (sessions.has(id) ? clone(sessions.get(id)) : null),
+    list: () => [...sessions.values()].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).map(record),
+    unfinished() { return this.list().filter(r => isOpenStatus(r.status)); },
+    update(id, updater) {
+      const current = sessions.has(id) ? clone(sessions.get(id)) : null;
+      const next = updater(current);
+      if (next === undefined) return current;
+      if (!isObj(next) || next.id !== id || typeof next.status !== 'string' || !next.status) {
+        throw new WorkoutError('Séance invalide.', 'INVALID_ARGUMENT');
+      }
+      sessions.set(id, clone(next));
+      return next;
+    },
+    create(session) {
+      const open = this.unfinished()[0];
+      if (open) throw Object.assign(new Error('Une seance est deja en cours pour ce profil.'), { code: 'SESSION_IN_PROGRESS', sessionId: open.id });
+      if (sessions.has(session.id)) throw new Error('Identifiant de seance deja utilise.');
+      sessions.set(session.id, clone(session));
+      return session;
+    },
+    removeIf(id, check) {
+      check(sessions.has(id) ? clone(sessions.get(id)) : null);
+      sessions.delete(id);
+    }
+  };
+}
+
+const demoState = { promise: null };
+
+function demoReady() {
+  if (!demoState.promise) demoState.promise = seedDemo(new Date());
+  return demoState.promise;
+}
+
+/** Choisit le stockage : `store` (amorcage interne de la demo), memoire pour « demo », IndexedDB sinon. */
+function backend(profileId, store) {
+  if (profileId !== DEMO) return storageBackend;
+  const use = async () => store || demoReady();
+  return {
+    program: async (p, week) => { const st = await use(); return st.programs.has(week) ? clone(st.programs.get(week)) : null; },
+    get: async (p, id) => (await use()).get(id),
+    list: async () => (await use()).list(),
+    unfinished: async () => (await use()).unfinished(),
+    update: async (p, id, updater) => (await use()).update(id, updater),
+    create: async (p, session) => (await use()).create(session),
+    removeIf: async (p, id, check) => (await use()).removeIf(id, check)
+  };
+}
+
 const isClosed = s => s.status === 'completed' || s.status === 'partial';
 
 /**
@@ -101,10 +174,10 @@ const isClosed = s => s.status === 'completed' || s.status === 'partial';
  * toujours a partir de la version la plus recente (deux onglets ne s'ecrasent pas, une seance terminee
  * ailleurs est vue comme terminee). Rien n'est ecrit si `change` ou une verification leve une erreur.
  */
-function mutate(profileId, sessionId, change, { now, allowPaused = false, allowClosed = false } = {}) {
+function mutate(profileId, sessionId, change, { now, allowPaused = false, allowClosed = false, store } = {}) {
   try { writable(profileId); nonEmpty(sessionId, 'Identifiant de séance'); }
   catch (error) { return Promise.reject(error); }
-  return updateSession(profileId, sessionId, s => {
+  return backend(profileId, store).update(profileId, sessionId, s => {
     if (!s || s.profileId !== profileId) throw new WorkoutError('Séance introuvable.', 'NOT_FOUND');
     if (!allowClosed && isClosed(s)) throw new WorkoutError('Cette séance est terminée.', 'SESSION_CLOSED');
     if (!allowPaused && s.status === 'paused') throw new WorkoutError('Séance en pause : la reprendre d\'abord.', 'SESSION_PAUSED');
@@ -233,12 +306,12 @@ export function getWorkoutSummary(session, now) {
  * (code SESSION_IN_PROGRESS, `error.sessionId`) : une seule seance ouverte par profil, garantie par IndexedDB.
  * @returns {Promise<session>}
  */
-export function startWorkout(profileId, { dayId, weekStart, now = new Date() } = {}) {
+export function startWorkout(profileId, { dayId, weekStart, now = new Date(), store } = {}) {
   try { writable(profileId); } catch (error) { return Promise.reject(error); }
   return (async () => {
     const week = weekStart || mondayOf(now);
     const wanted = dayId || dayIdOf(now);
-    const program = await getProgram(profileId, week);
+    const program = await backend(profileId, store).program(profileId, week);
     if (!program) throw new WorkoutError(`Aucun programme pour la semaine du ${week}.`, 'PROGRAM_NOT_FOUND');
     const day = (program.days || []).find(d => d.id === wanted);
     if (!day) throw new WorkoutError(`Pas de séance « ${wanted} » dans ce programme.`, 'DAY_NOT_FOUND');
@@ -280,7 +353,7 @@ export function startWorkout(profileId, { dayId, weekStart, now = new Date() } =
     session.summary = getWorkoutSummary(session);
     try {
       // verification « aucune seance ouverte » + ecriture dans UNE transaction : sur d'autres onglets aussi
-      return await createSessionIfNoneOpen(profileId, session);
+      return await backend(profileId, store).create(profileId, session);
     } catch (error) {
       if (error && error.code === 'SESSION_IN_PROGRESS') {
         throw new WorkoutError('Une séance est déjà en cours : la reprendre ou la terminer.', 'SESSION_IN_PROGRESS',
@@ -295,21 +368,21 @@ export function startWorkout(profileId, { dayId, weekStart, now = new Date() } =
 export async function getWorkout(profileId, sessionId) {
   if (!readable(profileId)) return null;
   nonEmpty(sessionId, 'Identifiant de séance');
-  const s = await getSession(profileId, sessionId);
+  const s = await backend(profileId).get(profileId, sessionId);
   return s && s.profileId === profileId ? s : null;
 }
 
 /** Seance interrompue (en cours ou en pause) la plus recente, ou null. Utile a l'ouverture de l'appli. */
 export async function getResumableWorkout(profileId) {
   if (!readable(profileId)) return null;
-  const rows = await getUnfinishedSessions(profileId);
+  const rows = await backend(profileId).unfinished(profileId);
   return rows.length ? rows[0].data : null;
 }
 
 /** Seances du profil, la plus recemment modifiee d'abord. Options : { status, limit }. */
 export async function listWorkouts(profileId, { status, limit } = {}) {
   if (!readable(profileId)) return [];
-  let rows = (await listSessions(profileId)).map(r => r.data);
+  let rows = (await backend(profileId).list(profileId)).map(r => r.data);
   if (status) rows = rows.filter(s => s.status === status);
   return limit ? rows.slice(0, limit) : rows;
 }
@@ -500,10 +573,65 @@ export function discardWorkout(profileId, sessionId) {
   try { writable(profileId); nonEmpty(sessionId, 'Identifiant de séance'); }
   catch (error) { return Promise.reject(error); }
   // verification et suppression dans la meme transaction : une serie validee ailleurs n'est jamais perdue
-  return deleteSessionIf(profileId, sessionId, s => {
+  return backend(profileId).removeIf(profileId, sessionId, s => {
     if (!s || s.profileId !== profileId) throw new WorkoutError('Séance introuvable.', 'NOT_FOUND');
     if (isClosed(s) || s.activities.some(a => a.status !== 'pending' || a.sets.some(x => x.done))) {
       throw new WorkoutError('Cette séance contient des résultats : la terminer en partielle.', 'HAS_DATA');
     }
   });
+}
+
+// ---------------------------------------------------------------- profil demo (memoire)
+
+/**
+ * Prepare le scenario demo : programme actif de la semaine, historique de 6 semaines (donnees de
+ * js/demo-fixtures.js) et une seance du jour commencee il y a 25 min (echauffement fait, premiere machine
+ * terminee, deuxieme machine entamee). La seance est creee avec le VRAI moteur (memes fonctions que Pierre/Manon).
+ */
+async function seedDemo(now) {
+  const { buildDemoFixtures } = await import('./demo-fixtures.js');
+  const thisWeek = mondayOf(now);
+  const prevWeek = mondayOf(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7));
+  const fixtures = buildDemoFixtures({ lastWeekStart: prevWeek, closeInterrupted: true });
+  const store = makeDemoStore();
+  const program = clone(fixtures.program);
+  program.weekStart = thisWeek;
+  store.programs.set(thisWeek, program);
+  fixtures.sessions.forEach(s => store.sessions.set(s.id, clone(s)));
+
+  const today = dayIdOf(now);
+  const dayId = WEEKDAYS.indexOf(today) >= 1 && WEEKDAYS.indexOf(today) <= 5 ? today : 'vendredi'; // week-end : vendredi
+  const at = minutes => new Date(now.getTime() + minutes * 60000);
+  const session = await startWorkout(DEMO, { dayId, weekStart: thisWeek, now: at(-25), store });
+  await completeActivity(DEMO, session.id, 'a1', { actual: { durationMinutes: session.activities[0].planned.durationMinutes } }, { store, now: at(-15) });
+  const first = session.activities[1].sets;
+  for (let i = 0; i < first.length; i++) {
+    await logSet(DEMO, session.id, 'a2', first[i].id,
+      { kg: first[i].kg, reps: i === first.length - 1 ? first[i].reps - 1 : first[i].reps }, { store, now: at(-13 + 2 * i) });
+  }
+  const second = session.activities[2].sets[0];
+  await logSet(DEMO, session.id, 'a3', second.id, { kg: second.kg, reps: second.reps }, { store, now: at(-6) });
+  return store;
+}
+
+/**
+ * Remet le profil demo dans son scenario initial (programme actif + seance en cours). `now` : heure de
+ * reference (defaut : maintenant). A appeler pour un bouton « Reinitialiser la demo ». Memoire uniquement.
+ * @returns {Promise<void>}
+ */
+export function resetDemoWorkouts({ now } = {}) {
+  const promise = seedDemo(now instanceof Date ? now : new Date());
+  demoState.promise = promise;
+  promise.catch(() => { if (demoState.promise === promise) demoState.promise = null; });
+  return promise.then(() => undefined);
+}
+
+/**
+ * Programme actif du profil demo (semaine en cours), meme forme que celui d'un vrai profil
+ * { schemaVersion, weekStart, profileId:'demo', days:[{id, name, activities}] }.
+ * @returns {Promise<object>}
+ */
+export async function getDemoProgram() {
+  const store = await demoReady();
+  return clone([...store.programs.values()][0]);
 }
