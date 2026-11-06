@@ -7,11 +7,11 @@ import {
   setWorkoutFeedback, deleteWorkout, getResumableWorkout
 } from './workouts.js';
 import { loadCatalog } from './catalog.js';
+import { ALL_PROFILES as KNOWN } from './profiles.js';
 import { el, btn, clear, add, dialog, confirmDialog, toast, fmtNum, parseNum, formatMinutes, formatDateFr } from './dom.js';
 
 const root = document.documentElement;
 const page = document.querySelector('[data-page="historique"]');
-const KNOWN = ['pierre', 'manon', 'demo'];
 const S = { rows: [], catalog: { byId: new Map() }, mode: 'list', detail: null, month: null, day: null, rev: 0 };
 const STATUS = { completed: 'Complète', partial: 'Partielle', paused: 'En pause', in_progress: 'En cours' };
 const nameOf = a => a.type === 'strength' ? (S.catalog.byId.get(a.machineId)?.name || a.machineId) : a.name || (a.type === 'warmup' ? 'Échauffement' : 'Cardio');

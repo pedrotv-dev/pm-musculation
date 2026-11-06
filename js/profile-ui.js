@@ -10,14 +10,14 @@ import { buildBilan } from './bilan.js';
 import { mondayOf } from './programs.js';
 import { addDays } from './stats.js';
 import { loadCatalog } from './catalog.js';
+import { isRealProfile as real } from './profiles.js';
 import { APP_VERSION } from './version.js';
 import { el, btn, clear, add, dialog, confirmDialog, toast, fmtNum, parseNum, formatDateFr } from './dom.js';
 
 const root = document.documentElement;
 const page = document.querySelector('[data-page="profil"]');
-const PEOPLE = { pierre: { name: 'Pierre', goal: 'prise de muscle, force et endurance' }, manon: { name: 'Manon', goal: 'perte de graisse et renforcement musculaire' }, demo: { name: 'Démo', goal: '' } };
+const PEOPLE = { pierre: { name: 'Pierre', goal: 'prise de muscle, force et endurance' }, manon: { name: 'Manon', goal: 'perte de graisse et renforcement musculaire' }, demo: { name: 'Démo', goal: '' } }; // objectifs en minuscules : utilisés dans le texte du bilan
 const S = { other: null, week: null, bilan: '', notice: '', rev: 0 };
-const real = p => p === 'pierre' || p === 'manon';
 const emitData = profile => document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile } }));
 
 function section(title, intro, ...children) {

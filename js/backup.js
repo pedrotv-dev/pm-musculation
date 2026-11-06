@@ -86,7 +86,7 @@ export function resultsCsv(sessions, names = new Map()) {
  * Partage (feuille de partage mobile : Fichiers, iCloud Drive, Google Drive, e-mail, messagerie…) ou telecharge
  * un ou plusieurs fichiers : [{ filename, text, mime? }]. @returns {Promise<'shared'|'downloaded'|'cancelled'>}
  */
-export async function saveFiles(list) {
+async function saveFiles(list) {
   const files = typeof File === 'function' ? list.map(f => new File([f.text], f.filename, { type: f.mime || 'application/json' })) : [];
   if (files.length && navigator.canShare && navigator.canShare({ files }) && navigator.share) {
     try { await navigator.share({ files, title: list[0].filename }); return 'shared'; }

@@ -15,7 +15,7 @@
  */
 
 export const DEMO_PROFILE_ID = 'demo';
-export const DEFAULT_LAST_WEEK_START = '2026-11-02';
+const DEFAULT_LAST_WEEK_START = '2026-11-02';
 export const DEMO_WEEKS = 6;
 
 // ---------------------------------------------------------------- catalogue (extrait de data/machines.json)

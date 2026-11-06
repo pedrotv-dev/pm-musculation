@@ -45,7 +45,7 @@ test('index.html : manifeste, icône iPhone, enregistrement du service worker, a
   assert.match(html, /<link rel="manifest" href="\.\/manifest\.webmanifest">/);
   assert.match(html, /<link rel="apple-touch-icon" href="\.\/assets\/icons\/apple-touch-icon\.png">/);
   assert.match(html, /apple-mobile-web-app-capable/);
-  assert.match(html, /serviceWorker\.register\('\.\/sw\.js'\)/);
+  assert.match(read('js/app.js'), /serviceWorker\.register\('\.\/sw\.js'\)/);
   for (const m of html.matchAll(/(?:href|src)="([^"]+)"/g)) {
     if (/^(https?:|#|data:)/.test(m[1])) continue;
     assert.ok(!m[1].startsWith('/'), 'chemin absolu : ' + m[1]);
@@ -75,4 +75,22 @@ test('photos des machines : index fidèle, ids du catalogue, fond transparent, l
     assert.ok(buf.includes(Buffer.from('tRNS')) || buf[25] === 6, id + ' sans transparence'); // palette+tRNS ou RGBA
     assert.ok(precache.includes('assets/machines/' + id + '.png'), id + ' non précachée');
   }
+});
+
+test('sécurité : aucun script ni style en ligne, politique CSP stricte, app.js chargé en premier', () => {
+  const html = read('index.html');
+  assert.ok(!/<script(?![^>]*\ssrc=)[^>]*>/.test(html), 'script en ligne');
+  assert.ok(!/<style[\s>]/.test(html), 'bloc <style> en ligne');
+  assert.ok(!/\sstyle="/.test(html), 'attribut style en ligne');
+  assert.ok(!/\son\w+="/.test(html), 'gestionnaire d’événement en ligne');
+  const csp = html.match(/Content-Security-Policy" content="([^"]+)"/)[1];
+  assert.match(csp, /default-src 'self'/);
+  assert.match(csp, /script-src 'self'(;|$)/);
+  assert.match(csp, /style-src 'self'(;|$)/);
+  assert.match(csp, /connect-src 'self'(;|$)/);
+  assert.ok(!/unsafe-inline|unsafe-eval|https?:/.test(csp), 'CSP trop permissive');
+  const scripts = [...html.matchAll(/<script type="module" src="\.\/(js\/[^"]+)"/g)].map(m => m[1]);
+  assert.equal(scripts[0], 'js/app.js');
+  for (const f of scripts) assert.ok(precache.includes(f), f + ' non précaché');
+  for (const m of html.matchAll(/rel="stylesheet" href="\.\/(css\/[^"]+)"/g)) assert.ok(precache.includes(m[1]), m[1] + ' non précaché');
 });

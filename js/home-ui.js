@@ -5,13 +5,12 @@
 import { listWorkouts, getResumableWorkout, getWorkoutSummary, getDemoProgram, dayIdOf } from './workouts.js';
 import { getActiveProgram, mondayOf } from './programs.js';
 import { loadCatalog } from './catalog.js';
+import { ALL_PROFILES as KNOWN, PROFILE_INFO } from './profiles.js';
 import { getBackupStatus, backupAdvice, runBackup } from './backup.js';
 import { el, btn, clear, add, fmtNum, formatMinutes, formatDateFr, localISODate, toast } from './dom.js';
 
 const root = document.documentElement;
 const page = document.querySelector('[data-page="accueil"]');
-const KNOWN = ['pierre', 'manon', 'demo'];
-const NAMES = { pierre: 'Pierre', manon: 'Manon', demo: 'Démo' };
 const DAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 let rev = 0;
 let snoozed = false; // « Plus tard » : le rappel de sauvegarde reste masque jusqu'au prochain lancement
@@ -25,7 +24,7 @@ async function loadProgram(profile) {
 const emit = (type, detail) => document.dispatchEvent(new CustomEvent(type, { detail }));
 const go = p => document.querySelector('.nav-btn[data-go="' + p + '"]')?.click();
 
-export async function renderHome() {
+async function renderHome() {
   const profile = root.dataset.pmProfile;
   const mine = ++rev;
   if (!KNOWN.includes(profile)) return;
@@ -34,7 +33,7 @@ export async function renderHome() {
   ]);
   if (mine !== rev || root.dataset.pmProfile !== profile) return;
   clear(page);
-  add(page, el('div', 'eyebrow', 'Accueil'), add(el('h2', '', 'Bonjour '), el('span', '', NAMES[profile] + ' !')));
+  add(page, el('div', 'eyebrow', 'Accueil'), add(el('h2', '', 'Bonjour '), el('span', '', PROFILE_INFO[profile].name + ' !')));
   if (profile === 'demo') page.append(el('p', 'description', 'Mode démo : tout est fictif et reste en mémoire. Rien n’est enregistré sur tes profils.'));
 
   if (resumable) {

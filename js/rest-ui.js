@@ -7,6 +7,8 @@ import {
   resumeRest, stopRest, acknowledgeRest, onActivityChange, getRestState,
   peekRestState, consumeRestAlert
 } from './rest-timer.js';
+import { el, btn } from './dom.js';
+import { isKnownProfile } from './profiles.js';
 
 const dom = document.createElement('aside');
 dom.id = 'pm-rest-ui';
@@ -17,17 +19,7 @@ document.body.append(dom);
 
 const state = { profile: null, sessionId: null, activityKey: null, open: false,
   manualContext: null, view: null, pending: false, generation: 0, lastAlert: null };
-const el = (tag, cls = '', text = '') => {
-  const n = document.createElement(tag);
-  if (cls) n.className = cls;
-  if (text) n.textContent = text;
-  return n;
-};
-const button = (label, cls) => {
-  const n = el('button', cls, label);
-  n.type = 'button';
-  return n;
-};
+const button = (label, cls) => btn(label, cls);
 const top = el('div', 'pm-rest-top');
 const titleWrap = el('div', 'pm-rest-title');
 const title = el('strong', '', 'Récupération');
@@ -76,7 +68,7 @@ function tell(message) {
 }
 function modeState() {
   if (!state.open) return false;
-  if (['pierre', 'manon', 'demo'].indexOf(state.profile) === -1) return false;
+  if (!isKnownProfile(state.profile)) return false;
   if (!state.sessionId || document.getElementById('pm-workout-screen')?.hidden !== false) return false;
   return true;
 }

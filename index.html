@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#10141d">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="PM Musculation — entraînements de Pierre et Manon.">
+  <!-- Aucun script ni style en ligne : tout vient de fichiers locaux (hors ligne, sécurité). -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="192x192" href="./assets/icons/icon-192.png">
@@ -11,88 +15,16 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="PM Muscu">
-  <meta name="color-scheme" content="dark">
-  <meta name="description" content="PM Musculation — entraînements de Pierre et Manon.">
   <title>PM Musculation</title>
+  <link rel="stylesheet" href="./css/base.css">
   <link rel="stylesheet" href="./css/programs.css">
-  <link rel="stylesheet" href="./css/demo.css">
   <link rel="stylesheet" href="./css/app.css">
   <link rel="stylesheet" href="./css/workout.css">
   <link rel="stylesheet" href="./css/rest.css">
-
-  <!-- Socle autonome de la V2 : seuls le choix du profil et la navigation sont actifs.
-       Les styles et le code applicatif seront progressivement séparés dans css/ et js/.
-       Aucune performance sportive n'est enregistrée par ce fichier. -->
-  <style>
-    :root {
-      color-scheme: dark;
-      --bg: #10141d;
-      --surface: #1a2130;
-      --surface-raised: #202a3a;
-      --stroke: #303c50;
-      --text: #f1f5fb;
-      --muted: #9daac0;
-      --accent: #48a1ff;
-      --accent-rgb: 72, 161, 255;
-      --radius: 20px;
-    }
-    * { box-sizing: border-box; }
-    html { background: var(--bg); }
-    body { margin: 0; font: 16px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--text); background: var(--bg); }
-    button { font: inherit; cursor: pointer; }
-    button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-    [hidden] { display: none !important; }
-    .app { max-width: 680px; min-height: 100dvh; margin: 0 auto; padding: max(20px, env(safe-area-inset-top)) 18px calc(104px + env(safe-area-inset-bottom)); }
-    .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 28px; }
-    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
-    .brand-logo { width: 47px; height: 47px; display: grid; place-items: center; border-radius: 15px; background: linear-gradient(135deg, #23466f, #245e7a 55%, #7c4e7b); color: #fff; font-weight: 900; letter-spacing: -.07em; font-size: 20px; flex: none; }
-    .brand-name { margin: 0; font-size: 18px; font-weight: 850; letter-spacing: -.03em; }
-    .brand-sub { display: block; font-size: 12px; color: var(--muted); }
-    .profile-switch { border: 1px solid var(--stroke); color: var(--text); border-radius: 12px; padding: 10px 12px; background: var(--surface); font-weight: 700; white-space: nowrap; }
-    .eyebrow { text-transform: uppercase; letter-spacing: .13em; color: var(--accent); font-size: 11px; font-weight: 850; }
-    h2 { font-size: clamp(25px, 5vw, 32px); letter-spacing: -.04em; line-height: 1.12; margin: 9px 0 9px; }
-    h3 { font-size: 18px; letter-spacing: -.025em; margin: 0 0 8px; }
-    p { margin: 0; }
-    .description { color: var(--muted); font-size: 14px; margin-bottom: 22px; }
-    .panel { background: var(--surface); border: 1px solid var(--stroke); border-radius: var(--radius); padding: 20px; margin-bottom: 14px; }
-    .panel.soft { background: linear-gradient(150deg, rgba(var(--accent-rgb), .16), rgba(var(--accent-rgb), .035) 70%), var(--surface); border-color: rgba(var(--accent-rgb), .30); }
-    .panel h3 + p { color: var(--muted); font-size: 14px; }
-    .row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
-    .tag { display: inline-block; border-radius: 99px; background: rgba(var(--accent-rgb), .15); color: var(--accent); font-size: 12px; font-weight: 750; padding: 5px 10px; }
-    .primary { display: inline-flex; justify-content: center; align-items: center; width: 100%; min-height: 50px; margin-top: 18px; border: 0; border-radius: 13px; background: var(--accent); color: #081322; font-weight: 850; }
-    .secondary { display: inline-flex; justify-content: center; align-items: center; min-height: 48px; padding: 0 16px; border-radius: 13px; background: var(--surface-raised); color: var(--text); border: 1px solid var(--stroke); font-weight: 700; }
-    .small-muted { font-size: 13px; color: var(--muted); }
-    .choice-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 24px; }
-    .choice { border: 1px solid var(--stroke); border-radius: 22px; min-height: 185px; background: var(--surface); color: var(--text); padding: 23px 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 12px; transition: transform .15s, border-color .15s; }
-    .choice:active { transform: scale(.985); }
-    .choice .initial { width: 70px; height: 70px; display: grid; place-items: center; border-radius: 22px; font-size: 28px; font-weight: 900; }
-    .choice.pierre .initial { background: #173d67; color: #7fc0ff; }
-    .choice.manon .initial { background: #432565; color: #dbb6ff; }
-    .choice.pierre { border-color: #31547c; }
-    .choice.manon { border-color: #68418b; }
-    .choice strong { font-size: 18px; }
-    .choice span:last-child { color: var(--muted); font-size: 12px; }
-    .list { padding: 0; margin: 12px 0 0; list-style: none; }
-    .list li { border-top: 1px solid var(--stroke); padding: 13px 0; font-size: 14px; display: flex; justify-content: space-between; gap: 12px; }
-    .list li span:last-child { color: var(--muted); }
-    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 5; background: rgba(18, 24, 34, .97); border-top: 1px solid var(--stroke); padding: 8px max(10px, env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-right)); }
-    .bottom-nav-inner { max-width: 680px; margin: auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
-    .nav-btn { border: 0; background: transparent; color: var(--muted); display: flex; align-items: center; flex-direction: column; gap: 4px; padding: 6px 0; min-height: 54px; font-size: 10px; font-weight: 700; }
-    .nav-btn svg { width: 22px; height: 22px; stroke-width: 1.9; }
-    .nav-btn.active { color: var(--accent); }
-    .nav-btn.active svg { stroke-width: 2.4; }
-    .empty { text-align: center; padding: 26px 12px; }
-    .empty-icon { width: 58px; height: 58px; border-radius: 18px; display: grid; place-items: center; margin: 0 auto 16px; background: var(--surface-raised); font-size: 27px; }
-    .empty h3 { margin-bottom: 6px; }
-    .empty p { font-size: 14px; color: var(--muted); max-width: 340px; margin: auto; }
-    .footnote { text-align: center; font-size: 12px; color: var(--muted); margin-top: 24px; }
-    @media (min-width: 520px) { .app { padding-left: 26px; padding-right: 26px; } }
-    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-  </style>
 </head>
 <body>
   <!-- Icônes SVG locales : aucun téléchargement de bibliothèque externe. -->
-  <svg aria-hidden="true" width="0" height="0" style="position:absolute;overflow:hidden">
+  <svg aria-hidden="true" class="pm-sprite">
     <symbol id="ico-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="ico-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor"/><path d="M7 3v4m10-4v4M3 10h18" fill="none" stroke="currentColor" stroke-linecap="round"/></symbol>
     <symbol id="ico-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8m0-5v5h5m4-1v5l3 2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
@@ -122,54 +54,13 @@
         <p class="footnote">Aucun compte à créer. La démo ne modifie pas vos historiques.</p>
       </section>
 
+      <!-- Les cinq pages sont remplies par js/home-ui.js, program-ui.js, history-ui.js, progress-ui.js et profile-ui.js -->
       <div id="app-pages" hidden>
-        <section class="page" data-page="accueil" aria-labelledby="welcome-title">
-          <div class="eyebrow">Tableau de bord</div>
-          <h2 id="welcome-title">Bonjour <span id="profile-greeting">!</span></h2>
-          <p class="description">Ton espace personnel PM Musculation.</p>
-          <article class="panel soft">
-            <div class="row"><span class="tag">Programme</span><span class="small-muted">V2 — initialisation</span></div>
-            <h3 style="margin-top:16px">Prêt pour la première semaine ?</h3>
-            <p>Aucun programme sportif n'est encore chargé sur cet appareil.</p>
-            <button type="button" class="primary" data-go="programme">Voir mon programme</button>
-          </article>
-          <article class="panel">
-            <h3>Prochaines fonctions</h3>
-            <p>Échauffement, machines avec photos, suivi des séries, cardio et bilan hebdomadaire seront ajoutés au moteur de séances.</p>
-          </article>
-        </section>
-
-        <section class="page" data-page="programme" aria-labelledby="programme-title" hidden>
-          <div class="eyebrow">Entraînement</div>
-          <h2 id="programme-title">Programme</h2>
-          <p class="description">Tes cinq séances hebdomadaires apparaîtront ici après importation du JSON.</p>
-          <article class="panel empty"><div class="empty-icon" aria-hidden="true">▦</div><h3>Aucun programme importé</h3><p>L'importation par fichier ou copier-coller sera activée avec le module Programmes.</p></article>
-        </section>
-
-        <section class="page" data-page="historique" aria-labelledby="historique-title" hidden>
-          <div class="eyebrow">Mes séances</div>
-          <h2 id="historique-title">Historique</h2>
-          <p class="description">Retrouve tes séances enregistrées et leurs résultats.</p>
-          <article class="panel empty"><div class="empty-icon" aria-hidden="true">◷</div><h3>Aucune séance enregistrée</h3><p>Ton historique commencera avec ta première vraie séance. Les essais de démonstration n'y apparaîtront pas.</p></article>
-        </section>
-
-        <section class="page" data-page="progres" aria-labelledby="progres-title" hidden>
-          <div class="eyebrow">Mes performances</div>
-          <h2 id="progres-title">Progrès</h2>
-          <p class="description">Tes records et graphiques seront basés sur les résultats réellement enregistrés.</p>
-          <article class="panel empty"><div class="empty-icon" aria-hidden="true">↗</div><h3>Premiers résultats à venir</h3><p>Les statistiques apparaîtront lorsque des séances auront été enregistrées.</p></article>
-        </section>
-
-        <section class="page" data-page="profil" aria-labelledby="profil-title" hidden>
-          <div class="eyebrow">Mon espace</div>
-          <h2 id="profil-title">Profil</h2>
-          <article class="panel">
-            <h3 id="profile-name">Profil</h3>
-            <ul class="list"><li><span>Objectif</span><span id="profile-goal">—</span></li><li><span>Thème</span><span id="profile-theme">—</span></li><li><span>Version</span><span>V2 · Socle initial</span></li></ul>
-          </article>
-          <button type="button" class="secondary" id="profile-change-bottom">Changer de profil</button>
-          <p class="small-muted" style="margin-top:15px">Les paramètres, sauvegardes et importations seront intégrés dans les prochains modules.</p>
-        </section>
+        <section class="page" data-page="accueil" aria-label="Accueil"></section>
+        <section class="page" data-page="programme" aria-label="Programme" hidden></section>
+        <section class="page" data-page="historique" aria-label="Historique" hidden></section>
+        <section class="page" data-page="progres" aria-label="Progrès" hidden></section>
+        <section class="page" data-page="profil" aria-label="Profil" hidden></section>
       </div>
     </main>
   </div>
@@ -184,82 +75,8 @@
     </div>
   </nav>
 
-  <script>
-    // Bootstrap temporaire : uniquement profil et navigation.
-    // Le moteur sportif, IndexedDB, les JSON et la PWA seront des modules séparés.
-    (() => {
-      'use strict';
-      const KEY = 'pm-musculation:profile:v2';
-      const profiles = {
-        pierre: { name: 'Pierre', goal: 'Prise de muscle', theme: 'Bleu', accent: '#48a1ff', rgb: '72, 161, 255' },
-        manon: { name: 'Manon', goal: 'Renforcement', theme: 'Violet', accent: '#bd8aff', rgb: '189, 138, 255' },
-        demo: { name: 'Démo', goal: 'Explorer sans enregistrer', theme: 'Violet démo', accent: '#c2a1ef', rgb: '194, 161, 239' }
-      };
-      const $ = (selector) => document.querySelector(selector);
-      const pages = [...document.querySelectorAll('[data-page]')];
-      const navButtons = [...document.querySelectorAll('.nav-btn')];
-      let currentProfile = null;
-
-      function navigate(page) {
-        if (!currentProfile || !pages.some(section => section.dataset.page === page)) return;
-        pages.forEach(section => { section.hidden = section.dataset.page !== page; });
-        navButtons.forEach(button => {
-          const active = button.dataset.go === page;
-          button.classList.toggle('active', active);
-          if (active) button.setAttribute('aria-current', 'page');
-          else button.removeAttribute('aria-current');
-        });
-        window.scrollTo(0, 0);
-      }
-
-      function chooseProfile(profile, persist = true) {
-        if (!profiles[profile]) return;
-        currentProfile = profile;
-        document.documentElement.dataset.pmProfile = profile;
-        const data = profiles[profile];
-        document.documentElement.style.setProperty('--accent', data.accent);
-        document.documentElement.style.setProperty('--accent-rgb', data.rgb);
-        const setText = (selector, value) => { const n = $(selector); if (n) n.textContent = value; };
-        setText('#profile-greeting', data.name);
-        setText('#profile-name', data.name);
-        setText('#profile-goal', data.goal);
-        setText('#profile-theme', data.theme);
-        $('#screen-select').hidden = true;
-        $('#app-pages').hidden = false;
-        $('#bottom-nav').hidden = false;
-        $('#switch-profile').hidden = false;
-        if (persist) {
-          try { localStorage.setItem(KEY, profile); }
-          catch (error) { console.warn('Impossible de mémoriser le profil sur cet appareil.', error); }
-        }
-        navigate('accueil');
-        document.dispatchEvent(new CustomEvent('pm:profile-changed', { detail: { profile } }));
-      }
-
-      function changeProfile() {
-        currentProfile = null;
-        delete document.documentElement.dataset.pmProfile;
-        document.dispatchEvent(new CustomEvent('pm:profile-changed', { detail: { profile: null } }));
-        $('#app-pages').hidden = true;
-        $('#bottom-nav').hidden = true;
-        $('#switch-profile').hidden = true;
-        $('#screen-select').hidden = false;
-        try { localStorage.removeItem(KEY); }
-        catch (error) { console.warn('Impossible de modifier le profil mémorisé.', error); }
-        window.scrollTo(0, 0);
-      }
-
-      document.querySelectorAll('[data-select-profile]').forEach(button => button.addEventListener('click', () => chooseProfile(button.dataset.selectProfile)));
-      document.querySelectorAll('[data-go]').forEach(button => button.addEventListener('click', () => navigate(button.dataset.go)));
-      $('#switch-profile').addEventListener('click', changeProfile);
-      $('#profile-change-bottom')?.addEventListener('click', changeProfile);
-
-      let saved = null;
-      try { saved = localStorage.getItem(KEY); }
-      catch (error) { console.warn('Stockage de profil indisponible.', error); }
-      if (saved && profiles[saved]) chooseProfile(saved, false);
-    })();
-  </script>
+  <!-- app.js doit rester le premier module : il fixe le profil actif avant les autres. -->
+  <script type="module" src="./js/app.js"></script>
   <script type="module" src="./js/program-ui.js"></script>
   <script type="module" src="./js/home-ui.js"></script>
   <script type="module" src="./js/workout-ui.js"></script>
@@ -267,22 +84,5 @@
   <script type="module" src="./js/progress-ui.js"></script>
   <script type="module" src="./js/profile-ui.js"></script>
   <script type="module" src="./js/rest-ui.js"></script>
-  <script>
-    // Hors ligne : service worker (GitHub Pages, chemins relatifs). Ne touche jamais aux donnees IndexedDB.
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').then(reg => {
-          reg.addEventListener('updatefound', () => {
-            const worker = reg.installing;
-            if (worker) worker.addEventListener('statechange', () => {
-              if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-                document.dispatchEvent(new CustomEvent('pm:update-ready'));
-              }
-            });
-          });
-        }).catch(error => console.warn('Mode hors ligne indisponible :', error));
-      });
-    }
-  </script>
 </body>
 </html>

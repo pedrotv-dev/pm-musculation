@@ -26,7 +26,7 @@
 
 import { saveProgram, getProgram, listPrograms } from '../storage.js';
 
-export const PROGRAM_SCHEMA_VERSION = 1;
+const PROGRAM_SCHEMA_VERSION = 1;
 
 const PROFILES = ['pierre', 'manon'];
 const ACTIVITY_TYPES = ['warmup', 'strength', 'cardio'];

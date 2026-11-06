@@ -21,8 +21,8 @@
 import { saveSetting, getSetting } from '../storage.js';
 
 export const REST_MODES = Object.freeze(['auto', 'manual', 'off']);
-export const REST_CONFIG_KEY = 'restTimer.config';
-export const REST_STATE_KEY = 'restTimer.state';
+const REST_CONFIG_KEY = 'restTimer.config';
+const REST_STATE_KEY = 'restTimer.state';
 
 const DEMO = 'demo';
 const PROFILES = ['pierre', 'manon'];

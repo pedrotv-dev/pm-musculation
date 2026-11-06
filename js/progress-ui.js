@@ -6,11 +6,11 @@ import { totals, perWeek, machineList, machineHistory, personalRecords, cardioSu
 import { listBodyWeights, addBodyWeight, removeBodyWeight } from './weights.js';
 import { barChart, lineChart } from './charts.js';
 import { loadCatalog } from './catalog.js';
+import { ALL_PROFILES as KNOWN } from './profiles.js';
 import { el, btn, clear, add, fmtNum, parseNum, formatMinutes, formatDateFr, localISODate, toast, confirmDialog } from './dom.js';
 
 const root = document.documentElement;
 const page = document.querySelector('[data-page="progres"]');
-const KNOWN = ['pierre', 'manon', 'demo'];
 const S = { machine: null, rev: 0 };
 const shortDate = iso => iso.slice(8, 10) + '/' + iso.slice(5, 7);
 
