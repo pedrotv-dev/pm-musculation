@@ -28,7 +28,7 @@ main.append(panel);
 
 const KNOWN = ['pierre', 'manon', 'demo'];
 const S = { profile: null, session: null, selected: null, view: 'activity', rev: 0, queue: Promise.resolve(),
-  catalog: { byId: new Map(), strength: [], images: new Set() }, history: [], flushers: new Set(), clock: null, undo: null, busy: false };
+  catalog: { byId: new Map(), strength: [], list: [], images: new Set() }, history: [], flushers: new Set(), clock: null, undo: null, busy: false };
 const valid = (profile, rev) => S.profile === profile && root.dataset.pmProfile === profile && S.rev === rev;
 const act = (session, key) => session.activities.find(a => a.key === key);
 const nameOf = a => a.type === 'strength' ? (S.catalog.byId.get(a.machineId)?.name || a.machineId)
@@ -261,7 +261,8 @@ function neighbour(session, key, step) {
 function renderMachine(a) {
   const card = el('article', 'pm-workout-card');
   const head = el('div', 'pm-machine-head');
-  if (a.type === 'strength') head.append(machineImage(a.machineId, nameOf(a), S.catalog.images));
+  const imageId = a.type === 'strength' ? a.machineId : (S.catalog.list || []).find(m => m.kind === 'cardio' && m.name === a.name)?.id;
+  if (imageId) head.append(machineImage(imageId, nameOf(a), S.catalog.images));
   const titles = el('div', 'pm-machine-titles');
   const chip = a.status === 'done' ? 'Terminée' : a.status === 'skipped' ? 'Passée' : a.postponed ? 'Reportée' : 'À faire';
   add(titles, el('span', 'pm-chip pm-chip-' + (a.status === 'pending' && a.postponed ? 'postponed' : a.status), chip),
