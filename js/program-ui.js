@@ -307,70 +307,148 @@ function drawPreview(preview) {
 }
 async function updateReplacements() {
   if (!state.source && !paste.value.trim()) return;
-  state.replacements = replacementValues();
-  // Repart du JSON source original pour eviter les remplacements en chaine.
-  const prepared = await prepareProgramImport(state.profile, sourceForImport(), {
-    knownMachineIds: state.known,
-    machineReplacements: state.replacements
-  });
-  state.preview = prepared;
-  save.disabled = !!prepared.unknownMachines.length;
-  drawPreview(prepared);
-  // Les listes originales de machines inconnues restent presentes jusqu'a ce que chacune ait une cible.
-  if (prepared.unknownMachines.length) notify('Remplace toutes les machines inconnues avant de poursuivre.', 'info');
-  else notify('Programme vérifié. Tu peux maintenant l’importer.', 'success');
+  const profile = state.profile;
+  const generation = state.profileVersion;
+  const request = ++state.previewVersion;
+  const source = sourceForImport();
+  const replacements = replacementValues();
+  state.replacements = replacements;
+  const valid = () => sameProfile(profile, generation) && request === state.previewVersion;
+  try {
+    // Repart du fichier initial pour eviter les remplacements en chaine.
+    const prepared = await prepareProgramImport(profile, source, {
+      knownMachineIds: state.known, machineReplacements: replacements
+    });
+    if (!valid()) return;
+    state.preview = prepared;
+    save.disabled = !!prepared.unknownMachines.length;
+    drawPreview(prepared);
+    if (prepared.unknownMachines.length) notify('Remplace toutes les machines inconnues avant de poursuivre.', 'info');
+    else notify('Programme vérifié. Tu peux maintenant l’importer.', 'success');
+  } catch (error) {
+    if (valid()) showError(error);
+  }
 }
 async function previewImport() {
   if (!state.catalogueReady) { notify('Catalogue indisponible : importation désactivée.', 'error'); return; }
   if (!sourceForImport()) { notify('Choisis un fichier JSON ou colle ton programme.', 'error'); return; }
   if (state.busy) return;
+  const profile = state.profile;
+  const generation = state.profileVersion;
+  const request = ++state.importVersion;
+  const previewVersion = state.previewVersion;
+  const source = sourceForImport();
+  const valid = () => sameProfile(profile, generation) &&
+    request === state.importVersion && previewVersion === state.previewVersion;
   state.busy = true; verify.disabled = true; save.disabled = true;
   try {
-    const pre = await prepareProgramImport(state.profile, sourceForImport(), { knownMachineIds: state.known });
-    state.preview = pre;
+    const prepared = await prepareProgramImport(profile, source, { knownMachineIds: state.known });
+    if (!valid()) return;
+    state.preview = prepared;
     state.replacements = {};
-    drawReplacements(pre);
-    drawPreview(pre);
-    if (pre.unknownMachines.length) notify('Machines inconnues : choisis leur remplacement dans le catalogue.', 'info');
-    else { save.disabled = false; notify('Programme vérifié : tu peux l’importer.', 'success', pre.warnings); }
-  } catch (e) { resetPreview(); showError(e); }
-  finally { state.busy = false; verify.disabled = false; }
+    drawReplacements(prepared);
+    drawPreview(prepared);
+    if (prepared.unknownMachines.length) notify('Machines inconnues : choisis leur remplacement dans le catalogue.', 'info');
+    else { save.disabled = false; notify('Programme vérifié : tu peux l’importer.', 'success', prepared.warnings); }
+  } catch (error) {
+    if (valid()) { resetPreview(); showError(error); }
+  } finally {
+    if (sameProfile(profile, generation) && request === state.importVersion) {
+      state.busy = false;
+      verify.disabled = false;
+    }
+  }
 }
 async function saveImport() {
   if (!state.preview || !state.catalogueReady || state.busy) return;
+  const profile = state.profile;
+  const generation = state.profileVersion;
+  const request = ++state.importVersion;
+  const source = sourceForImport();
+  const replacements = { ...state.replacements };
+  const valid = () => sameProfile(profile, generation) && request === state.importVersion;
   state.busy = true; save.disabled = true;
+  fileInput.disabled = true; paste.disabled = true;
   try {
-    const prepared = await importProgram(state.profile, sourceForImport(), {
-      knownMachineIds: state.known, machineReplacements: state.replacements
+    // L'ecriture reste ciblee sur le profil capture; aucun retour obsolet ne touche l'ecran.
+    const prepared = await importProgram(profile, source, {
+      knownMachineIds: state.known, machineReplacements: replacements
     });
+    if (!valid()) return;
     state.selectedWeek = prepared.weekStart; state.selectedDay = null;
-    await drawWeekOptions(); await displayProgram();
+    const loaded = await drawWeekOptions();
+    if (!valid() || !loaded) return;
+    await displayProgram();
+    if (!valid()) return;
     importCard.open = false;
     state.preview = null; state.replacements = {};
     previewView.hidden = true; replacementsView.hidden = true;
-    notify('Programme de ' + state.profile + ' enregistré pour la semaine du ' + prepared.weekStart + '.', 'success');
-  } catch (e) { showError(e); }
-  finally { state.busy = false; }
+    notify('Programme de ' + profile + ' enregistré pour la semaine du ' + prepared.weekStart + '.', 'success');
+  } catch (error) {
+    if (valid()) showError(error);
+  } finally {
+    if (valid()) {
+      state.busy = false;
+      fileInput.disabled = false; paste.disabled = false;
+    }
+  }
 }
 async function setProfile(profileId) {
-  if (!profileId || !['pierre','manon','demo'].includes(profileId)) return;
-  state.profile = profileId; state.selectedWeek = null; state.selectedDay = null;
-  state.source = null; paste.value = ''; fileInput.value = ''; fileName.textContent = 'Aucun fichier sélectionné';
+  const recognized = ['pierre', 'manon', 'demo'].includes(profileId);
+  // Invalide tous les chargements precedents, y compris quand on revient au selecteur.
+  ++state.profileVersion;
+  ++state.weekLoadVersion;
+  ++state.displayVersion;
+  ++state.importVersion;
+  state.profile = recognized ? profileId : null;
+  state.selectedWeek = null; state.selectedDay = null; state.lastMonday = null;
+  state.busy = false; verify.disabled = false;
+  fileInput.disabled = false; paste.disabled = false;
+  state.source = null; paste.value = ''; fileInput.value = '';
+  fileName.textContent = 'Aucun fichier sélectionné';
   resetPreview();
-  if (profileId === 'demo') {
-    importCard.hidden = true;
-    const tag = node('div', 'pm-info', 'Mode démonstration · données fictives · aucune sauvegarde dans l’historique.');
-    historyView.replaceChildren(tag);
-    add(historyView, node('div', '', ''));
-  } else importCard.hidden = false;
-  await drawWeekOptions();
+  wipe(select); select.disabled = true;
+  wipe(historyView); importCard.hidden = true;
+
+  if (!recognized) return;
+  importCard.hidden = profileId === 'demo';
+  const generation = state.profileVersion;
+  const loaded = await drawWeekOptions();
+  if (!loaded || !sameProfile(profileId, generation)) return;
   await displayProgram();
 }
 async function init() {
   try { await catalogue(); }
-  catch (e) { console.error(e); notify('Catalogue Basic-Fit indisponible : les imports sont désactivés.', 'error'); }
+  catch (error) { console.error(error); notify('Catalogue Basic-Fit indisponible : les imports sont désactivés.', 'error'); }
   const active = currentProfile();
-  if (active) await setProfile(active);
+  // Un changement de profil a pu arriver pendant le chargement du catalogue.
+  if (active && !state.profile) await setProfile(active);
 }
-document.addEventListener('pm:profile-changed', event => setProfile(event.detail.profile).catch(showError));
+
+async function refreshOnForeground() {
+  const profile = state.profile;
+  const generation = state.profileVersion;
+  if (!['pierre', 'manon'].includes(profile)) return;
+  const todayMonday = mondayOf();
+  if (state.lastMonday !== todayMonday) {
+    state.selectedWeek = null; // re-selection automatique du programme de la nouvelle semaine
+    state.selectedDay = null;
+  }
+  const loaded = await drawWeekOptions();
+  if (loaded && sameProfile(profile, generation)) await displayProgram();
+}
+
+function handleProfileError(error, profile, generation) {
+  if (sameProfile(profile, generation)) showError(error);
+}
+
+document.addEventListener('pm:profile-changed', event => {
+  const profile = event.detail.profile;
+  const started = state.profileVersion + 1;
+  setProfile(profile).catch(error => handleProfileError(error, profile, started));
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') refreshOnForeground().catch(showError);
+});
+window.addEventListener('focus', () => refreshOnForeground().catch(showError));
 init().catch(showError);
