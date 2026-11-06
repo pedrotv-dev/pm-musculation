@@ -5,6 +5,7 @@
 import { listWorkouts, getResumableWorkout, getWorkoutSummary, getDemoProgram, dayIdOf } from './workouts.js';
 import { getActiveProgram, mondayOf } from './programs.js';
 import { loadCatalog } from './catalog.js';
+import { getBackupStatus, backupAdvice, runBackup } from './backup.js';
 import { el, btn, clear, add, fmtNum, formatMinutes, formatDateFr, localISODate, toast } from './dom.js';
 
 const root = document.documentElement;
@@ -13,6 +14,8 @@ const KNOWN = ['pierre', 'manon', 'demo'];
 const NAMES = { pierre: 'Pierre', manon: 'Manon', demo: 'Démo' };
 const DAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 let rev = 0;
+let snoozed = false; // « Plus tard » : le rappel de sauvegarde reste masque jusqu'au prochain lancement
+let persistAsked = false;
 
 async function loadProgram(profile) {
   if (profile === 'demo') return getDemoProgram().catch(() => null);
@@ -70,6 +73,28 @@ export async function renderHome() {
       card.append(btn('Choisir une autre journée', 'pm-secondary', () => go('programme')));
     }
     page.append(card);
+  }
+
+  // rappel de sauvegarde (vrais profils seulement)
+  if (profile !== 'demo' && !snoozed) {
+    const closedCount = sessions.filter(s => s.status === 'completed' || s.status === 'partial').length;
+    const advice = backupAdvice(await getBackupStatus(profile), closedCount);
+    if (mine !== rev) return;
+    if (advice.due) {
+      const card = el('article', 'panel pm-home-card');
+      const why = advice.never ? 'Tu n’as encore jamais sauvegardé tes données.' : advice.newSessions + ' nouvelle(s) séance(s) depuis ta dernière sauvegarde (il y a ' + advice.daysSince + ' jour(s)).';
+      add(card, el('h3', '', 'Pense à sauvegarder'), el('p', 'pm-muted', why + ' Elles ne sont que sur ce téléphone : une sauvegarde les protège en cas de perte ou de changement d’appareil.'));
+      const status = el('p', 'pm-muted');
+      card.append(btn('Sauvegarder maintenant', 'pm-validate', async () => {
+        try { const r = await runBackup(profile); if (r.how !== 'cancelled') { toast('Sauvegarde faite ✓'); refresh(); } }
+        catch (e) { status.textContent = 'Sauvegarde impossible : ' + (e.message || e); }
+      }), btn('Plus tard', 'pm-link', () => { snoozed = true; card.remove(); }), status);
+      page.append(card);
+    }
+  }
+  if (profile !== 'demo' && !persistAsked) { // demande (silencieuse) de stockage protege contre l'effacement automatique
+    persistAsked = true;
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (_) { /* indisponible */ }
   }
 
   // quelques chiffres utiles

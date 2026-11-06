@@ -12,7 +12,7 @@ const errors = watch(page);
 page.setDefaultTimeout(10000);
 const text = sel => page.locator(sel).innerText();
 const screen = '#pm-workout-screen';
-const openProfile = async p => { await p.click('.nav-btn[data-go="profil"]'); await p.waitForSelector('[data-page="profil"] button:has-text("Télécharger ma sauvegarde")'); await p.waitForTimeout(400); };
+const openProfile = async p => { await p.click('.nav-btn[data-go="profil"]'); await p.waitForSelector('[data-page="profil"] button:has-text("Sauvegarder maintenant")'); await p.waitForTimeout(400); };
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-e2e-'));
 
 async function importProgram(p) {
@@ -47,6 +47,16 @@ await step('réparation : une base vide préexistante est complétée sans erreu
   await importProgram(page);
 });
 await step('une séance enregistrée (partielle)', async () => { await shortSession(page); });
+await step('rappel de sauvegarde sur l’accueil, puis sauvegarde en un geste', async () => {
+  await page.click('.nav-btn[data-go="accueil"]');
+  await page.waitForSelector('.pm-home-card:has-text("Pense à sauvegarder")');
+  assert.match(await text('[data-page="accueil"]'), /jamais sauvegardé/);
+  const [download] = await Promise.all([page.waitForEvent('download'), page.click('.pm-home-card button:has-text("Sauvegarder maintenant")')]);
+  assert.match(download.suggestedFilename(), /^pm-musculation-pierre-.*\.json$/);
+  await page.waitForFunction(() => !/Pense à sauvegarder/.test(document.querySelector('[data-page="accueil"]').innerText));
+  await openProfile(page);
+  assert.match(await text('[data-page="profil"]'), /Dernière sauvegarde : .*1 séance\(s\) à ce moment-là/);
+});
 await step('progrès : les statistiques évoluent', async () => {
   await page.click('.nav-btn[data-go="progres"]');
   await page.waitForFunction(() => /Chest Press/.test(document.querySelector('[data-page="progres"]').innerText));
@@ -54,7 +64,7 @@ await step('progrès : les statistiques évoluent', async () => {
 });
 await step('télécharger la sauvegarde du profil', async () => {
   await page.click('.nav-btn[data-go="profil"]');
-  const [download] = await Promise.all([page.waitForEvent('download'), page.click('button:has-text("Télécharger ma sauvegarde")')]);
+  const [download] = await Promise.all([page.waitForEvent('download'), page.click('[data-page="profil"] button:has-text("Sauvegarder maintenant")')]);
   const file = path.join(tmp, download.suggestedFilename());
   await download.saveAs(file);
   const backup = JSON.parse(fs.readFileSync(file, 'utf8'));
