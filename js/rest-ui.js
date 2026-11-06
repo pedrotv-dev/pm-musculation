@@ -34,7 +34,14 @@ const title = el('strong', '', 'Récupération');
 const info = el('small', '', 'Chronomètre prêt');
 titleWrap.append(title, info);
 const time = el('strong', 'pm-rest-time', '00:00');
-top.append(titleWrap, time);
+const collapse = button('▾', 'pm-rest-collapse');
+collapse.setAttribute('aria-label', 'Réduire le chronomètre');
+collapse.addEventListener('click', () => {
+  dom.dataset.collapsed = String(dom.dataset.collapsed !== 'true');
+  collapse.textContent = dom.dataset.collapsed === 'true' ? '▴' : '▾';
+  collapse.setAttribute('aria-label', dom.dataset.collapsed === 'true' ? 'Agrandir le chronomètre' : 'Réduire le chronomètre');
+});
+top.append(titleWrap, time, collapse);
 const track = el('div', 'pm-rest-track');
 const fill = el('div', 'pm-rest-fill');
 track.append(fill);
@@ -46,7 +53,8 @@ const toggle = button('Pause', 'pm-rest-primary');
 const stop = button('Arrêter', 'pm-rest-danger');
 const start = button('Lancer le repos', 'pm-rest-primary');
 const dismiss = button('Fermer', 'pm-rest-btn');
-actions.append(minus, plus, toggle, stop, start, dismiss);
+const skip = button('Ignorer', 'pm-rest-btn');
+actions.append(minus, plus, toggle, stop, start, skip, dismiss);
 
 const settings = el('div', 'pm-rest-settings');
 const settingsLabel = el('label', '', 'Mode de repos');
@@ -68,7 +76,7 @@ function tell(message) {
 }
 function modeState() {
   if (!state.open) return false;
-  if (state.profile !== 'pierre' && state.profile !== 'manon') return false;
+  if (['pierre', 'manon', 'demo'].indexOf(state.profile) === -1) return false;
   if (!state.sessionId || document.getElementById('pm-workout-screen')?.hidden !== false) return false;
   return true;
 }
@@ -103,6 +111,7 @@ function render(view = state.view) {
   toggle.textContent = fb.canPause ? 'Pause' : 'Reprendre';
   stop.hidden = !fb.canStop;
   dismiss.hidden = !fb.canDismiss;
+  skip.hidden = !fb.canStop; // « Ignorer » : arrete le repos et passe a la suite
   start.hidden = !isManual;
   mode.value = v.mode || 'auto';
 }
@@ -134,6 +143,7 @@ plus.addEventListener('click', () => act(p => adjustRest(p, (state.view?.floatin
 toggle.addEventListener('click', () => act(p => state.view?.status === 'paused' ? resumeRest(p) : pauseRest(p)));
 stop.addEventListener('click', () => act(p => stopRest(p)));
 dismiss.addEventListener('click', () => act(p => acknowledgeRest(p)));
+skip.addEventListener('click', () => act(p => stopRest(p)));
 start.addEventListener('click', () => {
   if (!state.manualContext) return;
   const ctx = { ...state.manualContext };
@@ -248,3 +258,4 @@ window.addEventListener('focus', () => refresh().then(alertIfFinished).catch(con
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') refresh().then(alertIfFinished).catch(console.error);
 });
+document.addEventListener('pm:workout-set-undone', () => { if (modeState()) act(p => stopRest(p)); });
