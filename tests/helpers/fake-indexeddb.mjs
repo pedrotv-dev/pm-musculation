@@ -80,8 +80,25 @@ export function installFakeIndexedDB() {
           return {
             get: k => req(() => clone(st.rows.get(JSON.stringify(k)))),
             put: v => req(() => { write(key(v), clone(v)); }),
+            add: v => req(() => { if (st.rows.has(key(v))) throw new Error('ConstraintError'); write(key(v), clone(v)); }),
             delete: k => req(() => { write(JSON.stringify(k), undefined); }),
-            index: () => ({ getAll: range => req(() => [...st.rows.values()].filter(r => r.profileId === range.v).map(clone)) })
+            index: () => ({
+              getAll: range => req(() => [...st.rows.values()].filter(r => r.profileId === range.v).map(clone)),
+              openCursor: range => {
+                const keys = [...st.rows.entries()].filter(([, v]) => v.profileId === range.v).map(([k]) => k);
+                let i = 0;
+                const r = {};
+                tx.pending++;
+                const step = () => setTimeout(() => {
+                  if (tx.done) return;
+                  r.result = i < keys.length ? { delete() { write(keys[i], undefined); }, continue() { i++; step(); } } : null;
+                  try { r.onsuccess && r.onsuccess(); } catch (error) { abortTx(tx, error); return; }
+                  if (r.result === null) { tx.pending--; maybeComplete(tx); }
+                }, 0);
+                if (tx.started) step(); else tx.queue.push(step);
+                return r;
+              }
+            })
           };
         }
       };

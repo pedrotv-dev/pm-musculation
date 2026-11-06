@@ -67,3 +67,20 @@
 .pm-input-sm { min-height:44px; font-size:16px; }
 .pm-unit { font-size:12px; color:var(--muted); white-space:nowrap; }
 .pm-gap-hist { font-size:11px; color:var(--warn); margin:-2px 0 4px 30px; }
+.pm-chart { width:100%; height:auto; display:block; margin:8px 0; }
+.pm-chart .pm-grid { stroke:var(--stroke); stroke-width:1; }
+.pm-chart .pm-axis { fill:var(--muted); font-size:10px; }
+.pm-chart .pm-line { stroke:var(--turq); stroke-width:2.4; stroke-linejoin:round; }
+.pm-chart .pm-dot-c { fill:var(--turq); }
+.pm-chart .pm-bar { fill:var(--accent); }
+.pm-weight-form { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; margin-top:12px; }
+.pm-weight-line { display:inline-flex; align-items:center; gap:8px; }
+.pm-weight-line .pm-icon-btn { min-height:34px; min-width:34px; }
+.pm-profile-section { margin-bottom:14px; }
+.pm-profile-section h3 { margin:0 0 6px; }
+.pm-bilan { width:100%; min-height:260px; margin-top:10px; padding:10px; border-radius:12px; border:1px solid var(--stroke); background:var(--surface-raised); color:var(--text); font:12px/1.5 ui-monospace,Menlo,Consolas,monospace; white-space:pre; overflow:auto; }
+.pm-file-line { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+.pm-file-line input[type=file] { max-width:100%; font-size:13px; color:var(--muted); }
+.pm-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+.pm-check { display:flex; align-items:center; gap:8px; margin-top:10px; font-size:14px; min-height:36px; }
+.pm-check input { width:22px; height:22px; accent-color:var(--turq); }

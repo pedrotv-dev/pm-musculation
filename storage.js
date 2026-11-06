@@ -38,28 +38,33 @@ function dbUnavailable() {
   return new Error('Stockage local IndexedDB indisponible. Ne pas poursuivre sans sauvegarde.');
 }
 
-/** Ouvre la base et la cree au premier lancement. Aucune donnee V1 n'est migree. */
+function createMissingStores(db) {
+  for (const name of STORES) {
+    if (db.objectStoreNames.contains(name)) continue;
+    let keyPath;
+    if (name === 'programs') keyPath = ['profileId', 'weekStart'];
+    else if (name === 'settings') keyPath = ['profileId', 'key'];
+    else keyPath = ['profileId', 'id'];
+    const store = db.createObjectStore(name, { keyPath });
+    store.createIndex('byProfile', 'profileId', { unique: false });
+  }
+}
+
+/**
+ * Ouvre la base et la cree au premier lancement. Aucune donnee V1 n'est migree.
+ * Auto-reparation : si la base existe sans l'un des magasins attendus (base creee a vide par un autre outil),
+ * elle est rouverte avec la version suivante pour creer les magasins manquants, sans toucher aux donnees presentes.
+ */
 export function openStorage() {
   if (opening) return opening;
   if (!('indexedDB' in globalThis)) return Promise.reject(dbUnavailable());
 
-  opening = new Promise((resolve, reject) => {
+  const open = version => new Promise((resolve, reject) => {
     let request;
-    try { request = indexedDB.open(DB_NAME, DB_VERSION); }
+    // sans version : ouvre la base existante telle quelle (v1, ou v2 apres une reparation) ; une base neuve est creee en v1
+    try { request = version ? indexedDB.open(DB_NAME, version) : indexedDB.open(DB_NAME); }
     catch (error) { reject(error); return; }
-
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      for (const name of STORES) {
-        if (db.objectStoreNames.contains(name)) continue;
-        let keyPath;
-        if (name === 'programs') keyPath = ['profileId', 'weekStart'];
-        else if (name === 'settings') keyPath = ['profileId', 'key'];
-        else keyPath = ['profileId', 'id'];
-        const store = db.createObjectStore(name, { keyPath });
-        store.createIndex('byProfile', 'profileId', { unique: false });
-      }
-    };
+    request.onupgradeneeded = () => createMissingStores(request.result);
     request.onsuccess = () => {
       const db = request.result;
       db.onversionchange = () => {
@@ -70,6 +75,13 @@ export function openStorage() {
     };
     request.onerror = () => reject(request.error || dbUnavailable());
     request.onblocked = () => reject(new Error('Base de donnees bloquee par une autre fenetre.'));
+  });
+
+  opening = open(0).then(db => {
+    if (STORES.every(name => db.objectStoreNames.contains(name))) return db;
+    const next = db.version + 1;
+    db.close();
+    return open(next);
   }).catch(error => {
     opening = null;
     throw error;
@@ -300,6 +312,12 @@ export function saveWeight(profileId, measurement) {
     profileId, id: measurement.id,
     data: measurement, updatedAt: new Date().toISOString()
   });
+}
+
+export function deleteWeight(profileId, id) {
+  validProfile(profileId);
+  nonempty(id, 'Identifiant de mesure');
+  return transaction(['weights'], 'readwrite', tx => tx.objectStore('weights').delete([profileId, id]));
 }
 
 export async function listWeights(profileId) {

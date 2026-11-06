@@ -5,7 +5,7 @@
 import { listWorkouts, getResumableWorkout, getWorkoutSummary, getDemoProgram, dayIdOf } from './workouts.js';
 import { getActiveProgram, mondayOf } from './programs.js';
 import { loadCatalog } from './catalog.js';
-import { el, btn, clear, add, fmtNum, formatMinutes, formatDateFr, localISODate } from './dom.js';
+import { el, btn, clear, add, fmtNum, formatMinutes, formatDateFr, localISODate, toast } from './dom.js';
 
 const root = document.documentElement;
 const page = document.querySelector('[data-page="accueil"]');
@@ -98,3 +98,4 @@ window.addEventListener('focus', refresh);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refresh(); });
 document.addEventListener('pm:data-changed', refresh);
 refresh();
+document.addEventListener('pm:update-ready', () => toast('Mise à jour installée : elle s’applique au prochain lancement.', { duration: 6000 }));

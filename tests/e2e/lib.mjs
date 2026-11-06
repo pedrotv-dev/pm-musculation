@@ -50,6 +50,6 @@ export function watch(page, errors = []) {
 let passed = 0, failed = 0;
 export async function step(name, fn) {
   try { await fn(); passed++; console.log('  ✓', name); }
-  catch (e) { failed++; console.log('  ✗', name, '\n     ', String(e.message || e).split('\n')[0]); }
+  catch (e) { failed++; console.log('  ✗', name, '\n     ', String(e.message || e).split('\n').slice(0, 4).join('\n      ')); }
 }
 export function summary() { console.log(`\n${passed} réussi(s), ${failed} échec(s)`); return failed; }
