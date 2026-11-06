@@ -1,0 +1,172 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-06",
+  "machines": [
+    {
+      "id": "back-extension",
+      "name": "Back Extension",
+      "kind": "strength",
+      "muscleGroup": "Dos"
+    },
+    {
+      "id": "rotary-torso",
+      "name": "Rotary Torso",
+      "kind": "strength",
+      "muscleGroup": "Abdominaux"
+    },
+    {
+      "id": "shoulder-press",
+      "name": "Shoulder Press",
+      "kind": "strength",
+      "muscleGroup": "Épaules"
+    },
+    {
+      "id": "converging-chest-press",
+      "name": "Converging Chest Press",
+      "kind": "strength",
+      "muscleGroup": "Pectoraux"
+    },
+    {
+      "id": "converging-shoulder-press",
+      "name": "Converging Shoulder Press",
+      "kind": "strength",
+      "muscleGroup": "Épaules"
+    },
+    {
+      "id": "leg-extension",
+      "name": "Leg Extension",
+      "kind": "strength",
+      "muscleGroup": "Jambes"
+    },
+    {
+      "id": "chest-press",
+      "name": "Chest Press",
+      "kind": "strength",
+      "muscleGroup": "Pectoraux"
+    },
+    {
+      "id": "seated-leg-curl",
+      "name": "Seated Leg Curl",
+      "kind": "strength",
+      "muscleGroup": "Jambes"
+    },
+    {
+      "id": "rear-delt-pec-fly",
+      "name": "Rear Delt / Pec Fly",
+      "kind": "strength",
+      "muscleGroup": "Dos / Pectoraux"
+    },
+    {
+      "id": "leg-press",
+      "name": "Leg Press",
+      "kind": "strength",
+      "muscleGroup": "Jambes"
+    },
+    {
+      "id": "prone-leg-curl",
+      "name": "Prone Leg Curl",
+      "kind": "strength",
+      "muscleGroup": "Jambes"
+    },
+    {
+      "id": "arm-curl",
+      "name": "Arm Curl",
+      "kind": "strength",
+      "muscleGroup": "Bras"
+    },
+    {
+      "id": "seated-dip",
+      "name": "Seated Dip",
+      "kind": "strength",
+      "muscleGroup": "Bras"
+    },
+    {
+      "id": "seated-row",
+      "name": "Seated Row",
+      "kind": "strength",
+      "muscleGroup": "Dos"
+    },
+    {
+      "id": "abdominal",
+      "name": "Abdominal",
+      "kind": "strength",
+      "muscleGroup": "Abdominaux"
+    },
+    {
+      "id": "diverging-lat-pulldown",
+      "name": "Diverging Lat Pulldown",
+      "kind": "strength",
+      "muscleGroup": "Dos"
+    },
+    {
+      "id": "triceps-extension",
+      "name": "Triceps Extension",
+      "kind": "strength",
+      "muscleGroup": "Bras"
+    },
+    {
+      "id": "dip-chin-assist",
+      "name": "Dip / Chin Assist",
+      "kind": "strength",
+      "muscleGroup": "Haut du corps"
+    },
+    {
+      "id": "hip-abduction",
+      "name": "Hip Abduction (2 positions)",
+      "kind": "strength",
+      "muscleGroup": "Jambes",
+      "variants": [
+        "Position ouverte",
+        "Position fermée"
+      ]
+    },
+    {
+      "id": "rotary-hip",
+      "name": "Rotary Hip",
+      "kind": "strength",
+      "muscleGroup": "Jambes"
+    },
+    {
+      "id": "calf-press",
+      "name": "Calf Press",
+      "kind": "strength",
+      "muscleGroup": "Mollets"
+    },
+    {
+      "id": "diverging-seated-row",
+      "name": "Diverging Seated Row",
+      "kind": "strength",
+      "muscleGroup": "Dos"
+    },
+    {
+      "id": "lat-pulldown",
+      "name": "Lat Pull",
+      "kind": "strength",
+      "muscleGroup": "Dos"
+    },
+    {
+      "id": "treadmill",
+      "name": "Tapis de course",
+      "kind": "cardio",
+      "muscleGroup": "Cardio"
+    },
+    {
+      "id": "recumbent-bike",
+      "name": "Vélo assis",
+      "kind": "cardio",
+      "muscleGroup": "Cardio"
+    },
+    {
+      "id": "elliptical",
+      "name": "Vélo elliptique",
+      "kind": "cardio",
+      "muscleGroup": "Cardio"
+    },
+    {
+      "id": "rowing-machine",
+      "name": "Rameur",
+      "kind": "cardio",
+      "muscleGroup": "Cardio"
+    }
+  ]
+}

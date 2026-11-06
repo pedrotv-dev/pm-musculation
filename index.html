@@ -7,6 +7,8 @@
   <meta name="color-scheme" content="dark">
   <meta name="description" content="PM Musculation — entraînements de Pierre et Manon.">
   <title>PM Musculation</title>
+  <link rel="stylesheet" href="./css/programs.css">
+  <link rel="stylesheet" href="./css/demo.css">
 
   <!-- Socle autonome de la V2 : seuls le choix du profil et la navigation sont actifs.
        Les styles et le code applicatif seront progressivement séparés dans css/ et js/.
@@ -106,7 +108,8 @@
           <button type="button" class="choice pierre" data-select-profile="pierre"><span class="initial">P</span><strong>Pierre</strong><span>Prise de muscle</span></button>
           <button type="button" class="choice manon" data-select-profile="manon"><span class="initial">M</span><strong>Manon</strong><span>Renforcement</span></button>
         </div>
-        <p class="footnote">Aucun compte à créer.</p>
+        <button type="button" class="choice demo" data-select-profile="demo"><span class="initial" aria-hidden="true">▶</span><span class="demo-copy"><strong>Explorer la démo</strong><span>Exemples de programmes, séances et progrès · données fictives</span></span></button>
+        <p class="footnote">Aucun compte à créer. La démo ne modifie pas vos historiques.</p>
       </section>
 
       <div id="app-pages" hidden>
@@ -179,7 +182,8 @@
       const KEY = 'pm-musculation:profile:v2';
       const profiles = {
         pierre: { name: 'Pierre', goal: 'Prise de muscle', theme: 'Bleu', accent: '#48a1ff', rgb: '72, 161, 255' },
-        manon: { name: 'Manon', goal: 'Renforcement', theme: 'Violet', accent: '#bd8aff', rgb: '189, 138, 255' }
+        manon: { name: 'Manon', goal: 'Renforcement', theme: 'Violet', accent: '#bd8aff', rgb: '189, 138, 255' },
+        demo: { name: 'Démo', goal: 'Explorer sans enregistrer', theme: 'Violet démo', accent: '#c2a1ef', rgb: '194, 161, 239' }
       };
       const $ = (selector) => document.querySelector(selector);
       const pages = [...document.querySelectorAll('[data-page]')];
@@ -201,6 +205,7 @@
       function chooseProfile(profile, persist = true) {
         if (!profiles[profile]) return;
         currentProfile = profile;
+        document.documentElement.dataset.pmProfile = profile;
         const data = profiles[profile];
         document.documentElement.style.setProperty('--accent', data.accent);
         document.documentElement.style.setProperty('--accent-rgb', data.rgb);
@@ -217,10 +222,13 @@
           catch (error) { console.warn('Impossible de mémoriser le profil sur cet appareil.', error); }
         }
         navigate('accueil');
+        document.dispatchEvent(new CustomEvent('pm:profile-changed', { detail: { profile } }));
       }
 
       function changeProfile() {
         currentProfile = null;
+        delete document.documentElement.dataset.pmProfile;
+        document.dispatchEvent(new CustomEvent('pm:profile-changed', { detail: { profile: null } }));
         $('#app-pages').hidden = true;
         $('#bottom-nav').hidden = true;
         $('#switch-profile').hidden = true;
@@ -241,5 +249,7 @@
       if (saved && profiles[saved]) chooseProfile(saved, false);
     })();
   </script>
+  <script type="module" src="./js/program-ui.js"></script>
+  <script type="module" src="./js/demo-ui.js"></script>
 </body>
 </html>
