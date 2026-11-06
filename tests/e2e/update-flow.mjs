@@ -37,14 +37,15 @@ await step('pendant une séance (démo) : la mise à jour n’est PAS proposée'
   srv.setSwVersion('9999.01.01-deadbeef'); await triggerUpdate();
   await page.waitForFunction(async () => (await caches.keys()).length === 2); // nouvelle version installée, en attente
   await page.waitForTimeout(800);
-  assert.equal(await page.locator('.pm-toast-action:has-text("Mettre à jour")').count(), 0);
+  assert.equal(await page.locator('.pm-modal:has-text("Mise à jour installée")').count(), 0);
 });
-await step('retour à l’accueil : la mise à jour est proposée', async () => {
+await step('retour à l’accueil : « Mise à jour installée » avec un bouton pour redémarrer', async () => {
   await page.click('#pm-workout-screen .pm-bar-actions button:has-text("Quitter")');
-  await page.waitForSelector('.pm-toast-action:has-text("Mettre à jour")');
+  await page.waitForSelector('.pm-modal:has-text("Mise à jour installée")');
+  assert.match(await page.locator('.pm-modal').innerText(), /Tes données sont conservées/);
 });
-await step('« Mettre à jour » : rechargement, nouvelle version active, ancien cache supprimé', async () => {
-  await Promise.all([page.waitForEvent('load'), page.click('.pm-toast-action:has-text("Mettre à jour")')]);
+await step('« Redémarrer l’application » : rechargement, nouvelle version active, ancien cache supprimé', async () => {
+  await Promise.all([page.waitForEvent('load'), page.click('.pm-modal-btn:has-text("Redémarrer l’application")')]);
   await page.waitForFunction(async () => (await caches.keys()).length === 1 && (await caches.keys())[0] === 'pm-musculation-9999.01.01-deadbeef');
   assert.ok(await page.evaluate(() => !!navigator.serviceWorker.controller));
 });

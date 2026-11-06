@@ -66,7 +66,7 @@ if (saved && isKnownProfile(saved)) chooseProfile(saved, false);
 
 // Hors ligne : service worker (GitHub Pages, chemins relatifs). Ne touche jamais aux données IndexedDB.
 // Mise à jour : la nouvelle version s'installe en arrière-plan puis attend l'accord de l'utilisateur
-// (événement pm:update-ready → bouton « Mettre à jour » → pm:apply-update), jamais au milieu d'une séance.
+// (événement pm:update-ready → dialogue « Mise à jour installée » + bouton « Redémarrer l’application » → pm:apply-update), jamais au milieu d'une séance.
 if ('serviceWorker' in navigator) {
   let waiting = null;
   const announce = worker => { waiting = worker; document.dispatchEvent(new CustomEvent('pm:update-ready')); };
