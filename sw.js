@@ -9,7 +9,7 @@
  * - Ne touche JAMAIS a IndexedDB ni a localStorage : une mise a jour du code ne supprime aucune donnee.
  * VERSION est recalculee par `node tools/release.mjs` (date + empreinte des fichiers) ; tests/pwa.test.mjs verifie qu'elle est a jour.
  */
-const VERSION = '2026.11.06-f3081cbb';
+const VERSION = '2026.11.06-d92d53e0';
 const CACHE = 'pm-musculation-' + VERSION;
 const PRECACHE = [
   './', 'index.html', 'manifest.webmanifest', 'storage.js',
@@ -31,7 +31,10 @@ self.addEventListener('install', event => {
     const cache = await caches.open(CACHE);
     // un fichier absent n'empeche pas l'installation (l'application reste utilisable, il sera pris sur le reseau)
     await Promise.all(PRECACHE.map(async url => {
-      try { await cache.add(new Request(url, { cache: 'reload' })); } catch (_) { /* fichier optionnel */ }
+      // `?v=VERSION` : URL neuve a chaque version, donc jamais une copie perimee gardee par le reseau de distribution
+      // de GitHub Pages (cache de ~10 min apres un deploiement) ; le cache est interroge sans la requete (ignoreSearch).
+      const fresh = url + (url.includes('?') ? '&' : '?') + 'v=' + encodeURIComponent(VERSION);
+      try { await cache.add(new Request(fresh, { cache: 'reload' })); } catch (_) { /* fichier optionnel */ }
     }));
     // Premiere installation (aucune version active) : on active tout de suite. Sinon on ATTEND l'accord de l'utilisateur.
     if (!self.registration.active) await self.skipWaiting();
