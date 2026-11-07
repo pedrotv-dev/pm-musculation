@@ -14,6 +14,8 @@ Application : https://pedrotv-dev.github.io/pm-musculation/
 5. **Progrès** : fréquence, volume, charge par machine, records, cardio, poids corporel.
 6. **Profil** : réglages du chrono, **réglages d'usage** (écran qui reste allumé pendant une séance, bouton retour du téléphone), sauvegarde/restauration JSON (remplacer ou fusionner), export CSV, **bilan hebdomadaire texte** à copier dans ChatGPT, démo, données locales.
 
+**Jeu** : chaque séance rapporte des XP (10 par série, 2 par minute de cardio, +60 séance complète, +50 par record) → niveaux, 12 titres, 18 succès, série de semaines, classements *toi contre toi* (jamais entre profils). Tout est recalculé depuis l'historique : rien à sauvegarder en plus, et une correction met le niveau à jour.
+
 Les programmes sportifs sont préparés par ChatGPT ; l'application ne réorganise jamais un programme et n'augmente jamais les charges seule.
 
 ## Format du programme (`schemaVersion: 1`)
@@ -48,6 +50,8 @@ Jours : `lundi` … `dimanche`. Les `machineId` viennent de `data/machines.json`
 | `js/rest-timer.js` | moteur du chronomètre de récupération (timestamps réels) |
 | `js/rest-audio.js` | alerte de fin de repos écran verrouillé : son système « silence + 3 bips » (0 €, sans serveur) |
 | `js/machine-rules.js`, `js/cardio.js`, `js/fun-volume.js` | séries par côté, réglages de cardio, comparaisons idiotes du volume |
+| `js/gamification.js`, `js/jeu-ui.js`, `js/mascot.js`, `js/fx.js` | niveaux, succès, série de semaines, classements **personnels** (calculés depuis l'historique, aucun stockage), mascotte (emplacement + repli), événements d'effets `pm:fx` |
+| `js/effets.js`, `js/sfx.js`, `js/sons.js`, `js/rest-melody.js`, `css/effets.css` | points d'accroche pour l'habillage (animations, bruitages, jingles, mélodie de fin de repos) — missions ChatGPT dans `docs/chatgpt/` |
 | `js/stats.js`, `js/bilan.js`, `js/backup.js`, `js/weights.js` | statistiques, bilan texte, sauvegardes/CSV, poids corporel |
 | `js/demo-fixtures.js` | jeu de données fictives de la démo (30 séances / 6 semaines) |
 | `js/*-ui.js`, `js/dom.js`, `js/charts.js` | interface (provisoire, sobre) |
@@ -67,6 +71,7 @@ node tests/e2e/offline-flow.mjs  # hors ligne (service worker)
 node tests/e2e/update-flow.mjs   # mise à jour de l'application sans perte
 node tests/e2e/nav-flow.mjs      # bouton retour du téléphone + écran allumé pendant une séance
 node tests/e2e/retours-flow.mjs  # séries par côté, réglages cardio, son de fin de repos, comparaisons idiotes
+node tests/e2e/jeu-flow.mjs      # niveaux, succès, classements personnels, mascotte, événements d'effets
 node tests/e2e/audit-faults.mjs  # stockage plein / refusé
 node tests/e2e/audit-ui.mjs      # audit mobile : cibles < 44 px, champs < 16 px, débordements
 node tests/e2e/audit-a11y.mjs    # accessibilité WCAG 2 A/AA (axe-core, installé globalement : npm i -g axe-core)
@@ -88,6 +93,7 @@ Le service worker ne touche jamais à IndexedDB. Le code est servi **depuis le c
 ## Documentation
 
 - `docs/reference-programme-chatgpt.json` : **fichier de référence à envoyer à ChatGPT** pour préparer le programme hebdomadaire (format, règles, catalogue des machines, exemple Pierre + Manon, exemple de bilan). Régénéré par `node tools/make-reference.mjs` (test de cohérence inclus).
+- `docs/chatgpt/` : **les 3 missions confiées à ChatGPT** (style et animations, sons, bruitages) + le contrat technique commun (fichiers autorisés, événements `pm:fx`, mascotte, protocole par petites étapes). Un test vérifie que ces consignes restent fidèles au code.
 - `docs/prompt-design-chatgpt.md` : prompt complet pour confier l'habillage visuel à ChatGPT.
 - `docs/sauvegarde-persistante.md` : sauvegarde des données à 0 € (état actuel et options).
 - `docs/screens/` : captures des écrans.

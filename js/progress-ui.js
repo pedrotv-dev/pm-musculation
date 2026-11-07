@@ -6,6 +6,8 @@ import { totals, perWeek, machineList, machineHistory, personalRecords, cardioSu
 import { listBodyWeights, addBodyWeight, removeBodyWeight } from './weights.js';
 import { barChart, lineChart } from './charts.js';
 import { loadCatalog } from './catalog.js';
+import { computeProgress } from './gamification.js';
+import { levelCard, badgesPanel, rankingsPanel, howPanel } from './jeu-ui.js';
 import { ALL_PROFILES as KNOWN } from './profiles.js';
 import { el, btn, clear, add, fmtNum, parseNum, formatMinutes, formatDateFr, localISODate, toast, confirmDialog } from './dom.js';
 
@@ -26,6 +28,8 @@ async function render() {
   add(page, el('div', 'eyebrow', 'Mes performances'), el('h2', '', 'Progrès'));
   const closed = sessions.filter(s => s.status === 'completed' || s.status === 'partial');
   const t = totals(closed);
+  const game = computeProgress(closed, { today: localISODate() });
+  page.append(levelCard(game, { seed: profile + 'progres' }));
 
   const stats = el('div', 'pm-stats');
   [[t.sessions, 'séances'], [t.completed + ' / ' + t.partial, 'complètes / partielles'], [t.sets, 'séries'], [fmtNum(t.volumeKg) + ' kg', 'volume total'],
@@ -85,6 +89,9 @@ async function render() {
       page.append(panel('Exercices sautés ou incomplets', list));
     }
   }
+
+  // succès et classements personnels (toi contre toi)
+  page.append(badgesPanel(game), rankingsPanel(game, name), howPanel());
 
   // poids corporel
   const wBox = panel('Poids corporel');

@@ -11,6 +11,7 @@ import { el, btn } from './dom.js';
 import { isKnownProfile } from './profiles.js';
 import { syncRestAudio, stopRestAudio, restAudioCovers } from './rest-audio.js';
 import { peekUiSettings } from './ui-settings.js';
+import { fx } from './fx.js';
 
 const dom = document.createElement('aside');
 dom.id = 'pm-rest-ui';
@@ -170,6 +171,7 @@ async function alertIfFinished() {
     if (!valid(profile, gen)) return;
     render(out.view);
     if (!out.alert) return;
+    fx('rest-end');
     if (out.alert.vibrate && typeof navigator.vibrate === 'function') {
       try { navigator.vibrate([130, 80, 130]); } catch (_) { /* unsupported */ }
     }
@@ -243,6 +245,7 @@ document.addEventListener('pm:workout-set-validated', async event => {
   if (!valid(profile, gen) || activityKey !== state.activityKey) return;
   state.manualContext = v.suggestedSeconds ? ctx : null;
   render(v);
+  if (v.started) fx('rest-start', { seconds: v.totalMs ? Math.round(v.totalMs / 1000) : restSeconds });
   if (v.error) tell('Chrono : ' + v.error);
 });
 window.setInterval(() => {

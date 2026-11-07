@@ -8,6 +8,8 @@ import { loadCatalog } from './catalog.js';
 import { ALL_PROFILES as KNOWN, PROFILE_INFO } from './profiles.js';
 import { getBackupStatus, backupAdvice, runBackup } from './backup.js';
 import { el, btn, clear, add, fmtNum, formatMinutes, formatDateFr, localISODate, dialog, toast } from './dom.js';
+import { computeProgress } from './gamification.js';
+import { levelCard } from './jeu-ui.js';
 
 const root = document.documentElement;
 const page = document.querySelector('[data-page="accueil"]');
@@ -35,6 +37,9 @@ async function renderHome() {
   clear(page);
   add(page, el('div', 'eyebrow', 'Accueil'), add(el('h2', '', 'Bonjour '), el('span', '', PROFILE_INFO[profile].name + ' !')));
   if (profile === 'demo') page.append(el('p', 'description', 'Mode démo : tout est fictif et reste en mémoire. Rien n’est enregistré sur tes profils.'));
+
+  // niveau et mascotte : calculés depuis l'historique du profil (jamais comparés à l'autre profil)
+  page.append(levelCard(computeProgress(sessions, { today: localISODate() }), { seed: profile + localISODate() }));
 
   if (resumable) {
     const last = resumable.activities.find(a => a.key === resumable.cursor) || resumable.activities.find(a => a.status === 'pending');

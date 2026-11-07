@@ -12,20 +12,26 @@
  * d'une autre application (réglage désactivable dans Profil) ; il faut avoir touché l'écran au moins une fois
  * dans l'application (c'est le cas dès la première série validée).
  */
-const RATE = 8000;               // échantillons / s, 8 bits, mono : 8 Ko par seconde de repos
-const BEEP_HZ = 880, BEEP_S = 0.2, GAP_S = 0.14, BEEPS = 3, TAIL_S = 0.4;
+import { melodySamples, MELODY_RATE, MELODY_MAX_SECONDS } from './rest-melody.js';
+
+const RATE = MELODY_RATE;       // échantillons / s, 8 bits, mono : 8 Ko par seconde de repos
 export const MAX_AUDIO_SECONDS = 1200; // au-delà (repos de plus de 20 min), pas de fichier son : alerte classique seulement
 
+/** Mélodie (échantillons), bornée à MELODY_MAX_SECONDS quoi qu'elle contienne. */
+function melody() {
+  const m = melodySamples();
+  return m.length > MELODY_MAX_SECONDS * RATE ? m.subarray(0, Math.round(MELODY_MAX_SECONDS * RATE)) : m;
+}
 /** Durée totale (s) du fichier pour un repos de `seconds` secondes. */
-export const wavSeconds = seconds => seconds + BEEPS * (BEEP_S + GAP_S) + TAIL_S;
-/** Instant (ms) où commencent les bips. */
+export const wavSeconds = seconds => seconds + melody().length / RATE;
+/** Instant (ms) où commence la mélodie. */
 export const beepStartMs = seconds => Math.round(seconds * 1000);
 
-/** Fichier WAV (octets) : `seconds` secondes de silence, puis trois bips. Fonction pure, testable sous Node. */
+/** Fichier WAV (octets) : `seconds` secondes de silence, puis la mélodie de fin. Fonction pure, testable sous Node. */
 export function buildRestWav(seconds) {
+  const tune = melody();
   const lead = Math.max(0, Math.round(seconds * RATE));
-  const beep = Math.round(BEEP_S * RATE), gap = Math.round(GAP_S * RATE), tail = Math.round(TAIL_S * RATE);
-  const total = lead + BEEPS * (beep + gap) + tail;
+  const total = lead + tune.length;
   const bytes = new Uint8Array(44 + total).fill(128); // 128 = silence en 8 bits non signés
   const view = new DataView(bytes.buffer);
   const text = (at, s) => { for (let i = 0; i < s.length; i++) bytes[at + i] = s.charCodeAt(i); };
@@ -33,14 +39,7 @@ export function buildRestWav(seconds) {
   view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
   view.setUint32(24, RATE, true); view.setUint32(28, RATE, true); view.setUint16(32, 1, true); view.setUint16(34, 8, true);
   text(36, 'data'); view.setUint32(40, total, true);
-  const ramp = Math.round(0.008 * RATE); // fondu de 8 ms : pas de claquement
-  for (let b = 0; b < BEEPS; b++) {
-    const start = 44 + lead + b * (beep + gap);
-    for (let i = 0; i < beep; i++) {
-      const env = Math.min(1, i / ramp, (beep - i) / ramp);
-      bytes[start + i] = 128 + Math.round(Math.sin(2 * Math.PI * BEEP_HZ * i / RATE) * 100 * env);
-    }
-  }
+  bytes.set(tune, 44 + lead);
   return bytes;
 }
 
