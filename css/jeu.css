@@ -370,3 +370,20 @@
 .pm-korv-guide-title strong { font-size:17px; }
 .pm-korv-guide[open] > summary { margin-bottom:12px; }
 .pm-korv-guide h4 { margin:16px 0 6px; font-size:13px; color:var(--turq); text-transform:uppercase; letter-spacing:.06em; }
+
+/* V1-DEV1 · « Outils de test » (profil Démo uniquement) et aperçu des récompenses */
+.pm-demo-tools > summary { display:flex; flex-direction:column; gap:2px; min-height:48px; justify-content:center; cursor:pointer; list-style:none; }
+.pm-demo-tools > summary::-webkit-details-marker { display:none; }
+.pm-demo-tools[open] > summary { margin-bottom:10px; }
+.pm-demo-group { display:grid; gap:10px; padding:14px 0; border-top:1px solid var(--ascent-rim, var(--stroke)); }
+.pm-demo-group h4 { margin:0; font-size:13px; color:var(--turq); text-transform:uppercase; letter-spacing:.06em; }
+.pm-demo-group p { margin:0; }
+.pm-demo-field { display:grid; gap:5px; }
+.pm-demo-label { font-size:13px; font-weight:750; color:var(--muted); }
+.pm-demo-field .pm-select { width:100%; min-height:48px; font-size:16px; }
+.pm-demo-check { min-height:44px; display:flex; align-items:center; gap:8px; }
+.pm-demo-note { font-size:13px; }
+.pm-demo-preview .pm-modal { max-height:calc(100dvh - 24px); overflow-y:auto; }
+.pm-demo-preview-card { margin:0; }
+.pm-demo-preview-note { margin:0 0 10px; font-size:12px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--turq); text-align:center; }
+.pm-demo-medal-preview { display:grid; place-items:center; padding:6px 0 12px; }

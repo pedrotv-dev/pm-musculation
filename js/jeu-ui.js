@@ -3,7 +3,9 @@
  * Pur affichage : toute la logique est dans js/gamification.js (calculée depuis l'historique, sans stockage).
  * Aucun classement entre profils : chaque personne ne se mesure qu'à elle-même.
  */
-import { el, add, fmtNum } from './dom.js';
+import { el, add, fmtNum, formatMinutes, dialog } from './dom.js';
+import { icon } from './icons.js';
+import { fx } from './fx.js';
 import { renderMascot, mascotLine } from './mascot.js';
 import { XP, TITLES, BADGES, xpAtLevel, progressionStartFor } from './gamification.js';
 
@@ -183,6 +185,34 @@ export function levelUpContent(reward) {
   line('⚑', 'Prochain palier : niveau ' + (reward.levelAfter + 1) + ' dans ' + fmtNum(reward.after.need - reward.after.into) + ' XP');
   add(box, korv, hex, lines);
   return box;
+}
+
+/** Bandeau de fin de séance (« Séance terminée ! » / « Séance partielle enregistrée »). Utilisé par l'écran de séance et l'aperçu Démo. */
+export function doneHero({ complete, name = '', setsDone = 0, volumeKg = 0, durationMinutes = 0 }) {
+  const hero = el('div', 'pm-done-hero');
+  add(hero, add(el('div', 'pm-done-icon'), icon('drapeau')),
+    el('h2', '', complete ? 'Séance terminée !' : 'Séance partielle enregistrée'),
+    el('p', 'pm-done-sub', complete ? 'Belle séance, ' + name + ' !' : 'Tout ce que tu as fait compte.'),
+    el('p', 'pm-muted', setsDone + ' séries · ' + fmtNum(volumeKg) + ' kg de volume · ' + formatMinutes(durationMinutes)));
+  return hero;
+}
+
+/**
+ * Effets de fin de séance, dans l'ordre (un seul point d'entrée : js/fx.js), puis plein écran « Niveau supérieur »
+ * avec le bouton « Parfait ! » si le niveau monte. Utilisé par l'écran de séance et l'aperçu Démo.
+ * @returns {Promise|null} la promesse du dialogue « Niveau supérieur », ou null
+ */
+export function celebrate(reward, { complete }) {
+  fx('session-done', { complete, xp: reward ? reward.xp : 0 });
+  if (!reward) return null;
+  fx('xp', { amount: reward.xp });
+  reward.records.forEach(r => fx('record', { machineId: r.machineId, kg: r.kg }));
+  reward.newBadges.forEach(b => fx('badge', { id: b.id, name: b.name }));
+  if (!reward.leveledUp) return null;
+  fx('level-up', { level: reward.levelAfter, title: reward.after.title, stage: reward.after.stage });
+  // plein écran « Niveau supérieur » (décision de Pierre : bouton « Parfait ! » à toucher)
+  return dialog({ title: 'Niveau supérieur !', content: levelUpContent(reward), className: 'pm-levelup-overlay',
+    choices: [{ label: 'Parfait !', value: true, kind: 'primary' }] });
 }
 
 /** Hexagone de niveau (« NIV. 18 »), comme sur la planche ASCENT. */

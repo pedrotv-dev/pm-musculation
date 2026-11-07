@@ -22,7 +22,7 @@ import { getUiSettings, peekUiSettings } from './ui-settings.js';
 import { plannedIndex, SIDE_LABEL, SIDE_SHORT, stepWeight } from './machine-rules.js';
 import { funComparisons } from './fun-volume.js';
 import { rewardFor, progressionStartFor } from './gamification.js';
-import { rewardCard, levelUpContent } from './jeu-ui.js';
+import { rewardCard, doneHero, celebrate } from './jeu-ui.js';
 import { fx } from './fx.js';
 import { metricsFor, metricsText } from './cardio.js';
 
@@ -644,12 +644,7 @@ function renderDone(session) {
   const sum = session.summary || getWorkoutSummary(session);
   const box = el('article', 'pm-workout-card pm-done');
   const complete = session.status === 'completed';
-  const hero = el('div', 'pm-done-hero');
-  add(hero, add(el('div', 'pm-done-icon'), icon('drapeau')),
-    el('h2', '', complete ? 'Séance terminée !' : 'Séance partielle enregistrée'),
-    el('p', 'pm-done-sub', complete ? 'Belle séance, ' + (PROFILE_INFO[S.profile]?.name || '') + ' !' : 'Tout ce que tu as fait compte.'),
-    el('p', 'pm-muted', sum.setsDone + ' séries · ' + fmtNum(sum.volumeKg) + ' kg de volume · ' + formatMinutes(sum.durationMinutes)));
-  box.append(hero);
+  box.append(doneHero({ complete, name: PROFILE_INFO[S.profile]?.name || '', setsDone: sum.setsDone, volumeKg: sum.volumeKg, durationMinutes: sum.durationMinutes }));
   let reward = null;
   try { reward = rewardFor([...S.history, session], session.id, { today: localISODate(), startDate: progressionStartFor(S.profile) }); } catch (e) { console.error('PM jeu :', e); }
   if (reward) box.append(rewardCard(reward, id => S.catalog.byId.get(id)?.name || id));
@@ -678,19 +673,8 @@ function renderDone(session) {
   box.append(btn('Voir l’historique', 'pm-secondary', () => closeWorkout({ goTo: 'historique' })));
   panel.append(box);
   window.scrollTo(0, 0);
-  // effets : un seul point d'entrée (js/fx.js) pour les sons et animations
-  fx('session-done', { complete: session.status === 'completed', xp: reward ? reward.xp : 0 });
-  if (reward) {
-    fx('xp', { amount: reward.xp });
-    reward.records.forEach(r => fx('record', { machineId: r.machineId, kg: r.kg }));
-    reward.newBadges.forEach(b => fx('badge', { id: b.id, name: b.name }));
-    if (reward.leveledUp) {
-      fx('level-up', { level: reward.levelAfter, title: reward.after.title, stage: reward.after.stage });
-      // plein écran « Niveau supérieur » (décision de Pierre : bouton « Parfait ! » à toucher)
-      dialog({ title: 'Niveau supérieur !', content: levelUpContent(reward), className: 'pm-levelup-overlay',
-        choices: [{ label: 'Parfait !', value: true, kind: 'primary' }] });
-    }
-  }
+  // effets : un seul point d'entrée (js/fx.js) pour les sons et animations, puis « Niveau supérieur » si besoin
+  celebrate(reward, { complete: session.status === 'completed' });
 }
 
 // ---------------------------------------------------------------- rendu principal
@@ -784,7 +768,8 @@ async function begin(detail) {
   } finally { S.busy = false; }
 }
 const GAP_MS = 2 * 60 * 1000;
-async function resumeExisting() {
+/** `detail.view === 'recap'` (outils de test, profil Démo UNIQUEMENT) : ouvre directement le récapitulatif. */
+async function resumeExisting(detail = {}) {
   if (S.busy || !KNOWN.includes(S.profile)) return;
   const profile = S.profile, rev = S.rev;
   S.busy = true;
@@ -805,7 +790,10 @@ async function resumeExisting() {
         session = await resumeWorkout(profile, session.id, { excludeGap: pick === 'gap' });
       }
     }
-    if (valid(profile, rev)) showWorkout(session);
+    if (valid(profile, rev)) {
+      showWorkout(session);
+      if (detail?.view === 'recap' && profile === 'demo' && S.session?.profileId === 'demo') { S.busy = false; await showRecap(); }
+    }
   } catch (error) { if (valid(profile, rev)) await dialog({ title: 'Reprise impossible', message: error?.message || 'Erreur.' }); }
   finally { S.busy = false; }
 }
@@ -855,7 +843,7 @@ document.addEventListener('pm:back-workout', () => {
 });
 document.addEventListener('pm:profile-changed', e => changeProfile(e.detail.profile));
 document.addEventListener('pm:start-workout', e => begin(e.detail));
-document.addEventListener('pm:resume-workout', () => resumeExisting());
+document.addEventListener('pm:resume-workout', e => resumeExisting(e.detail || {}));
 document.addEventListener('pm:stop-workout', () => stopPartial());
 // Les brouillons sont ecrits avant que l'application passe en arriere-plan.
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushAll(); });

@@ -10,6 +10,7 @@ import { buildBilan } from './bilan.js';
 import { mondayOf } from './programs.js';
 import { addDays } from './stats.js';
 import { loadCatalog } from './catalog.js';
+import { demoToolsSection } from './demo-tools.js';
 import { korvGuide } from './jeu-ui.js';
 import { isRealProfile as real } from './profiles.js';
 import { APP_VERSION } from './version.js';
@@ -248,7 +249,9 @@ function localDataSection(profile) {
 
 function demoSection(profile) {
   if (profile === 'demo') {
+    const tools = demoToolsSection(); // « Outils de test » : profil Démo uniquement (revérifié à chaque action)
     return section('Mode démo', 'Données fictives, enregistrées uniquement en mémoire. Ne touche jamais aux profils de Pierre et Manon.',
+      ...(tools ? [tools] : []),
       btn('Réinitialiser la démo', 'pm-secondary', async () => {
         if (!(await confirmDialog('Remettre la démo dans son état de départ ?', { ok: 'Réinitialiser' }))) return;
         resetDemoWeights(); await stopRest('demo').catch(() => {}); await resetDemoWorkouts();
