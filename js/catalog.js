@@ -11,7 +11,7 @@ export function loadCatalog() {
       .then(r => { if (!r.ok) throw new Error('catalogue indisponible'); return r.json(); })
       .then(data => {
         const list = Array.isArray(data.machines) ? data.machines : [];
-        return { list, byId: new Map(list.map(m => [m.id, m])), strength: list.filter(m => m.kind === 'strength') };
+        return { list, byId: new Map(list.map(m => [m.id, m])), strength: list.filter(m => m.kind === 'strength' && !m.deprecated) };
       })
       .then(async catalog => {
         // assets/machines/index.json liste les photos reellement presentes : aucune requete vers un fichier absent

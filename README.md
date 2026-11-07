@@ -27,12 +27,14 @@ Les programmes sportifs sont préparés par ChatGPT ; l'application ne réorgani
       { "type": "warmup", "name": "Vélo assis", "durationMinutes": 8 },
       { "type": "strength", "machineId": "leg-press", "shared": true, "restSeconds": 120,
         "sets": [ { "kg": 80, "reps": 12 }, { "kg": 80, "reps": 12 } ] },
-      { "type": "cardio", "name": "Tapis de course", "durationMinutes": 10 }
+      { "type": "cardio", "name": "Tapis de course", "durationMinutes": 10, "incline": 3, "speed": 6 }
     ] } ] },
     "manon": { "days": [ ] }
   }
 }
 ```
+
+Cardio / échauffement : `incline` (%), `speed` et `level` sont facultatifs (affichés et saisissables pendant la séance, repris dans l'historique, le bilan et le CSV). Machines « un côté à la fois » (Rotary Hip, ou `"perSide": true` sur une activité) : **1 série = 1 côté** ; `sets` compte les séries *par côté* (2 prévues = 4 séries : gauche, droite, gauche, droite). Hip Abduction : deux machines distinctes, `hip-abduction-open-close` et `hip-abduction-close-open` (l'ancien id `hip-abduction` reste lisible dans l'historique).
 
 Jours : `lundi` … `dimanche`. Les `machineId` viennent de `data/machines.json` (identifiants stables). Photos facultatives : `assets/machines/<id>.png` ; lister les ids présents dans `assets/machines/index.json`.
 
@@ -44,6 +46,8 @@ Jours : `lundi` … `dimanche`. Les `machineId` viennent de `data/machines.json`
 | `js/programs.js` | validation / import / activation des programmes hebdomadaires |
 | `js/workouts.js` | moteur des séances (démarrage, séries, report, corrections, reprise) ; profil démo en mémoire |
 | `js/rest-timer.js` | moteur du chronomètre de récupération (timestamps réels) |
+| `js/rest-audio.js` | alerte de fin de repos écran verrouillé : son système « silence + 3 bips » (0 €, sans serveur) |
+| `js/machine-rules.js`, `js/cardio.js`, `js/fun-volume.js` | séries par côté, réglages de cardio, comparaisons idiotes du volume |
 | `js/stats.js`, `js/bilan.js`, `js/backup.js`, `js/weights.js` | statistiques, bilan texte, sauvegardes/CSV, poids corporel |
 | `js/demo-fixtures.js` | jeu de données fictives de la démo (30 séances / 6 semaines) |
 | `js/*-ui.js`, `js/dom.js`, `js/charts.js` | interface (provisoire, sobre) |
@@ -62,6 +66,7 @@ node tests/e2e/data-flow.mjs     # sauvegarde, restauration, bilan, deux onglets
 node tests/e2e/offline-flow.mjs  # hors ligne (service worker)
 node tests/e2e/update-flow.mjs   # mise à jour de l'application sans perte
 node tests/e2e/nav-flow.mjs      # bouton retour du téléphone + écran allumé pendant une séance
+node tests/e2e/retours-flow.mjs  # séries par côté, réglages cardio, son de fin de repos, comparaisons idiotes
 node tests/e2e/audit-faults.mjs  # stockage plein / refusé
 node tests/e2e/audit-ui.mjs      # audit mobile : cibles < 44 px, champs < 16 px, débordements
 node tests/e2e/audit-a11y.mjs    # accessibilité WCAG 2 A/AA (axe-core, installé globalement : npm i -g axe-core)

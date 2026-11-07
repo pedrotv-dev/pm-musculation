@@ -32,7 +32,7 @@ await step('démarrer la séance du mardi', async () => {
   assert.match(await text(screen), /Rameur/);
 });
 await step('échauffement : durée réelle puis « Fait »', async () => {
-  await page.fill(screen + ' .pm-field input', '7');
+  await page.locator(screen + ' .pm-field input').first().fill('7'); // durée (les 3 autres champs : inclinaison, vitesse, niveau)
   await page.click(screen + ' .pm-validate:has-text("Fait")');
   await page.waitForSelector(screen + ' .pm-validate:has-text("Machine suivante")');
   await page.click(screen + ' .pm-validate:has-text("Machine suivante")');

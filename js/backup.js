@@ -4,6 +4,7 @@
  * Le profil « demo » n'est jamais sauvegarde ni restaure.
  */
 import { exportProfileData, restoreProfileData, saveSetting, getSetting } from '../storage.js';
+import { plannedIndex, SIDE_LABEL } from './machine-rules.js';
 
 export const BACKUP_FORMAT = 'pm-musculation-backup';
 const PROFILES = ['pierre', 'manon'];
@@ -70,14 +71,14 @@ export function backupToPerson(backup) {
 const csv = v => { const s = String(v ?? ''); return /[",;\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
 /** Export des resultats : une ligne par serie validee / activite (CSV a point-virgule, ouvrable dans Excel). */
 export function resultsCsv(sessions, names = new Map()) {
-  const rows = [['date', 'seance', 'statut', 'activite', 'type', 'serie', 'charge_kg', 'repetitions', 'validee', 'duree_min', 'objectif_kg', 'objectif_reps']];
+  const rows = [['date', 'seance', 'statut', 'activite', 'type', 'serie', 'charge_kg', 'repetitions', 'validee', 'duree_min', 'objectif_kg', 'objectif_reps', 'cote', 'inclinaison', 'vitesse', 'niveau']];
   for (const s of sessions.slice().sort((a, b) => (a.date + a.startedAt).localeCompare(b.date + b.startedAt))) {
     for (const key of s.order) {
       const a = s.activities.find(x => x.key === key); if (!a) continue;
       const label = a.type === 'strength' ? (names.get(a.machineId) || a.machineId) : a.name || a.type;
       if (a.type === 'strength') {
-        a.sets.forEach((x, i) => { const p = a.planned?.sets?.[Math.min(i, (a.planned.sets.length || 1) - 1)]; rows.push([s.date, s.dayName || s.dayId, s.status, label, a.type, i + 1, x.kg, x.reps, x.done ? 'oui' : 'non', '', p ? p.kg : '', p ? p.reps : '']); });
-      } else rows.push([s.date, s.dayName || s.dayId, s.status, label, a.type, '', '', '', a.status === 'done' ? 'oui' : 'non', a.actual?.durationMinutes ?? '', '', '']);
+        a.sets.forEach((x, i) => { const p = a.planned?.sets?.[Math.min(plannedIndex(i, a.perSide), (a.planned.sets.length || 1) - 1)]; rows.push([s.date, s.dayName || s.dayId, s.status, label, a.type, i + 1, x.kg, x.reps, x.done ? 'oui' : 'non', '', p ? p.kg : '', p ? p.reps : '', x.side ? SIDE_LABEL[x.side].toLowerCase() : '', '', '', '']); });
+      } else rows.push([s.date, s.dayName || s.dayId, s.status, label, a.type, '', '', '', a.status === 'done' ? 'oui' : 'non', a.actual?.durationMinutes ?? '', '', '', '', a.actual?.incline ?? '', a.actual?.speed ?? '', a.actual?.level ?? '']);
     }
   }
   return '﻿' + rows.map(r => r.map(csv).join(';')).join('\n') + '\n';

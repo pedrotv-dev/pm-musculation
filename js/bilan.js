@@ -3,6 +3,8 @@
  * Fonction pure : aucune lecture de stockage. Les donnees d'un profil importees depuis un fichier restent en memoire.
  */
 import { isClosed, sessionFigures, weekStartOf, addDays, machineHistory } from './stats.js';
+import { plannedIndex, SIDE_SHORT } from './machine-rules.js';
+import { metricsText, metricsOf } from './cardio.js';
 
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 const WEEKDAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
@@ -19,6 +21,7 @@ const nameOfActivity = (a, names) => a.type === 'strength' ? (names.get(a.machin
 function setsText(a) {
   const done = a.sets.filter(s => s.done);
   if (!done.length) return 'aucune série validée';
+  if (a.perSide) return '1 série = 1 côté — ' + done.map(s => (s.side ? SIDE_SHORT[s.side] + ' ' : '') + num(s.kg) + ' kg × ' + s.reps).join(' / ');
   const same = done.every(s => s.kg === done[0].kg);
   return same
     ? num(done[0].kg) + ' kg : ' + done.map(s => s.reps).join(' / ') + ' reps'
@@ -28,11 +31,12 @@ function plannedText(a) {
   const p = a.planned?.sets;
   if (!p || !p.length) return '';
   const same = p.every(s => s.kg === p[0].kg && s.reps === p[0].reps);
-  return same ? p.length + ' × ' + p[0].reps + ' à ' + num(p[0].kg) + ' kg' : p.map(s => num(s.kg) + '×' + s.reps).join(' / ');
+  const side = a.perSide ? ' par côté' : '';
+  return (same ? p.length + ' × ' + p[0].reps + ' à ' + num(p[0].kg) + ' kg' : p.map(s => num(s.kg) + '×' + s.reps).join(' / ')) + side;
 }
 function missed(a) {
   const p = a.planned?.sets || [];
-  return a.sets.filter(s => s.done).some((s, i) => { const t = p[Math.min(i, p.length - 1)]; return t && (s.reps < t.reps || s.kg < t.kg); });
+  return a.sets.filter(s => s.done).some((s, i) => { const t = p[Math.min(plannedIndex(i, a.perSide), p.length - 1)]; return t && (s.reps < t.reps || s.kg < t.kg); });
 }
 
 function personBlock(person, weekStart, names) {
@@ -85,7 +89,8 @@ function personBlock(person, weekStart, names) {
           (a.status !== 'done' ? ' [incomplète]' : ''));
       } else {
         const planned = a.planned?.durationMinutes;
-        lines.push('    • ' + label + ' : ' + (a.status === 'done' ? duration(a.actual?.durationMinutes ?? planned ?? 0) + (planned ? ' (prévu ' + planned + ' min)' : '') : a.status === 'skipped' ? 'PASSÉ' : 'non fait'));
+        const reglages = metricsText(metricsOf(a), { speedUnit: a.name === 'Tapis de course' });
+        lines.push('    • ' + label + ' : ' + (a.status === 'done' ? duration(a.actual?.durationMinutes ?? planned ?? 0) + (planned ? ' (prévu ' + planned + ' min)' : '') + (reglages ? ' — ' + reglages : '') : a.status === 'skipped' ? 'PASSÉ' : 'non fait'));
       }
     }
     if (s.feedback?.note) lines.push('    Remarque : ' + s.feedback.note);

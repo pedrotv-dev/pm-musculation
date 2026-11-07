@@ -83,10 +83,11 @@ function usageSection(profile, ui) {
     wrap.append(l, el('p', 'pm-muted', hint));
     return wrap;
   };
-  return section('Pendant une séance', 'Deux réglages d’usage, propres à ce profil.',
+  return section('Pendant une séance', 'Réglages d’usage, propres à ce profil.',
     row('Garder l’écran allumé', isWakeLockSupported()
       ? 'L’écran ne s’éteint pas tant que la séance est en cours (libéré en pause et à la fin).'
       : 'Non disponible sur ce navigateur : l’écran s’éteindra selon les réglages du téléphone.', 'keepAwake', isWakeLockSupported()),
+    row('Alerte de fin de repos, écran verrouillé', 'Joue un son système (silence, puis trois bips à la fin du repos) pour te prévenir même si le téléphone est verrouillé ou l’application en arrière-plan. Suit le volume « médias » ; peut mettre en pause la musique d’une autre application : décoche si ça te gêne.', 'lockAlert'),
     row('Bouton retour du téléphone', 'Revient d’un niveau dans l’application (ferme un dialogue, retourne à la machine, à l’accueil…) au lieu de la quitter. À l’accueil, « retour » quitte normalement.', 'backButton'));
 }
 

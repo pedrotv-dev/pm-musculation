@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "updatedAt": "2026-11-06",
+  "version": 2,
+  "updatedAt": "2026-11-07",
   "machines": [
     {
       "id": "back-extension",
@@ -112,19 +112,29 @@
     },
     {
       "id": "hip-abduction",
-      "name": "Hip Abduction (2 positions)",
+      "name": "Hip Abduction (ancienne fiche)",
       "kind": "strength",
       "muscleGroup": "Jambes",
-      "variants": [
-        "Position ouverte",
-        "Position fermée"
-      ]
+      "deprecated": true
+    },
+    {
+      "id": "hip-abduction-open-close",
+      "name": "Hip Abduction · ouvert → fermé",
+      "kind": "strength",
+      "muscleGroup": "Jambes"
+    },
+    {
+      "id": "hip-abduction-close-open",
+      "name": "Hip Abduction · fermé → ouvert",
+      "kind": "strength",
+      "muscleGroup": "Jambes"
     },
     {
       "id": "rotary-hip",
       "name": "Rotary Hip",
       "kind": "strength",
-      "muscleGroup": "Jambes"
+      "muscleGroup": "Jambes",
+      "perSide": true
     },
     {
       "id": "calf-press",
@@ -165,6 +175,12 @@
     {
       "id": "rowing-machine",
       "name": "Rameur",
+      "kind": "cardio",
+      "muscleGroup": "Cardio"
+    },
+    {
+      "id": "stairs",
+      "name": "Escalier",
       "kind": "cardio",
       "muscleGroup": "Cardio"
     }

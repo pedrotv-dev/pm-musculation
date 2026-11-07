@@ -7,11 +7,11 @@ import { createBackupFile, parseBackupText } from '../js/backup.js';
 const idb = installFakeIndexedDB();
 
 test('réglages d\'usage : défauts, modification, isolation par profil, validation', async () => {
-  assert.deepEqual({ ...UI_DEFAULTS }, { keepAwake: true, backButton: true });
-  assert.deepEqual(await getUiSettings('pierre'), { keepAwake: true, backButton: true });
+  assert.deepEqual({ ...UI_DEFAULTS }, { keepAwake: true, backButton: true, lockAlert: true });
+  assert.deepEqual(await getUiSettings('pierre'), { keepAwake: true, backButton: true, lockAlert: true });
   const r = await setUiSettings('pierre', { keepAwake: false });
   assert.equal(r.error, null);
-  assert.deepEqual(r.settings, { keepAwake: false, backButton: true });
+  assert.deepEqual(r.settings, { keepAwake: false, backButton: true, lockAlert: true });
   assert.equal((await getUiSettings('manon')).keepAwake, true); // Manon non touchée
   assert.equal(peekUiSettings('pierre').keepAwake, false);
   for (const bad of [{ keepAwake: 'oui' }, { inconnu: true }, null, { backButton: 1 }]) {
@@ -21,20 +21,20 @@ test('réglages d\'usage : défauts, modification, isolation par profil, validat
 });
 
 test('persistance dans la base (saveSetting), incluse dans la sauvegarde, valeur corrompue ignorée', async () => {
-  await setUiSettings('manon', { backButton: false });
+  await setUiSettings('manon', { backButton: false, lockAlert: true });
   const backup = parseBackupText((await createBackupFile('manon')).text);
   const row = backup.data.settings.find(s => s.key === 'ui.settings');
-  assert.deepEqual(row.value, { keepAwake: true, backButton: false });
+  assert.deepEqual(row.value, { keepAwake: true, backButton: false, lockAlert: true });
   const { saveSetting } = await import('../storage.js');
   await saveSetting('manon', 'ui.settings', { keepAwake: 'x', backButton: 42, extra: 1 });
-  assert.deepEqual(await getUiSettings('manon'), { keepAwake: true, backButton: true }); // retour aux défauts valides
+  assert.deepEqual(await getUiSettings('manon'), { keepAwake: true, backButton: true, lockAlert: true }); // retour aux défauts valides
 });
 
 test('profil démo : en mémoire seulement, aucune écriture', async () => {
   const before = Object.values(idb.stores).reduce((n, s) => n + s.rows.size, 0);
-  const r = await setUiSettings('demo', { keepAwake: false, backButton: false });
-  assert.deepEqual(r.settings, { keepAwake: false, backButton: false });
-  assert.deepEqual(await getUiSettings('demo'), { keepAwake: false, backButton: false });
+  const r = await setUiSettings('demo', { keepAwake: false, backButton: false, lockAlert: true });
+  assert.deepEqual(r.settings, { keepAwake: false, backButton: false, lockAlert: true });
+  assert.deepEqual(await getUiSettings('demo'), { keepAwake: false, backButton: false, lockAlert: true });
   assert.equal(Object.values(idb.stores).reduce((n, s) => n + s.rows.size, 0), before);
-  assert.deepEqual(await getUiSettings('inconnu'), { keepAwake: true, backButton: true });
+  assert.deepEqual(await getUiSettings('inconnu'), { keepAwake: true, backButton: true, lockAlert: true });
 });

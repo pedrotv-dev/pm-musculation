@@ -3,10 +3,12 @@
  * Les corrections conservent la date et la duree d'origine (voir correctSet & co dans js/workouts.js).
  */
 import {
-  listWorkouts, getWorkoutSummary, correctSet, correctAddSet, correctRemoveSet, correctActivityDuration,
+  listWorkouts, getWorkoutSummary, correctSet, correctAddSet, correctRemoveSet, correctActivityDuration, correctActivityMetrics,
   setWorkoutFeedback, deleteWorkout, getResumableWorkout
 } from './workouts.js';
 import { loadCatalog } from './catalog.js';
+import { plannedIndex, SIDE_LABEL, SIDE_SHORT } from './machine-rules.js';
+import { CARDIO_METRICS } from './cardio.js';
 import { ALL_PROFILES as KNOWN } from './profiles.js';
 import { el, btn, clear, add, dialog, confirmDialog, toast, fmtNum, parseNum, formatMinutes, formatDateFr } from './dom.js';
 
@@ -139,7 +141,7 @@ function renderDetail() {
     block.append(t);
     if (a.type === 'strength') {
       a.sets.forEach((set, i) => {
-        const plan = a.planned?.sets?.[Math.min(i, (a.planned.sets.length || 1) - 1)];
+        const plan = a.planned?.sets?.[Math.min(plannedIndex(i, a.perSide), (a.planned.sets.length || 1) - 1)];
         const row = el('div', 'pm-hist-set' + (set.done ? '' : ' pm-undone'));
         const kg = numInput(set.kg, 'kg', 'Charge série ' + (i + 1)), reps = numInput(set.reps, 'reps', 'Répétitions série ' + (i + 1));
         const apply = () => {
@@ -154,7 +156,9 @@ function renderDetail() {
           if (await confirmDialog('Retirer la série ' + (i + 1) + ' ?', { ok: 'Retirer', danger: true })) fix((p, id) => correctRemoveSet(p, id, a.key, set.id), 'Série retirée');
         });
         del.setAttribute('aria-label', 'Retirer la série ' + (i + 1));
-        row.append(el('span', 'pm-set-mark', String(i + 1)), kg, el('span', 'pm-unit', 'kg ×'), reps, toggle, del);
+        const mark = el('span', 'pm-set-mark', String(i + 1));
+        if (set.side) { const sd = el('span', 'pm-set-side pm-side-' + set.side, SIDE_SHORT[set.side]); sd.title = 'Côté ' + SIDE_LABEL[set.side].toLowerCase(); mark.append(sd); }
+        row.append(mark, kg, el('span', 'pm-unit', 'kg ×'), reps, toggle, del);
         if (plan) row.title = 'Prévu : ' + fmtNum(plan.kg) + ' kg × ' + plan.reps;
         block.append(row);
         if (plan && set.done && (set.reps < plan.reps || set.kg < plan.kg)) block.append(el('p', 'pm-gap pm-gap-hist', 'Prévu : ' + fmtNum(plan.kg) + ' kg × ' + plan.reps));
@@ -170,6 +174,21 @@ function renderDetail() {
       });
       row.append(dur, el('span', 'pm-unit', 'min' + (a.planned?.durationMinutes ? ' (prévu ' + a.planned.durationMinutes + ')' : '')));
       block.append(row);
+      const mrow = el('div', 'pm-hist-set pm-hist-metrics');
+      for (const m of CARDIO_METRICS) {
+        const cur = a.actual?.[m.key];
+        const input = numInput(cur ?? 0, m.integer ? 'reps' : 'kg', m.label + ' — ' + nameOf(a));
+        if (cur === undefined) input.value = '';
+        input.placeholder = '—';
+        input.addEventListener('change', () => {
+          const raw = input.value.trim();
+          const n = raw === '' ? null : parseNum(raw);
+          if (n !== null && (!Number.isFinite(n) || n < 0 || n > m.max || (m.integer && !Number.isInteger(n)))) { toast(m.label + ' invalide.'); load(); return; }
+          fix((p, id) => correctActivityMetrics(p, id, a.key, { [m.key]: n }), 'Corrigé ✓');
+        });
+        mrow.append(input, el('span', 'pm-unit', m.label + (m.unit && (m.key !== 'speed' || a.name === 'Tapis de course') ? ' (' + m.unit + ')' : '')));
+      }
+      block.append(mrow);
     }
     box.append(block);
   }

@@ -6,8 +6,9 @@ import { buildReference, REFERENCE_PATH } from '../tools/make-reference.mjs';
 import { prepareProgramImport, validateProgramFile } from '../js/programs.js';
 
 const file = JSON.parse(fs.readFileSync(new URL('../' + REFERENCE_PATH, import.meta.url), 'utf8'));
-const catalog = JSON.parse(fs.readFileSync(new URL('../data/machines.json', import.meta.url), 'utf8')).machines;
-const strengthIds = catalog.filter(m => m.kind === 'strength').map(m => m.id);
+const fullCatalog = JSON.parse(fs.readFileSync(new URL('../data/machines.json', import.meta.url), 'utf8')).machines;
+const catalog = fullCatalog.filter(m => !m.deprecated); // l'ancienne fiche « hip-abduction » reste lisible mais n'est plus proposée
+const strengthIds = fullCatalog.filter(m => m.kind === 'strength').map(m => m.id);
 const cardioNames = catalog.filter(m => m.kind === 'cardio').map(m => m.name);
 const clone = o => JSON.parse(JSON.stringify(o));
 const strip = f => ({ schemaVersion: f.schemaVersion, weekStart: f.weekStart, programs: clone(f.programs) });
@@ -31,7 +32,8 @@ test('importable tel quel (clés d\'aide ignorées) et réduit aux 3 clés, pour
 test('catalogue du fichier = data/machines.json (ids, noms, types, groupes)', () => {
   const inFile = file._catalogue_machines.machines;
   assert.equal(inFile.length, catalog.length);
-  assert.equal(inFile.length, 27);
+  assert.equal(inFile.length, 29); // 27 d'origine - 1 (ancienne Hip Abduction) + 2 Hip Abduction + Escalier
+  assert.ok(!inFile.some(m => m.id === 'hip-abduction'));
   inFile.forEach((m, i) => {
     assert.deepEqual([m.id, m.name, m.kind, m.muscleGroup], [catalog[i].id, catalog[i].name, catalog[i].kind, catalog[i].muscleGroup]);
   });
@@ -63,7 +65,7 @@ test('l\'exemple respecte les règles annoncées : échauffement d\'abord, cardi
   });
   // exemples de machines propres à un seul des deux
   const only = (a, b) => a.days.flatMap(d => d.activities.filter(x => x.type === 'strength' && !b.days.find(e => e.id === d.id).activities.some(y => y.machineId === x.machineId)).map(x => d.id + ':' + x.machineId));
-  assert.deepEqual(only(file.programs.manon, file.programs.pierre), ['lundi:hip-abduction']);
+  assert.deepEqual(only(file.programs.manon, file.programs.pierre), ['lundi:hip-abduction-open-close']);
   assert.deepEqual(only(file.programs.pierre, file.programs.manon), ['mardi:rear-delt-pec-fly']);
 });
 
