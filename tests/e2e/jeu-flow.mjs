@@ -72,7 +72,7 @@ await step('séance de Pierre : récompense (XP, succès Premier pas) et événe
   await page.click('#pm-validate-set'); await page.waitForSelector('.pm-set-done');
   await page.click('#pm-validate-set'); await page.waitForSelector('.pm-machine-done');
   await page.click(screen + ' .pm-validate:has-text("Terminer la séance")');
-  await page.evaluate(() => { window.__celebrate = false; new MutationObserver(() => { if (document.querySelector('.pm-xp-celebrate')) window.__celebrate = true; }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'], childList: true }); });
+  await page.evaluate(() => { window.__celebrate = false; const anim = Element.prototype.animate; Element.prototype.animate = function (...args) { if (this.classList.contains('pm-xp-fill')) window.__celebrate = true; return anim.apply(this, args); }; });
   await page.click(screen + ' .pm-validate:has-text("Valider ma séance")');
   await page.waitForSelector(screen + ' .pm-reward');
   await page.waitForFunction(() => window.__celebrate === true, null, { timeout: 3000 });  // barre d'XP : effet bref (réglage Animations actif)
