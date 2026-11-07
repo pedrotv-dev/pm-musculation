@@ -39,17 +39,17 @@ await step('échauffement : durée réelle puis « Fait »', async () => {
   assert.match(await text(screen), /Chest Press/);
 });
 await step('modifier la charge sans valider, fermer, rouvrir : valeurs retrouvées', async () => {
-  const kg = page.locator(screen + ' .pm-set-row').first().locator('input').first();
-  const reps = page.locator(screen + ' .pm-set-row').first().locator('input').nth(1);
+  const kg = page.locator('#pm-current-kg');
+  const reps = page.locator('#pm-current-reps');
   await kg.fill('42,5'); await reps.fill('9');
   await page.waitForTimeout(700); // sauvegarde automatique du brouillon
   await page.reload();
   await page.waitForSelector('#pm-home-resume, .pm-home-card .pm-validate');
   await page.click('.pm-home-card .pm-validate:has-text("Reprendre")');
   await page.waitForSelector(screen + ':not([hidden])');
-  const v = await page.locator(screen + ' .pm-set-row').first().locator('input').first().inputValue();
+  const v = await page.locator('#pm-current-kg').inputValue();
   assert.equal(v, '42,5');
-  assert.equal(await page.locator(screen + ' .pm-set-row').first().locator('input').nth(1).inputValue(), '9');
+  assert.equal(await page.locator('#pm-current-reps').inputValue(), '9');
   assert.match(await text(screen), /Chest Press/); // dernière machine retrouvée
 });
 await step('valider une série : annulation possible, chrono lancé', async () => {

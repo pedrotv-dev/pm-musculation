@@ -174,3 +174,46 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
   color:var(--ok); box-shadow:0 0 22px rgba(185,240,138,.12);
 }
 .pm-feeling.pm-on { color:var(--turq); background:rgba(20,230,199,.10); }
+
+/* ===== ASCENT · écran de séance (structure posée par Claude Code ; habillage fin : mission 1) ===== */
+.pm-visually-hidden { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
+.pm-current-set { margin:4px 0 16px; padding:14px; border-radius:16px; border:1px solid rgba(20,230,199,.65);
+  background:linear-gradient(110deg, rgba(20,230,199,.11), rgba(20,230,199,.03) 70%), var(--surface); box-shadow:0 0 18px rgba(20,230,199,.07); }
+.pm-current-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
+.pm-current-tag { display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:820; color:var(--turq); }
+.pm-current-tag::before { content:''; width:10px; height:10px; border-radius:50%; border:2px solid var(--turq); box-shadow:inset 0 0 0 2px var(--surface), inset 0 0 0 5px var(--turq); }
+.pm-current-count { font-size:12px; font-weight:750; color:var(--muted); text-align:right; }
+.pm-current-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.pm-stepper { display:grid; gap:6px; justify-items:center; min-width:0; }
+.pm-stepper-name { font-size:12px; font-weight:750; color:var(--muted); }
+.pm-stepper-row { display:grid; grid-template-columns:44px minmax(0,1fr) 44px; align-items:center; gap:6px; width:100%; }
+.pm-workout-screen .pm-stepper-input { min-height:54px; padding:0 4px; text-align:center; font-size:clamp(20px, 6.6vw, 28px); font-weight:880; font-variant-numeric:tabular-nums;
+  background:rgba(5,17,19,.82); border:1px solid rgba(20,230,199,.45); border-radius:12px; color:var(--text); width:100%; min-width:0; }
+.pm-step-btn { min-width:44px; min-height:44px; border-radius:12px; border:1px solid var(--ascent-rim, var(--stroke)); background:var(--surface-raised);
+  color:var(--text); font:inherit; font-size:24px; font-weight:700; line-height:1; cursor:pointer; }
+.pm-step-btn:active { transform:scale(.95); }
+.pm-step-btn:focus-visible { outline:3px solid var(--turq); outline-offset:2px; }
+.pm-current-plan { margin:10px 0 0; text-align:center; font-size:12px; color:var(--muted); }
+
+.pm-sets { list-style:none; margin:0; padding:0; display:grid; gap:8px; }
+.pm-workout-screen .pm-sets .pm-set-row { display:grid; grid-template-columns:22px minmax(0,1fr) auto auto; align-items:center; gap:10px;
+  min-height:52px; padding:6px 6px 6px 12px; border-radius:12px; border:1px solid var(--ascent-rim, var(--stroke)); background:var(--ascent-card, var(--surface-raised)); box-shadow:none; opacity:1; }
+.pm-workout-screen .pm-sets .pm-set-row.pm-set-current { border-color:rgba(20,230,199,.65); background:rgba(20,230,199,.08); }
+.pm-workout-screen .pm-sets .pm-set-current .pm-set-mark::before { content:none; }
+.pm-workout-screen .pm-sets .pm-set-mark { flex-direction:row; font-size:16px; color:var(--muted); }
+.pm-workout-screen .pm-sets .pm-set-done .pm-set-mark { color:var(--ok); }
+.pm-workout-screen .pm-sets .pm-set-current .pm-set-mark { color:var(--turq); }
+.pm-set-label { font-size:15px; font-weight:750; min-width:0; }
+.pm-set-value { font-size:15px; font-weight:780; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.pm-set-done .pm-set-label, .pm-set-done .pm-set-value { color:var(--muted); }
+.pm-workout-screen .pm-sets .pm-set-tools { display:flex; gap:4px; }
+.pm-workout-screen .pm-sets .pm-set-tools .pm-icon-btn { min-width:44px; min-height:44px; }
+.pm-workout-screen .pm-sets .pm-gap { grid-column:2 / -1; margin:-4px 0 2px; }
+
+.pm-quick-actions { display:grid; grid-template-columns:repeat(auto-fit, minmax(96px, 1fr)); gap:8px; margin-top:12px; }
+.pm-quick-actions .pm-quick { min-height:56px; padding:6px 8px; font-size:13px; line-height:1.2; text-align:center; white-space:normal; }
+/* place pour le chiffre entre − et + : marges resserrées ; très petits écrans : charge et répétitions l'une sous l'autre */
+.pm-current-set { padding:12px 10px; }
+.pm-current-grid { gap:8px; }
+.pm-stepper-row { gap:4px; }
+@media (max-width:374px) { .pm-current-grid { grid-template-columns:1fr; } }

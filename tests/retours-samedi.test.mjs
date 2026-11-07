@@ -216,3 +216,16 @@ test('mascotte : le stade demandé d\'abord, sinon le dernier stade existant, si
   assert.equal(pickMascotFile(new Set(), 4, 'idle'), null);                      // rien : personnage de repli
   assert.equal(pickMascotFile(new Set(['stage-1.svg']), 0, 'idle'), null);       // un stade SUPÉRIEUR n'est jamais utilisé en avance
 });
+
+test('boutons − / + de la charge : charges connues de la machine, puis plus petit écart', async () => {
+  const { stepWeight } = await import('../js/machine-rules.js');
+  const known = [39, 45, 52, 59, 66, 73];                      // vraies charges de Pierre (plaques Basic-Fit)
+  assert.equal(stepWeight(66, known, 1), 73);
+  assert.equal(stepWeight(66, known, -1), 59);
+  assert.equal(stepWeight(70, known, -1), 66);                 // valeur tapée à la main : charge connue la plus proche en dessous
+  assert.equal(stepWeight(73, known, 1), 79);                  // au-delà : +6 (plus petit écart connu)
+  assert.equal(stepWeight(39, known, -1), 33);
+  assert.equal(stepWeight(2, [], -1), 0);                       // jamais négatif
+  assert.equal(stepWeight(20, [], 1), 22.5);                    // aucune charge connue : pas de 2,5 kg
+  assert.equal(stepWeight(NaN, [10, 20], 1), 10);
+});
