@@ -43,6 +43,17 @@ export function levelCard(p, { seed = '', context } = {}) {
   return card;
 }
 
+/** Médaille ASCENT : hexagone (livraison 4) + pictogramme du succès, décorative (le texte voisin porte le sens). */
+export function badgeMedal(id, { unlocked = true, large = false } = {}) {
+  const m = el('span', 'pm-medal' + (unlocked ? '' : ' pm-medal-locked') + (large ? ' pm-medal-lg' : ''));
+  m.setAttribute('aria-hidden', 'true');
+  const frame = el('img', 'pm-medal-frame');
+  frame.src = 'assets/ascent/' + (unlocked ? 'hexagone-succes.svg' : 'hexagone-niveau.svg');
+  frame.alt = ''; frame.decoding = 'async';
+  const ico = el('span', 'pm-medal-ico'); ico.dataset.badge = id;
+  return add(m, frame, ico);
+}
+
 /** Grille des succès (débloqués en couleur, les autres grisés avec leur condition). */
 export function badgesPanel(p) {
   const box = el('article', 'panel pm-badges-panel');
@@ -50,7 +61,7 @@ export function badgesPanel(p) {
   const grid = el('ul', 'pm-badges');
   for (const b of p.badges) {
     const li = el('li', 'pm-badge-tile' + (b.unlocked ? ' pm-unlocked' : ''));
-    add(li, el('span', 'pm-badge-name', b.unlocked ? b.name : '???'), el('span', 'pm-badge-desc', b.unlocked ? b.desc + ' · ' + shortDate(b.date) : 'À débloquer : ' + b.desc));
+    add(li, badgeMedal(b.id, { unlocked: b.unlocked }), el('span', 'pm-badge-name', b.unlocked ? b.name : '???'), el('span', 'pm-badge-desc', b.unlocked ? b.desc + ' · ' + shortDate(b.date) : 'À débloquer : ' + b.desc));
     grid.append(li);
   }
   box.append(grid);
@@ -112,7 +123,7 @@ export function rewardCard(reward, name) {
     const cards = el('div', 'pm-reward-cards');
     reward.newBadges.forEach(x => {
       const c = el('article', 'pm-reward-card pm-reward-badge');
-      add(c, el('p', 'pm-reward-card-kicker', 'Nouveau badge !'), add(el('div', 'pm-badge-hex'), el('span', '', '★')), el('strong', '', x.name), el('span', 'pm-muted', x.desc));
+      add(c, el('p', 'pm-reward-card-kicker', 'Nouveau badge !'), badgeMedal(x.id, { large: true }), el('strong', '', x.name), el('span', 'pm-muted', x.desc));
       cards.append(c);
     });
     reward.records.forEach(r => {

@@ -258,3 +258,10 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 @media (prefers-reduced-motion:reduce) {
   .pm-workout-screen .pm-dots .pm-dot { transition:none!important; }
 }
+
+/* ASCENT · icônes de séance */
+.pm-step-btn { display:grid; place-items:center; }
+.pm-step-btn .pm-ico { width:20px; height:20px; }
+.pm-quick-actions .pm-quick.pm-has-ico { flex-direction:column; gap:4px; }
+.pm-quick-actions .pm-quick .pm-ico { width:20px; height:20px; }
+.pm-done-icon .pm-ico { width:30px; height:30px; }

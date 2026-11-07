@@ -12,6 +12,7 @@ import {
   getWorkoutDuration, getPostponedActivities
 } from './workouts.js';
 import { el, btn, clear, add, dialog, confirmDialog, toast, formatClock, formatMinutes, fmtNum, parseNum, localISODate } from './dom.js';
+import { icon, withIcon } from './icons.js';
 import { loadCatalog, machineImage } from './catalog.js';
 import { ALL_PROFILES as KNOWN, isRealProfile, PROFILE_INFO } from './profiles.js';
 import { machineHistory, isClosed } from './stats.js';
@@ -190,8 +191,8 @@ function stepper({ id, label, value, kind, onStep }) {
   input.autocomplete = 'off'; input.setAttribute('enterkeyhint', 'done'); input.setAttribute('aria-labelledby', name.id);
   input.value = fmtNum(value);
   input.addEventListener('focus', () => input.select());
-  const minus = btn('−', 'pm-step-btn', () => onStep(input, -1));
-  const plus = btn('+', 'pm-step-btn', () => onStep(input, 1));
+  const minus = add(btn('', 'pm-step-btn', () => onStep(input, -1)), icon('moins'));
+  const plus = add(btn('', 'pm-step-btn', () => onStep(input, 1)), icon('plus'));
   minus.setAttribute('aria-label', 'Moins : ' + label.toLowerCase()); plus.setAttribute('aria-label', 'Plus : ' + label.toLowerCase());
   add(row, minus, input, plus);
   add(wrap, name, row);
@@ -285,7 +286,7 @@ function renderSets(card, a) {
 
   if (current) {
     const idx = curIdx, next = { set: current };
-    const validate = btn('✓ Valider la ' + setLabel(a, idx), 'pm-validate', async () => {
+    const validate = withIcon(btn('Valider la ' + setLabel(a, idx), 'pm-validate', async () => {
       if (S.busy) return;
       const v = readSet(box.inputs.kg, box.inputs.reps);
       if (!v) { setStatus('Renseigne une charge et des répétitions valides.', 'error'); toast('Charge ou répétitions invalides.'); return; }
@@ -304,7 +305,7 @@ function renderSets(card, a) {
         });
         if (session) offerUndo(a, next.set.id);
       } finally { S.busy = false; }
-    });
+    }), 'valider');
     validate.id = 'pm-validate-set';
     card.append(validate);
   } else if (a.sets.length) {
@@ -400,23 +401,23 @@ function renderMachine(a) {
 
   const tools = el('div', 'pm-row-actions pm-quick-actions');
   if (a.type === 'strength' && a.status === 'pending' && !a.postponed && !a.sets.some(s => s.done)) {
-    add(tools, btn('Machine occupée', 'pm-secondary pm-quick', async () => {
+    add(tools, withIcon(btn('Machine occupée', 'pm-secondary pm-quick', async () => {
       await flushAll();
       const successor = neighbour(S.session, a.key, 1);
       const s = await commit((p, id) => postponeActivity(p, id, a.key));
       if (s) { const n = (successor && act(s, successor)?.status === 'pending' && successor) || getNextActivity(s)?.key; if (n) select(n); }
-    }));
+    }), 'machine-occupee'));
   }
-  if (a.type === 'strength') add(tools, btn('Ajouter une série', 'pm-secondary pm-quick', () => commit((p, id) => addSet(p, id, a.key))));
+  if (a.type === 'strength') add(tools, withIcon(btn('Ajouter une série', 'pm-secondary pm-quick', () => commit((p, id) => addSet(p, id, a.key))), 'plus'));
   if (a.postponed) add(tools, btn('↶ Y revenir maintenant', 'pm-secondary', () => commit((p, id) => returnToPostponed(p, id, a.key))));
   if (a.status !== 'skipped' && a.status !== 'done') {
-    add(tools, btn('Passer', 'pm-warning pm-quick', async () => {
+    add(tools, withIcon(btn('Passer', 'pm-warning pm-quick', async () => {
       if (!(await confirmDialog('Passer cette activité ? La séance ne pourra alors se terminer qu’en partielle.', { ok: 'Passer', danger: true }))) return;
       await flushAll();
       const successor = neighbour(S.session, a.key, 1);
       const s = await commit((p, id) => skipActivity(p, id, a.key, true));
       if (s) { const n = (successor && act(s, successor)?.status === 'pending' && successor) || getNextActivity(s)?.key; if (n) select(n); }
-    }));
+    }), 'passer'));
   } else if (a.status === 'skipped') {
     add(tools, btn('Annuler le saut', 'pm-secondary', () => commit((p, id) => skipActivity(p, id, a.key, false))));
   }
@@ -429,7 +430,7 @@ function renderMachine(a) {
     const n = act(S.session, nextKey);
     card.append(btn('Machine suivante : ' + nameOf(n) + ' ›', finished ? 'pm-validate' : 'pm-secondary', () => select(nextKey)));
   } else if (finished) {
-    card.append(btn('Terminer la séance ›', 'pm-validate', () => showRecap()));
+    card.append(withIcon(btn('Terminer la séance', 'pm-validate', () => showRecap()), 'drapeau'));
   }
   return card;
 }
@@ -611,7 +612,7 @@ function renderDone(session) {
   const box = el('article', 'pm-workout-card pm-done');
   const complete = session.status === 'completed';
   const hero = el('div', 'pm-done-hero');
-  add(hero, el('div', 'pm-done-icon', '✓'),
+  add(hero, add(el('div', 'pm-done-icon'), icon('drapeau')),
     el('h2', '', complete ? 'Séance terminée !' : 'Séance partielle enregistrée'),
     el('p', 'pm-done-sub', complete ? 'Belle séance, ' + (PROFILE_INFO[S.profile]?.name || '') + ' !' : 'Tout ce que tu as fait compte.'),
     el('p', 'pm-muted', sum.setsDone + ' séries · ' + fmtNum(sum.volumeKg) + ' kg de volume · ' + formatMinutes(sum.durationMinutes)));

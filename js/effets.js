@@ -13,5 +13,17 @@ const motionAllowed = () => {
 document.addEventListener('pm:fx', event => {
   if (!motionAllowed()) return;
   const { type } = event.detail || {};
-  void type; // TODO (ChatGPT) : réagir à set-validated, activity-done, session-done, record, level-up, badge…
+  if (type === 'xp') celebrateXp();
+  // TODO (ChatGPT) : réagir à set-validated, activity-done, session-done, record, level-up, badge…
 });
+
+/** Barre d'XP de la carte de récompense : un seul effet de 380 ms (css/jeu.css, .pm-xp-celebrate). */
+function celebrateXp() {
+  const track = document.querySelector('.pm-reward .pm-xp-track');
+  if (!track) return;
+  track.classList.remove('pm-xp-celebrate');
+  requestAnimationFrame(() => {
+    track.classList.add('pm-xp-celebrate');
+    setTimeout(() => track.classList.remove('pm-xp-celebrate'), 500);
+  });
+}
