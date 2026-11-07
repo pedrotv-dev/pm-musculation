@@ -350,3 +350,6 @@
 @media (prefers-reduced-motion:reduce) {
   .pm-xp-track.pm-xp-celebrate .pm-xp-fill { animation:none!important; }
 }
+
+/* intégration PR #48 : la barre d'XP se remplit depuis la gauche (js/effets.js anime scaleX) */
+.pm-xp-fill { transform-origin:left center; }
