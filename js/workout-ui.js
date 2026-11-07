@@ -499,7 +499,7 @@ function renderList() {
   });
   box.append(list);
   box.append(btn('+ Ajouter une machine', 'pm-secondary', addMachineDialog));
-  box.append(btn('Retour à la machine', 'pm-validate', () => { S.view = 'activity'; S.revealed = null; render(); }));
+  box.append(btn('Retour à la machine', 'pm-validate', () => { S.view = 'activity'; S.revealed = null; render(); window.scrollTo(0, 0); }));
   return box;
 }
 async function addMachineDialog() {
@@ -532,12 +532,40 @@ async function showRecap() {
 }
 const FEELINGS = [['1', 'Très dur'], ['2', 'Dur'], ['3', 'Correct'], ['4', 'Bien'], ['5', 'Très bien']];
 
+/** Bloc « Ressenti » + « Remarques » de la fin de séance (mêmes saisies et enregistrements qu'avant). */
+function feedbackBlock(s) {
+  const fb = el('section', 'pm-recap-feedback');
+  fb.setAttribute('aria-label', 'Ressenti et remarques');
+  fb.append(el('h2', 'pm-sets-title', 'Ressenti')); // h2 : premier titre de la carte, avant « Récapitulatif » (ordre des titres)
+  const feelings = el('div', 'pm-feelings');
+  let feeling = s.feedback?.feeling ?? null;
+  FEELINGS.forEach(([v, label]) => {
+    const b = btn(v + ' · ' + label, 'pm-feeling' + (String(feeling) === v ? ' pm-on' : ''), () => {
+      feeling = Number(v) === feeling ? null : Number(v);
+      feelings.querySelectorAll('.pm-feeling').forEach(x => x.classList.toggle('pm-on', x.dataset.v === String(feeling)));
+      commit((p, id) => setWorkoutFeedback(p, id, { feeling }), { silent: true });
+    });
+    b.dataset.v = v; feelings.append(b);
+  });
+  fb.append(feelings);
+  const note = el('textarea', 'pm-textarea-note');
+  note.placeholder = 'Remarques, difficultés, douleurs…'; note.maxLength = 1000; note.value = s.feedback?.note || '';
+  note.setAttribute('aria-label', 'Remarques sur la séance');
+  let t = null;
+  note.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => commit((p, id) => setWorkoutFeedback(p, id, { note: note.value }), { silent: true }), 500); });
+  note.addEventListener('blur', () => { clearTimeout(t); commit((p, id) => setWorkoutFeedback(p, id, { note: note.value }), { silent: true }); });
+  fb.append(el('h2', 'pm-sets-title', 'Remarques'), note);
+
+  return fb;
+}
+
 function renderRecap() {
   const s = S.session;
   const sum = getWorkoutSummary(s, new Date());
   const box = el('article', 'pm-workout-card');
   const notDone = s.activities.filter(a => a.status !== 'done');
   const complete = notDone.length === 0;
+  box.append(feedbackBlock(s)); // V1-UX2-03 : Ressenti et Remarques d'abord, puis le récapitulatif
   box.append(el('h2', '', 'Récapitulatif'),
     el('p', 'pm-recap-kind pm-chip ' + (complete ? 'pm-chip-done' : 'pm-chip-postponed'),
       complete ? 'Séance complète' : 'Séance partielle : ' + notDone.length + ' activité(s) non réalisée(s)'));
@@ -577,28 +605,8 @@ function renderRecap() {
     box.append(block);
   }
 
-  box.append(el('h3', 'pm-sets-title', 'Ressenti'));
-  const feelings = el('div', 'pm-feelings');
-  let feeling = s.feedback?.feeling ?? null;
-  FEELINGS.forEach(([v, label]) => {
-    const b = btn(v + ' · ' + label, 'pm-feeling' + (String(feeling) === v ? ' pm-on' : ''), () => {
-      feeling = Number(v) === feeling ? null : Number(v);
-      feelings.querySelectorAll('.pm-feeling').forEach(x => x.classList.toggle('pm-on', x.dataset.v === String(feeling)));
-      commit((p, id) => setWorkoutFeedback(p, id, { feeling }), { silent: true });
-    });
-    b.dataset.v = v; feelings.append(b);
-  });
-  box.append(feelings);
-  const note = el('textarea', 'pm-textarea-note');
-  note.placeholder = 'Remarques, difficultés, douleurs…'; note.maxLength = 1000; note.value = s.feedback?.note || '';
-  note.setAttribute('aria-label', 'Remarques sur la séance');
-  let t = null;
-  note.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => commit((p, id) => setWorkoutFeedback(p, id, { note: note.value }), { silent: true }), 500); });
-  note.addEventListener('blur', () => { clearTimeout(t); commit((p, id) => setWorkoutFeedback(p, id, { note: note.value }), { silent: true }); });
-  box.append(note);
-
   box.append(btn('Valider ma séance', 'pm-validate', () => finish(complete)));
-  box.append(btn('Retour à la séance', 'pm-secondary', () => { S.view = 'activity'; render(); }));
+  box.append(btn('Retour à la séance', 'pm-secondary', () => { S.view = 'activity'; S.revealed = null; render(); window.scrollTo(0, 0); }));
   return box;
 }
 
