@@ -8,7 +8,7 @@ import {
 } from './workouts.js';
 import { loadCatalog } from './catalog.js';
 import { plannedIndex, SIDE_LABEL, SIDE_SHORT } from './machine-rules.js';
-import { CARDIO_METRICS } from './cardio.js';
+import { metricsFor } from './cardio.js';
 import { ALL_PROFILES as KNOWN } from './profiles.js';
 import { el, btn, clear, add, dialog, confirmDialog, toast, fmtNum, parseNum, formatMinutes, formatDateFr } from './dom.js';
 
@@ -175,7 +175,7 @@ function renderDetail() {
       row.append(dur, el('span', 'pm-unit', 'min' + (a.planned?.durationMinutes ? ' (prévu ' + a.planned.durationMinutes + ')' : '')));
       block.append(row);
       const mrow = el('div', 'pm-hist-set pm-hist-metrics');
-      for (const m of CARDIO_METRICS) {
+      for (const m of metricsFor((S.catalog.list || []).find(x => x.kind === 'cardio' && x.name === a.name))) {
         const cur = a.actual?.[m.key];
         const input = numInput(cur ?? 0, m.integer ? 'reps' : 'kg', m.label + ' — ' + nameOf(a));
         if (cur === undefined) input.value = '';

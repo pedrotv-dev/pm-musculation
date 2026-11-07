@@ -18,7 +18,7 @@
       "Chaque profil contient \"days\" : au plus 7 jours, en général 5 (lundi à vendredi). L'identifiant d'un jour est EXACTEMENT l'un de : lundi, mardi, mercredi, jeudi, vendredi, samedi, dimanche (minuscules, sans accent), une seule fois chacun. \"name\" est un titre court de séance (ex. « Jambes & mollets »).",
       "\"activities\" est une liste ORDONNÉE, jamais vide : l'application suit exactement cet ordre. Habituellement : un échauffement au début, les machines de musculation, du cardio en fin de séance ou en complément.",
       "Type \"warmup\" ou \"cardio\" : { \"type\": \"warmup\" | \"cardio\", \"name\": \"<nom de machine cardio>\", \"durationMinutes\": <nombre> }. Le name doit être EXACTEMENT un nom du catalogue de kind \"cardio\" (Vélo assis, Tapis de course, Vélo elliptique, Rameur, Escalier) : il sert à afficher la bonne photo.",
-      "Réglages de cardio FACULTATIFS (échauffement ou cardio) : \"incline\" (pente en %, 0 à 40, ex. 3), \"speed\" (vitesse : km/h sur le tapis, ex. 6.5 ; sur les autres appareils, la valeur affichée par la machine) et \"level\" (niveau / résistance, entier de 0 à 100). Ajoute-les quand c'est utile (ex. tapis : incline + speed ; vélo, elliptique, escalier : level) : l'application les affiche pendant la séance et les remet dans le bilan.",
+      "Réglages de cardio FACULTATIFS (échauffement ou cardio) : \"incline\" (pente en %, 0 à 40, ex. 3), \"speed\" (vitesse : km/h sur le tapis, ex. 6.5 ; sur les autres appareils, la valeur affichée par la machine) et \"level\" (niveau / résistance, entier de 0 à 100). Chaque machine du catalogue indique ses \"reglages_possibles\" : n'utilise QUE ceux-là (ex. Vélo assis : uniquement \"level\", jamais \"incline\" ni \"speed\"). Ajoute-les quand c'est utile (ex. tapis : incline + speed) : l'application les affiche pendant la séance et les remet dans le bilan.",
       "Type \"strength\" : { \"type\": \"strength\", \"machineId\": \"<id>\", \"shared\": true|false, \"restSeconds\": <entier>, \"sets\": [ { \"kg\": <nombre>, \"reps\": <entier> }, ... ] }.",
       "machineId : UNIQUEMENT un « id » du catalogue de kind \"strength\" (ex. \"leg-press\"), jamais le nom affiché (« Leg Press » est refusé) et jamais un identifiant inventé. Machines guidées Basic-Fit uniquement : pas de barre, d'haltères ni de poulie libre.",
       "sets : une entrée par série, avec la charge prévue (kg) et les répétitions prévues (reps) ; les séries d'une même machine peuvent différer (montée en charge, séries lourdes puis légères…).",
@@ -1345,31 +1345,54 @@
         "id": "treadmill",
         "name": "Tapis de course",
         "kind": "cardio",
-        "muscleGroup": "Cardio"
+        "muscleGroup": "Cardio",
+        "reglages_possibles": [
+          "incline",
+          "speed",
+          "level"
+        ]
       },
       {
         "id": "recumbent-bike",
         "name": "Vélo assis",
         "kind": "cardio",
-        "muscleGroup": "Cardio"
+        "muscleGroup": "Cardio",
+        "reglages_possibles": [
+          "level"
+        ]
       },
       {
         "id": "elliptical",
         "name": "Vélo elliptique",
         "kind": "cardio",
-        "muscleGroup": "Cardio"
+        "muscleGroup": "Cardio",
+        "reglages_possibles": [
+          "incline",
+          "speed",
+          "level"
+        ]
       },
       {
         "id": "rowing-machine",
         "name": "Rameur",
         "kind": "cardio",
-        "muscleGroup": "Cardio"
+        "muscleGroup": "Cardio",
+        "reglages_possibles": [
+          "incline",
+          "speed",
+          "level"
+        ]
       },
       {
         "id": "stairs",
         "name": "Escalier",
         "kind": "cardio",
-        "muscleGroup": "Cardio"
+        "muscleGroup": "Cardio",
+        "reglages_possibles": [
+          "incline",
+          "speed",
+          "level"
+        ]
       }
     ]
   },

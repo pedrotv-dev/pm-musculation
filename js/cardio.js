@@ -53,3 +53,12 @@ export function metricsOf(a) {
   }
   return out;
 }
+
+/**
+ * Réglages proposés pour une machine de cardio du catalogue : `metrics` (clés) dans data/machines.json,
+ * sinon les trois. Ex. Vélo assis : niveau seulement. `machine` absente (nom inconnu) : les trois.
+ */
+export function metricsFor(machine) {
+  const keys = machine && Array.isArray(machine.metrics) ? machine.metrics : null;
+  return keys ? CARDIO_METRICS.filter(m => keys.indexOf(m.key) !== -1) : CARDIO_METRICS.slice();
+}
