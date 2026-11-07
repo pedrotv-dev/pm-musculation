@@ -1,8 +1,8 @@
 /* PM Musculation — composants partagés (provisoires, sobres). Le design final sera repris plus tard. */
 .pm-muted { color:var(--muted); font-size:13px; }
 .pm-secondary, .pm-warning, .pm-validate, .pm-link, .pm-icon-btn { font:inherit; cursor:pointer; }
-.pm-validate { display:block; width:100%; min-height:58px; margin-top:var(--space-4); border:0; border-radius:var(--radius-16); background:var(--turq); color:var(--turq-dark); font-size:18px; font-weight:850; letter-spacing:-.01em; }
-.pm-validate:active { transform:scale(.99); }
+.pm-validate { display:block; width:100%; min-height:58px; margin-top:var(--space-4); border:0; border-radius:var(--radius-16); background:var(--turq); color:var(--turq-dark); font-size:18px; font-weight:850; letter-spacing:-.01em; transition:transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out); }
+.pm-validate:active:not(:disabled) { transform:scale(.985); }
 .pm-validate:disabled { opacity:.5; }
 .pm-secondary { display:inline-flex; justify-content:center; align-items:center; min-height:46px; padding:0 15px; border-radius:var(--radius-13); background:var(--surface-raised); color:var(--text); border:1px solid var(--stroke); font-size:14px; font-weight:750; }
 .pm-secondary:disabled { opacity:.45; }
@@ -93,3 +93,28 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-weight-form { grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; }
 .pm-profile-option { margin-top:10px; }
 .pm-profile-option .pm-muted { margin:0 0 0 30px; }
+
+/* PULSE : etats unifies des commandes (effets non bloquants). */
+.pm-secondary, .pm-warning, .pm-icon-btn, .pm-modal-btn, .pm-seg-btn, .pm-toast-action {
+  transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+}
+.pm-secondary:active:not(:disabled), .pm-warning:active:not(:disabled),
+.pm-icon-btn:active:not(:disabled), .pm-modal-btn:active:not(:disabled),
+.pm-seg-btn:active:not(:disabled), .pm-toast-action:active:not(:disabled) {
+  transform: scale(.98);
+}
+.pm-validate:focus-visible, .pm-secondary:focus-visible, .pm-warning:focus-visible,
+.pm-icon-btn:focus-visible, .pm-modal-btn:focus-visible, .pm-seg-btn:focus-visible,
+.pm-toast-action:focus-visible, .pm-input:focus-visible, .pm-select:focus-visible {
+  outline: 3px solid var(--turq);
+  outline-offset: 2px;
+}
+.pm-warning:disabled, .pm-modal-btn:disabled, .pm-seg-btn:disabled, .pm-toast-action:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+.pm-input:disabled, .pm-select:disabled { opacity: .55; }
+.pm-input, .pm-select, .pm-textarea-note { border-color: var(--stroke); }
+.pm-input:focus-visible, .pm-select:focus-visible, .pm-textarea-note:focus-visible {
+  border-color: var(--turq);
+}
