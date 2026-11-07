@@ -353,3 +353,16 @@
 
 /* intégration PR #48 : la barre d'XP se remplit depuis la gauche (js/effets.js anime scaleX) */
 .pm-xp-fill { transform-origin:left center; }
+
+/* ASCENT · page Progression et guide de Korv */
+.pm-panel-title-ico { display:flex; align-items:center; gap:9px; }
+.pm-panel-title-ico .pm-ico { width:22px; height:22px; color:var(--turq); }
+.pm-stats .pm-stat { border-radius:14px; }
+.pm-stats .pm-stat strong { font-size:22px; }
+.pm-korv-guide > summary { display:flex; align-items:center; gap:12px; list-style:none; cursor:pointer; min-height:56px; }
+.pm-korv-guide > summary::-webkit-details-marker { display:none; }
+.pm-korv-guide-img { flex:none; width:56px; height:56px; border-radius:14px; object-fit:cover; object-position:70% 20%; border:1px solid var(--ascent-rim, var(--stroke)); }
+.pm-korv-guide-title { display:grid; gap:2px; min-width:0; }
+.pm-korv-guide-title strong { font-size:17px; }
+.pm-korv-guide[open] > summary { margin-bottom:12px; }
+.pm-korv-guide h4 { margin:16px 0 6px; font-size:13px; color:var(--turq); text-transform:uppercase; letter-spacing:.06em; }
