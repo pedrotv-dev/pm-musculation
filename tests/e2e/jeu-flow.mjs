@@ -72,8 +72,13 @@ await step('séance de Pierre : récompense (XP, succès Premier pas) et événe
   await page.click('#pm-validate-set'); await page.waitForSelector('.pm-set-done');
   await page.click('#pm-validate-set'); await page.waitForSelector('.pm-machine-done');
   await page.click(screen + ' .pm-validate:has-text("Terminer la séance")');
+  await page.evaluate(() => { window.__celebrate = false; new MutationObserver(() => { if (document.querySelector('.pm-xp-celebrate')) window.__celebrate = true; }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'], childList: true }); });
   await page.click(screen + ' .pm-validate:has-text("Valider ma séance")');
   await page.waitForSelector(screen + ' .pm-reward');
+  await page.waitForFunction(() => window.__celebrate === true, null, { timeout: 3000 });  // barre d'XP : effet bref (réglage Animations actif)
+  const medals = await page.$$eval(screen + ' .pm-reward-badge .pm-medal-ico', l => l.map(e => e.dataset.badge + ':' + (getComputedStyle(e).webkitMaskImage || getComputedStyle(e).maskImage)));
+  assert.equal(medals.length, 2, String(medals));
+  assert.ok(medals.every(m => /succes-[a-z-]+\.svg/.test(m)), String(medals));
   const r = await text(screen + ' .pm-reward');
   assert.match(r, /\+80 XP/);                       // 2 séries × 10 + séance complète 60
   assert.match(r, /Nouveau badge !/); assert.match(r, /Premier pas/); assert.match(r, /Une tonne/);
@@ -87,6 +92,8 @@ await step('retour à l’accueil : niveau mis à jour (80 XP), puis succès dan
   await page.waitForFunction(() => /80 \/ 200 XP/.test(document.querySelector('.pm-level-card')?.innerText || ''), null, { timeout: 8000 }).catch(async e => { throw new Error('carte : ' + JSON.stringify(await page.evaluate(() => [...document.querySelectorAll('.pm-level-card')].map(c => c.innerText)))); });
   await page.click('.nav-btn[data-go="progres"]');
   await page.waitForFunction(() => /Succès · 2 \/ 18/.test(document.querySelector('.pm-badges-panel h3')?.innerText || ''));
+  assert.equal(await page.locator('.pm-badge-tile .pm-medal').count(), 18);
+  assert.equal(await page.locator('.pm-badge-tile .pm-medal-locked').count(), 16);
   assert.equal(await page.locator('.pm-badge-tile.pm-unlocked').count(), 2); // Premier pas + Une tonne ! (2 × 60 kg × 12 = 1 440 kg)
 });
 await step('passage de niveau : plein écran « Niveau supérieur » avec Korv, hexagone et bouton « Parfait ! »', async () => {

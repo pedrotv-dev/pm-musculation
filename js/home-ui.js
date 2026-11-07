@@ -11,6 +11,7 @@ import { el, btn, clear, add, fmtNum, formatMinutes, formatDateFr, localISODate,
 import { computeProgress, progressionStartFor } from './gamification.js';
 import { homeHero, levelStrip } from './jeu-ui.js';
 import { recentProgress } from './stats.js';
+import { icon } from './icons.js';
 
 const root = document.documentElement;
 const page = document.querySelector('[data-page="accueil"]');
@@ -27,7 +28,7 @@ async function loadProgram(profile) {
 const emit = (type, detail) => document.dispatchEvent(new CustomEvent(type, { detail }));
 const go = p => document.querySelector('[data-go="' + p + '"]')?.click();
 
-const icon = id => { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('aria-hidden', 'true'); const use = document.createElementNS('http://www.w3.org/2000/svg', 'use'); use.setAttribute('href', '#' + id); svg.append(use); return svg; };
+
 
 /** « Ta progression » sur 30 jours : séances, force moyenne, volume. */
 function progressSection(r) {
@@ -37,7 +38,7 @@ function progressSection(r) {
   const tiles = el('div', 'pm-tiles');
   const force = r.strengthPercent === null ? '—' : (r.strengthPercent > 0 ? '+' : '') + fmtNum(r.strengthPercent) + ' %';
   const vol = r.volumeKg >= 1000 ? fmtNum(Math.round(r.volumeKg / 100) / 10) + ' t' : fmtNum(r.volumeKg) + ' kg';
-  [['ico-calendar', r.sessions, r.sessions > 1 ? 'séances' : 'séance'], ['ico-chart', force, 'force moy.'], ['ico-dumbbell', vol, 'volume']]
+  [['calendrier', r.sessions, r.sessions > 1 ? 'séances' : 'séance'], ['progression', force, 'force moy.'], ['seances', vol, 'volume']]
     .forEach(([ico, v, l]) => tiles.append(add(el('div', 'pm-tile'), icon(ico), el('strong', '', String(v)), el('span', '', l))));
   box.append(head, tiles);
   return box;
@@ -94,8 +95,8 @@ async function renderHome() {
       const start = () => emit('pm:start-workout', { profileId: profile, weekStart: program.weekStart, dayId: day.id });
       const play = btn('', 'pm-play', start);
       play.setAttribute('aria-label', 'Démarrer cette séance : ' + (day.name || day.id));
-      play.append(icon('ico-play'));
-      add(row, add(el('span', 'pm-next-icon'), icon('ico-dumbbell')), info, play);
+      play.append(icon('lecture'));
+      add(row, add(el('span', 'pm-next-icon'), icon('seances')), info, play);
       card.append(row);
       if (doneToday) card.append(el('p', 'pm-muted', 'Déjà enregistrée aujourd’hui (' + (doneToday.status === 'completed' ? 'complète' : 'partielle') + ').'));
       card.append(btn('Choisir une autre journée', 'pm-link', () => go('programme')));
