@@ -23,7 +23,7 @@ Tu es **directeur artistique et intégrateur CSS mobile-first**. Tu dois concevo
 # Identité visuelle VALIDÉE (à respecter)
 
 - Nom : **PM Musculation**. Sous-identité : **Pierre & Manon**.
-- Logo : lettres **PM** + idée d'**haltères**. Icône **carrée**, lisible sans texte. (Version actuelle : `assets/icons/icon.svg` — à améliorer, pas à abandonner.)
+- Logo : lettres **PM** + idée d'**haltères**. Icône **carrée**, lisible sans texte. (**Logo définitif intégré** : monogramme PM turquoise et blanc, haltère rose, fond bleu marine — sources dans `Ui/`, icônes de l'application dans `assets/icons/`. À ne pas redessiner.)
 - Palette : **bleu marine** (fond), **turquoise** (action principale, validation), **rose/violet pâle** (accents). **Pierre = bleu**, **Manon = violet**, **Démo = violet pâle**.
 - Jetons actuels (variables CSS, tu peux les affiner mais garde leur **rôle** et leurs **noms**) :
 
@@ -59,7 +59,7 @@ Tu es **directeur artistique et intégrateur CSS mobile-first**. Tu dois concevo
 | `css/workout.css` | **écran de séance** (une machine par écran), liste des machines, récapitulatif, écran de fin |
 | `css/rest.css` | **barre flottante du chronomètre de récupération** |
 | `css/programs.css` | **Programme** : jours, activités, import JSON, aperçu |
-| `assets/icons/*` | logo / icône : `icon.svg` (source), `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png` (180) |
+| `assets/icons/*` | logo / icône : `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png` (180) |
 | `assets/machines/<id>.png` | photos des machines (voir plus bas) |
 | `manifest.webmanifest` | uniquement `theme_color` / `background_color` |
 | `index.html` | **uniquement** les balises `<meta name="theme-color">`, `<link>` d'habillage (pas de scripts, pas de CSP) |
