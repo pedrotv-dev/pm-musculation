@@ -9,7 +9,7 @@
  * - Ne touche JAMAIS a IndexedDB ni a localStorage : une mise a jour du code ne supprime aucune donnee.
  * VERSION est recalculee par `node tools/release.mjs` (date + empreinte des fichiers) ; tests/pwa.test.mjs verifie qu'elle est a jour.
  */
-const VERSION = '2026.11.07-927be321';
+const VERSION = '2026.11.07-697ebf24';
 // Production : caches « pm-musculation-<version> » (inchangés). Aperçu (/preview/sw.js) : « pmprev-<version> ». Les deux préfixes ne se
 // recouvrent pas : chaque service worker ne supprime QUE ses propres anciens caches, jamais ceux de l'autre.
 const PREVIEW = /\/preview\/sw\.js$/.test(self.location.pathname);
@@ -24,7 +24,7 @@ const PRECACHE = [
   'js/stats.js', 'js/ui-settings.js', 'js/version.js', 'js/wakelock.js', 'js/weights.js', 'js/workout-ui.js', 'js/workouts.js',
   'data/machines.json', 'data/exemple-programme.json', 'assets/machines/index.json', 'assets/mascot/index.json',
   'assets/ascent/hero-accueil.webp', 'assets/ascent/hero-fin.webp',
-  'assets/ascent/korv-accueil-neutre.webp', 'assets/ascent/korv-accueil-heureux.webp', 'assets/ascent/korv-accueil-motive.webp',
+  'assets/ascent/korv-accueil-neutre.webp', 'assets/ascent/korv-accueil-heureux.webp', 'assets/ascent/korv-accueil-motive.webp', 'assets/ascent/icones.svg',
   'assets/mascot/stage-0.png', 'assets/mascot/stage-0-happy.png', 'assets/mascot/stage-0-cheer.png', 'assets/mascot/stage-0-levelup.png',
   'assets/machines/back-extension.png', 'assets/machines/rotary-torso.png', 'assets/machines/shoulder-press.png', 'assets/machines/converging-chest-press.png',
   'assets/machines/converging-shoulder-press.png', 'assets/machines/leg-extension.png', 'assets/machines/chest-press.png', 'assets/machines/seated-leg-curl.png',
