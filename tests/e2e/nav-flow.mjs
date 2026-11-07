@@ -40,7 +40,7 @@ await step('à l\'accueil : aucune entrée ajoutée à l\'historique (retour qui
   assert.equal(await guard(), false);
 });
 await step('autre onglet : retour → accueil', async () => {
-  await page.click('.nav-btn[data-go="historique"]'); await page.waitForSelector('.pm-history-card');
+  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]'); await page.waitForSelector('.pm-history-card');
   await page.waitForTimeout(200);
   assert.equal(await guard(), true);
   await back();
@@ -48,11 +48,12 @@ await step('autre onglet : retour → accueil', async () => {
   await noGuard(); // plus rien à fermer : le prochain retour quitterait l'application
 });
 await step('détail d\'une séance : retour → liste, puis retour → accueil', async () => {
-  await page.click('.nav-btn[data-go="historique"]'); await page.click('.pm-history-card'); await page.waitForSelector('.pm-hist-set');
+  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]'); await page.click('.pm-history-card'); await page.waitForSelector('.pm-hist-set');
   await page.waitForTimeout(200);
   await back();
   assert.equal(await page.evaluate(() => document.querySelector('[data-page="historique"]').dataset.view), 'list');
-  assert.equal(await activeTab(), 'historique');
+  assert.equal(await activeTab(), 'seances');
+  assert.equal(await page.evaluate(() => document.querySelector('.pm-subtab.active').dataset.go), 'historique');
   await back();
   assert.equal(await activeTab(), 'accueil');
 });
@@ -138,7 +139,7 @@ await step('réglages : bouton retour désactivable (comportement normal du navi
   await page.waitForTimeout(300);
   await page.uncheck('label:has-text("Bouton retour du téléphone") input');
   await page.waitForTimeout(300);
-  await page.click('.nav-btn[data-go="historique"]'); await page.waitForSelector('.pm-history-card'); await page.waitForTimeout(300);
+  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]'); await page.waitForSelector('.pm-history-card'); await page.waitForTimeout(300);
   await noGuard(); // aucune garde ajoutée : « retour » n'est plus intercepté
 });
 await step('API verrou d\'écran refusée : aucune erreur, séance utilisable', async () => {

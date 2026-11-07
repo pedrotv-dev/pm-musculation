@@ -30,7 +30,7 @@ console.log('Retours du samedi');
 await page.goto(srv.url);
 await step('importer un programme avec Rotary Hip, 2 Hip Abduction, Escalier et réglages cardio', async () => {
   await page.click('[data-select-profile="pierre"]');
-  await page.click('.nav-btn[data-go="programme"]');
+  await page.click('.nav-btn[data-go="seances"]');
   await page.click('.pm-import summary');
   await page.fill('.pm-textarea', JSON.stringify(program()));
   await page.click('.pm-action-verify');

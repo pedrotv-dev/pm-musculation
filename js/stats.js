@@ -129,3 +129,32 @@ export function skippedSummary(sessions) {
   }
   return [...map.values()].sort((a, b) => b.skipped + b.notDone - (a.skipped + a.notDone));
 }
+
+/**
+ * « Ta progression » de l'accueil, sur les `days` derniers jours (jusqu'à `today` inclus) :
+ * nombre de séances terminées, volume (kg) et évolution moyenne de la FORCE (en %), c'est-à-dire, pour chaque machine
+ * utilisée dans la période ET dans la période précédente de même durée, l'écart de charge maximale validée ; moyenne des écarts.
+ * `strengthPercent` vaut null s'il n'y a aucune machine comparable. Toutes les séances comptent (historique complet).
+ */
+export function recentProgress(sessions, today, days = 30) {
+  const closed = sessions.filter(isClosed);
+  const from = addDays(today, -(days - 1)), prevFrom = addDays(today, -(2 * days - 1));
+  const inWindow = closed.filter(s => s.date >= from && s.date <= today);
+  const inPrev = closed.filter(s => s.date >= prevFrom && s.date < from);
+  const maxKg = list => {
+    const m = new Map();
+    for (const s of list) for (const a of s.activities) if (a.type === 'strength' && a.machineId !== 'dip-chin-assist') {
+      for (const x of doneSets(a)) m.set(a.machineId, Math.max(m.get(a.machineId) || 0, x.kg));
+    }
+    return m;
+  };
+  const now = maxKg(inWindow), before = maxKg(inPrev);
+  const changes = [];
+  for (const [id, kg] of now) { const b = before.get(id); if (b > 0) changes.push((kg - b) / b * 100); }
+  const t = totals(inWindow);
+  return {
+    days, sessions: t.sessions, volumeKg: t.volumeKg,
+    strengthPercent: changes.length ? Math.round(changes.reduce((x, y) => x + y, 0) / changes.length * 10) / 10 : null,
+    comparedMachines: changes.length
+  };
+}

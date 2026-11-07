@@ -89,3 +89,24 @@ test('bilan commun Pierre + Manon, semaine sans données et ressentis', () => {
   assert.match(empty, /aucune séance enregistrée cette semaine/);
   assert.match(empty, /0 réalisée\(s\)/);
 });
+
+test('« Ta progression » (30 jours) : séances, volume, évolution moyenne de la force par machine', async () => {
+  const { recentProgress } = await import('../js/stats.js');
+  const s = (date, machine, kg, extra = []) => ({ id: date + machine, date, status: 'completed', summary: {}, activities: [
+    { type: 'strength', status: 'done', machineId: machine, sets: [{ kg, reps: 10, done: true }] }, ...extra] });
+  const sessions = [
+    s('2026-09-20', 'leg-press', 50),                  // période précédente (8 sept. → 7 oct.)
+    s('2026-09-25', 'chest-press', 40),
+    s('2026-10-10', 'leg-press', 55),                  // période courante (8 oct. → 6 nov.)
+    s('2026-11-01', 'chest-press', 38),
+    s('2026-11-05', 'arm-curl', 20),                   // pas comparable (absente avant)
+    { id: 'x', date: '2026-11-02', status: 'in_progress', activities: [] } // non terminée : ignorée
+  ];
+  const r = recentProgress(sessions, '2026-11-06', 30);
+  assert.equal(r.sessions, 3);
+  assert.equal(r.volumeKg, 550 + 380 + 200);
+  assert.equal(r.comparedMachines, 2);
+  assert.equal(r.strengthPercent, Math.round(((55 - 50) / 50 * 100 + (38 - 40) / 40 * 100) / 2 * 10) / 10); // (+10 % et −5 %) / 2 = +2,5 %
+  assert.equal(recentProgress(sessions.slice(2, 3), '2026-11-06').strengthPercent, null);
+  assert.deepEqual(recentProgress([], '2026-11-06'), { days: 30, sessions: 0, volumeKg: 0, strengthPercent: null, comparedMachines: 0 });
+});

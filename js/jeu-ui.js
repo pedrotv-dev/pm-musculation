@@ -118,3 +118,46 @@ export function rewardCard(reward, name) {
   }
   return card;
 }
+
+/** Hexagone de niveau (« NIV. 18 »), comme sur la planche ASCENT. */
+export function levelHex(level, { size = 'md', label = 'Niveau ' + level } = {}) {
+  const hex = el('div', 'pm-hex pm-hex-' + size);
+  hex.setAttribute('role', 'img'); hex.setAttribute('aria-label', label);
+  const inner = el('div', 'pm-hex-inner');
+  add(inner, el('span', 'pm-hex-label', 'NIV.'), el('strong', 'pm-hex-value', String(level)));
+  hex.append(inner);
+  return hex;
+}
+
+/** Accueil : salut, Korv en grand à droite, bulle de Korv, sur le décor montagne. */
+export function homeHero(p, { name, seed = '', demo = false } = {}) {
+  const hero = el('section', 'pm-hero');
+  hero.setAttribute('aria-label', 'Bienvenue');
+  const streak = p.streak.current;
+  const ctx = p.totals.sessions === 0 ? 'new' : streak >= 2 ? 'streak' : !p.streak.thisWeekDone && streak === 0 ? 'rest' : 'idle';
+  const mood = p.totals.sessions === 0 ? 'idle' : streak >= 2 ? 'happy' : 'idle';
+  const text = el('div', 'pm-hero-text');
+  const h = el('h2', 'pm-hero-title', 'Salut ' + name + ' ');
+  const wave = el('span', 'pm-hero-wave', '👋'); wave.setAttribute('aria-hidden', 'true'); h.append(wave);
+  add(text, h, el('p', 'pm-hero-sub', demo ? 'Mode démo : tout est fictif et reste en mémoire.' : 'Prêt à continuer l’ascension ?'));
+  const korv = renderMascot({ mood, stage: p.stage, size: 'xl' });
+  korv.classList.add('pm-hero-korv');
+  const bubble = el('div', 'pm-korv-bubble');
+  add(bubble, el('span', 'pm-korv-name', 'Korv'), el('p', 'pm-korv-line', '« ' + mascotLine(ctx, seed + p.level) + ' »'));
+  add(hero, text, korv, bubble);
+  return hero;
+}
+
+/** Accueil : bandeau de niveau (hexagone, niveau, barre d'XP). */
+export function levelStrip(p) {
+  const card = el('article', 'panel pm-level-card pm-level-strip');
+  const body = el('div', 'pm-level-body');
+  const top = el('div', 'pm-level-top');
+  add(top, el('strong', 'pm-level-name', 'Niveau ' + p.level), el('span', 'pm-level-next', 'Niv. ' + (p.level + 1)));
+  add(body, top, xpBar(p), el('p', 'pm-level-xp', fmtNum(p.into) + ' / ' + fmtNum(p.need) + ' XP · ' + p.title));
+  add(card, levelHex(p.level), body);
+  if (p.notStarted) card.append(el('p', 'pm-muted pm-level-note', 'Ta progression démarre le ' + longStart(p.startDate) + ' : tes séances d’avant restent dans ton historique et tes records.'));
+  else if (p.streak.current > 0) card.append(el('p', 'pm-muted pm-level-note', 'Série : ' + plural(p.streak.current, 'semaine', 'semaines') + ' de suite' +
+    (p.streak.thisWeekDone ? ' — cette semaine est déjà validée.' : ' — fais une séance cette semaine pour la garder.')));
+  return card;
+}

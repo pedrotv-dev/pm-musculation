@@ -100,7 +100,7 @@ function closeWorkout({ goTo } = {}) {
   S.session = null; S.selected = null; ++S.rev;
   leaveScreen();
   emit('pm:workout-changed', { profile: S.profile });
-  if (goTo) document.querySelector('.nav-btn[data-go="' + goTo + '"]')?.click();
+  if (goTo) document.querySelector('[data-go="' + goTo + '"]')?.click();
 }
 function startPosition(session) {
   const cursor = session.cursor && act(session, session.cursor);

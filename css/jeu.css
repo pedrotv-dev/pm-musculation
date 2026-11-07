@@ -193,3 +193,59 @@
 .pm-reward .pm-xp-fill { background:linear-gradient(90deg,var(--turq),var(--ascent-sage)); }
 .pm-reward-level.pm-levelup { color:var(--ok); }
 .pm-reward-records li { border-left-color:var(--ascent-sage); }
+
+/* ===== ASCENT · accueil (structure posée par Claude Code ; habillage fin : mission 1) ===== */
+.pm-hero { position:relative; display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:auto 1fr; column-gap:6px;
+  min-height:262px; margin:0 0 14px; padding:22px 0 0 18px; border-radius:18px; overflow:hidden; border:1px solid var(--ascent-rim, var(--stroke));
+  background:linear-gradient(180deg, rgba(11,15,18,.10) 0%, rgba(11,15,18,.45) 62%, rgba(11,15,18,.92) 100%), url(../assets/ascent/hero-accueil.webp) center 30% / cover no-repeat, var(--bg); }
+.pm-hero-text { grid-column:1; grid-row:1; min-width:0; }
+.pm-hero-title { margin:0 0 6px; font-size:clamp(26px,7vw,32px); line-height:1.1; letter-spacing:-.035em; }
+.pm-hero-wave { font-size:.85em; }
+.pm-hero-sub { margin:0; color:var(--muted); font-size:15px; }
+.pm-hero-korv.pm-mascot-xl { grid-column:2; grid-row:1 / span 2; align-self:end; width:150px; height:178px; margin-right:-8px; }
+.pm-hero-korv img { object-fit:contain; object-position:bottom; filter:drop-shadow(0 6px 18px rgba(0,0,0,.55)); }
+.pm-korv-bubble { grid-column:1; grid-row:2; align-self:end; position:relative; margin:16px 0 18px; padding:10px 12px;
+  border-radius:14px; border:1px solid var(--ascent-rim, var(--stroke)); background:rgba(26,33,39,.88); }
+.pm-korv-bubble::after { content:''; position:absolute; right:-7px; top:22px; width:12px; height:12px; transform:rotate(45deg);
+  background:rgba(26,33,39,.88); border-top:1px solid var(--ascent-rim, var(--stroke)); border-right:1px solid var(--ascent-rim, var(--stroke)); }
+.pm-korv-name { display:block; font-size:12px; font-weight:820; color:var(--turq); letter-spacing:.04em; margin-bottom:3px; }
+.pm-korv-line { margin:0; font-size:13px; line-height:1.45; color:var(--text); }
+.pm-mascot-xl { width:150px; height:178px; }
+
+.pm-hex { flex:none; display:grid; place-items:center; width:70px; height:78px;
+  clip-path:polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background:linear-gradient(160deg, var(--turq), rgba(20,230,199,.35)); }
+.pm-hex-inner { display:grid; place-items:center; align-content:center; width:calc(100% - 5px); height:calc(100% - 6px);
+  clip-path:polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background:var(--surface); }
+.pm-hex-label { font-size:10px; font-weight:800; letter-spacing:.08em; color:var(--muted); line-height:1; }
+.pm-hex-value { font-size:26px; font-weight:880; line-height:1.05; color:var(--text); font-variant-numeric:tabular-nums; }
+.pm-level-strip { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; column-gap:14px; row-gap:8px; }
+.pm-level-body { display:grid; gap:8px; min-width:0; }
+.pm-level-top { display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+.pm-level-name { font-size:18px; font-weight:850; letter-spacing:-.02em; }
+.pm-level-next { font-size:12px; color:var(--muted); font-weight:700; }
+.pm-level-xp { margin:0; font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.pm-level-note { grid-column:1 / -1; margin:2px 0 0; }
+
+.pm-progress-home { margin:0 0 14px; }
+.pm-section-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }
+.pm-section-head h3 { margin:0; font-size:18px; }
+.pm-tiles { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; }
+.pm-tile { display:grid; justify-items:center; gap:4px; padding:14px 6px 12px; border-radius:14px; text-align:center;
+  border:1px solid var(--ascent-rim, var(--stroke)); background:var(--surface); }
+.pm-tile svg { width:24px; height:24px; color:var(--turq); stroke-width:1.9; }
+.pm-tile strong { font-size:20px; font-weight:860; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.pm-tile span { font-size:12px; color:var(--muted); }
+
+.pm-next-card .pm-section-head { margin-bottom:12px; }
+.pm-next-when { font-size:13px; color:var(--muted); font-weight:700; }
+.pm-next-row { display:flex; align-items:center; gap:12px; padding:12px; border-radius:14px; background:var(--surface-raised); border:1px solid var(--ascent-rim, var(--stroke)); }
+.pm-next-icon { flex:none; display:grid; place-items:center; width:44px; height:44px; border-radius:12px; background:rgba(20,230,199,.10); color:var(--turq); }
+.pm-next-icon svg { width:24px; height:24px; stroke-width:1.9; }
+.pm-next-info { flex:1; min-width:0; display:grid; gap:2px; }
+.pm-next-info strong { font-size:16px; overflow-wrap:anywhere; }
+.pm-play { flex:none; display:grid; place-items:center; width:52px; height:52px; border:0; border-radius:14px; cursor:pointer;
+  background:var(--turq); color:var(--turq-dark); box-shadow:0 4px 16px rgba(20,230,199,.22); }
+.pm-play svg { width:22px; height:22px; }
+.pm-play:active { transform:scale(.96); }
+.pm-play:focus-visible { outline:3px solid var(--text); outline-offset:3px; }
+@media (max-width:370px) { .pm-hero-korv.pm-mascot-xl { width:120px; height:150px; } .pm-tile strong { font-size:17px; } }

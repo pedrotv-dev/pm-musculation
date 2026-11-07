@@ -26,9 +26,9 @@ await step('démo : carte de niveau et mascotte sur l’accueil', async () => {
   await demo.waitForSelector('.pm-level-card');
   assert.match(await dtext('.pm-level-card'), /Niveau \d+/);
   // Korv (corbeau) : l'image remplace le personnage de repli ; au niveau de la démo (stade > 0) on reste sur le stade 0
-  await demo.waitForSelector('.pm-level-card .pm-mascot img', { timeout: 8000 });
-  assert.match(await demo.getAttribute('.pm-level-card .pm-mascot img', 'src'), /assets\/mascot\/stage-0(-[a-z]+)?\.png/);
-  assert.ok(await demo.evaluate(() => { const i = document.querySelector('.pm-level-card .pm-mascot img'); return i.complete && i.naturalWidth === 320; }), 'image de Korv non chargée');
+  await demo.waitForSelector('.pm-hero .pm-mascot img', { timeout: 8000 });
+  assert.match(await demo.getAttribute('.pm-hero .pm-mascot img', 'src'), /assets\/mascot\/stage-0(-[a-z]+)?\.png/);
+  assert.ok(await demo.evaluate(() => { const i = document.querySelector('.pm-hero .pm-mascot img'); return i.complete && i.naturalWidth === 320; }), 'image de Korv non chargée');
   assert.equal(await demo.getAttribute('.pm-level-card [role="progressbar"]', 'aria-label') !== null, true);
   // un seul profil en haut : le profil actif, qui sert de bouton pour en changer
   assert.match(await demo.locator('#switch-profile').innerText(), /^Démo/);
@@ -61,7 +61,7 @@ await step('Pierre (vide) : niveau 1, « Recrue », aucun succès', async () => 
   assert.match(t, /Niveau 1/); assert.match(t, /Recrue/); assert.match(t, /0 \/ 200 XP/);
 });
 await step('séance de Pierre : récompense (XP, succès Premier pas) et événements d’effets', async () => {
-  await page.click('.nav-btn[data-go="programme"]');
+  await page.click('.nav-btn[data-go="seances"]');
   await page.click('.pm-import summary');
   await page.fill('.pm-textarea', JSON.stringify(program()));
   await page.click('.pm-action-verify');
