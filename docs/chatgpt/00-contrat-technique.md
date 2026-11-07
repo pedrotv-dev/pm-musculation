@@ -88,5 +88,13 @@ Avant de livrer : (1) chaque fichier cité existe ; (2) aucune ressource externe
 ## Référence visuelle FINALE : la planche ASCENT
 **`docs/design/ascent-concept-complet.png`** montre le style final voulu (accueil, séance en cours, fin de séance, niveau supérieur, page « Korv — le guide », palette, composants, badges hexagonaux, icônes). **Toute mission visuelle doit s'en approcher** : fond charbon avec silhouette de montagne, turquoise `#14E6C7` en accent, sauge `#B9F08A` pour les validations, Pierre bleu `#4A8DFF`, Manon violet `#B57DFF`, Korv grand et à droite sur l'accueil, niveau en hexagone, série en cours dans un cadre turquoise avec boutons − / +. Ce qui n'existe pas encore dans l'application (points de compétence, récompenses débloquables, défis, masse estimée…) **ne se dessine pas tant que Claude Code ne l'a pas décidé avec Pierre** : demande avant d'inventer un écran. Les changements de structure (HTML/JS) sont faits par Claude Code d'abord ; le CSS de ChatGPT vient ensuite.
 
+### Décisions de Pierre sur la planche (7 novembre 2026)
+- **Navigation : 4 onglets** — Accueil, Séances (sous-onglets Programme | Historique : `.pm-seances-tabs`, `.pm-subtab`), Progression, Profil.
+- **En-tête : le logo PM actuel** (pas la montagne de la planche).
+- **« Niveau supérieur » : plein écran avec un bouton « Parfait ! »**, comme la planche. C'est la SEULE exception à la règle « jamais bloquant » ; le budget de 3 s vaut pour ses animations.
+- **Pas de** points de compétence, récompenses débloquables, défis, ni masse estimée. « Ta progression » (30 jours) = séances, force moyenne (évolution des charges max), volume.
+- **Page « Korv — le guide »** dans Profil.
+- **Accueil ASCENT en place** (structure Claude Code) : `.pm-hero` (décor `assets/ascent/hero-accueil.webp`, Korv `.pm-hero-korv`, bulle `.pm-korv-bubble`), `.pm-level-strip` avec l'hexagone `.pm-hex`, `.pm-tiles`, carte `.pm-next-card` avec le bouton `.pm-play`. Styles de base dans `css/jeu.css` (section « ASCENT · accueil ») : tu peux les affiner.
+
 ## Identité visuelle actuelle (à respecter ou à faire évoluer avec accord)
 Fond sombre, accent **turquoise `#2ed3c0`** (action principale), texte clair, cartes arrondies (`.panel`), gros bouton « Valider » turquoise. Variables : `css/app.css` (`:root`) et `css/base.css`. Brief visuel complet de l'application : `docs/prompt-design-chatgpt.md`.

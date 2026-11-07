@@ -8,14 +8,19 @@ import { PROFILE_INFO, PROFILE_STORAGE_KEY, isKnownProfile } from './profiles.js
 const root = document.documentElement;
 const $ = selector => document.querySelector(selector);
 const pages = [...document.querySelectorAll('[data-page]')];
-const navButtons = [...document.querySelectorAll('.nav-btn')];
+const navButtons = [...document.querySelectorAll('.nav-btn, .pm-subtab')];
+const SEANCES = ['programme', 'historique']; // l'onglet « Séances » regroupe ces deux pages
 let currentProfile = null;
 
-function navigate(page) {
+function navigate(target) {
+  const page = target === 'seances' ? 'programme' : target;
   if (!currentProfile || !pages.some(section => section.dataset.page === page)) return;
   pages.forEach(section => { section.hidden = section.dataset.page !== page; });
+  const inSeances = SEANCES.includes(page);
+  $('#seances-tabs').hidden = !inSeances;
   navButtons.forEach(button => {
-    const active = button.dataset.go === page;
+    const go = button.dataset.go;
+    const active = go === page || (go === 'seances' && inSeances);
     button.classList.toggle('active', active);
     if (active) button.setAttribute('aria-current', 'page');
     else button.removeAttribute('aria-current');

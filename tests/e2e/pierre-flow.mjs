@@ -13,10 +13,10 @@ console.log('Parcours Pierre');
 await page.goto(srv.url);
 await step('choisir Pierre', async () => {
   await page.click('[data-select-profile="pierre"]');
-  await page.waitForSelector('.nav-btn[data-go="programme"]');
+  await page.waitForSelector('.nav-btn[data-go="seances"]');
 });
 await step('importer le programme collé (JSON)', async () => {
-  await page.click('.nav-btn[data-go="programme"]');
+  await page.click('.nav-btn[data-go="seances"]');
   await page.click('.pm-import summary');
   await page.fill('.pm-textarea', JSON.stringify(exampleProgram()));
   await page.click('.pm-action-verify');

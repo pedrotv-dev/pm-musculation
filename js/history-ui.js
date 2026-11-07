@@ -236,6 +236,6 @@ document.addEventListener('pm:profile-changed', () => { S.mode = 'list'; S.detai
 document.addEventListener('pm:workout-changed', e => { if (!root.classList.contains('pm-workout-active') || (e.detail && e.detail.final)) reload(); });
 document.addEventListener('pm:data-changed', reload);
 window.addEventListener('focus', reload);
-document.addEventListener('click', e => { if (e.target.closest?.('.nav-btn[data-go="historique"]')) load().catch(console.error); });
+document.addEventListener('click', e => { if (e.target.closest?.('[data-go="historique"]')) load().catch(console.error); });
 void dialog; void getResumableWorkout;
 document.addEventListener('pm:back-history', () => { if (S.mode === 'detail') { S.mode = 'list'; S.detail = null; render(); } });

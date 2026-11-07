@@ -22,7 +22,7 @@ await step('service worker installé et cache de l’application rempli', async 
 });
 await step('en ligne : choisir Pierre, importer le programme, démarrer une séance', async () => {
   await page.click('[data-select-profile="pierre"]');
-  await page.click('.nav-btn[data-go="programme"]');
+  await page.click('.nav-btn[data-go="seances"]');
   await page.click('.pm-import summary');
   await page.fill('.pm-textarea', JSON.stringify(exampleProgram()));
   await page.click('.pm-action-verify');
