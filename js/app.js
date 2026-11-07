@@ -69,14 +69,17 @@ if (saved && isKnownProfile(saved)) chooseProfile(saved, false);
 // (événement pm:update-ready → dialogue « Mise à jour installée » + bouton « Redémarrer l’application » → pm:apply-update), jamais au milieu d'une séance.
 if ('serviceWorker' in navigator) {
   let waiting = null;
+  // « mise à jour » seulement si la page est déjà pilotée par CE service worker (même adresse). Sous /preview/, la première visite est
+  // d'abord pilotée par celui de la production : ce n'est pas une mise à jour et aucun dialogue ne doit s'afficher.
+  const ownController = () => !!navigator.serviceWorker.controller && navigator.serviceWorker.controller.scriptURL === new URL('./sw.js', location.href).href;
   const announce = worker => { waiting = worker; document.dispatchEvent(new CustomEvent('pm:update-ready')); };
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').then(reg => {
-      if (reg.waiting && navigator.serviceWorker.controller) announce(reg.waiting);
+      if (reg.waiting && ownController()) announce(reg.waiting);
       reg.addEventListener('updatefound', () => {
         const worker = reg.installing;
         if (worker) worker.addEventListener('statechange', () => {
-          if (worker.state === 'installed' && navigator.serviceWorker.controller) announce(worker);
+          if (worker.state === 'installed' && ownController()) announce(worker);
         });
       });
       // application gardée ouverte longtemps : revérifie au retour au premier plan (au plus toutes les 30 min)
