@@ -118,3 +118,30 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-input:focus-visible, .pm-select:focus-visible, .pm-textarea-note:focus-visible {
   border-color: var(--turq);
 }
+
+/* ASCENT — actions, champs et controles d'apres la direction 3. */
+.pm-validate,.pm-modal-btn.pm-primary,.pm-toast-action {
+  background:linear-gradient(135deg,#16ecd0,var(--turq)); color:var(--turq-dark);
+}
+.pm-validate { min-height:60px; border-radius:13px; }
+.pm-secondary,.pm-icon-btn,.pm-modal-btn,.pm-seg-btn,.pm-history-card {
+  border-color:var(--ascent-rim);
+  background:linear-gradient(165deg,rgba(255,255,255,.022),transparent 65%),var(--surface);
+}
+.pm-chip { background:var(--surface-raised); border-color:var(--ascent-rim); color:var(--muted); }
+.pm-chip-done { color:var(--ok); border-color:rgba(185,240,138,.35); }
+.pm-seg-btn.pm-on { color:var(--turq); border-color:var(--turq); background:rgba(20,230,199,.09); }
+.pm-input,.pm-select,.pm-textarea-note {
+  background:var(--bg); border-color:var(--stroke); color:var(--text);
+  border-radius:12px; font-variant-numeric:tabular-nums;
+}
+.pm-input:focus-visible,.pm-select:focus-visible,.pm-textarea-note:focus-visible {
+  outline:2px solid var(--turq); outline-offset:2px;
+}
+.pm-stat { background:var(--surface); border-color:var(--ascent-rim); }
+.pm-stat strong { letter-spacing:-.035em; }
+.pm-machine-image { background:var(--ascent-card); border-color:var(--ascent-rim); }
+.pm-toast { background:var(--surface-toast); }
+.pm-modal { background:var(--surface); border-color:var(--ascent-rim); }
+.pm-chart .pm-line { stroke:var(--turq); }
+.pm-chart .pm-dot-c,.pm-chart .pm-bar { fill:var(--turq); }

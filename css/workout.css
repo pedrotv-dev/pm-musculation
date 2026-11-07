@@ -132,3 +132,45 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 @media (prefers-reduced-motion:reduce) {
   .pm-workout-screen .pm-validate, .pm-workout-screen .pm-dots .pm-dot::before { transition:none; }
 }
+
+/* ASCENT — la serie active devient le centre de l'ecran. */
+.pm-workout-bar { padding-bottom:12px; border-bottom:1px solid var(--ascent-rim); }
+.pm-bar-title strong,.pm-bar-title .pm-bar-h1 { font-weight:820; letter-spacing:-.025em; }
+.pm-badge { color:var(--turq); }
+.pm-clock { font-size:21px; letter-spacing:-.04em; }
+.pm-workout-card {
+  background:linear-gradient(155deg,rgba(255,255,255,.015),transparent 60%),var(--surface);
+  border:1px solid var(--ascent-rim); border-radius:16px;
+}
+.pm-machine-head { padding-bottom:14px; border-bottom:1px solid var(--ascent-rim); }
+.pm-workout-card h2 { font-weight:840; font-size:clamp(23px,5.8vw,29px); }
+.pm-set-row { border-color:var(--ascent-rim); background:var(--ascent-card); }
+.pm-set-row.pm-set-current {
+  background:linear-gradient(110deg,rgba(20,230,199,.13),rgba(20,230,199,.035) 70%);
+  border-color:rgba(20,230,199,.65);
+  box-shadow:inset 3px 0 0 var(--turq),0 0 12px rgba(20,230,199,.06);
+}
+.pm-workout-screen .pm-set-current .pm-input {
+  background:rgba(5,17,19,.82); border-color:rgba(20,230,199,.55);
+}
+.pm-workout-screen .pm-validate {
+  background:linear-gradient(115deg,#19f0d3,#0bcfb6);
+  border-radius:13px; min-height:64px;
+}
+.pm-workout-screen .pm-dots .pm-dot-current { outline-color:var(--turq); }
+.pm-workout-screen .pm-dots .pm-dot-done::before { background:var(--ok); }
+.pm-workout-screen .pm-machine-done { color:var(--ok); }
+.pm-start-workout { min-height:58px; background:var(--turq); border-radius:13px; }
+.pm-done { position:relative; isolation:isolate; overflow:hidden; padding-top:42px; }
+.pm-done::before {
+  content:''; position:absolute; z-index:-1; top:0; left:0; right:0; height:145px;
+  background:linear-gradient(180deg,rgba(20,230,199,.10),transparent 75%),
+  linear-gradient(155deg,transparent 37%,#233239 37% 41%,transparent 41%) left top/85% 125px no-repeat,
+  linear-gradient(25deg,transparent 36%,#18252c 36% 41%,transparent 41%) right top/90% 115px no-repeat;
+  opacity:.62; pointer-events:none;
+}
+.pm-done-icon {
+  background:rgba(185,240,138,.095); border:2px solid var(--ok);
+  color:var(--ok); box-shadow:0 0 22px rgba(185,240,138,.12);
+}
+.pm-feeling.pm-on { color:var(--turq); background:rgba(20,230,199,.10); }

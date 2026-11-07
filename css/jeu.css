@@ -1,6 +1,6 @@
 /* PM Musculation — PULSE : progression personnelle, succes et recompenses.
    Palette retenue : turquoise d'action, lavande reservee aux recompenses. */
-:root { --pulse-reward:#b8a4ef; }
+:root { --pulse-reward:#b9f08a; }
 
 /* Carte de niveau : le grade prime sur le chiffre, Korv accompagne en retrait. */
 .pm-level-card { display:grid; gap:14px; }
@@ -162,3 +162,34 @@
   .pm-mascot { animation:none!important; }
   .pm-xp-fill { transition:none!important; }
 }
+
+/* ASCENT — progression sur paliers et recompenses sobres. */
+.pm-level-card {
+  position:relative; overflow:hidden; border-color:var(--ascent-rim);
+  background:linear-gradient(140deg,rgba(20,230,199,.06),transparent 63%),var(--surface);
+}
+.pm-level-card .tag {
+  min-height:35px; display:inline-flex; align-items:center;
+  color:var(--turq); border-color:rgba(20,230,199,.4);
+  background:rgba(20,230,199,.08);
+}
+.pm-level-text h3 { font-weight:860; }
+.pm-xp-track {
+  height:12px; border:1px solid var(--ascent-rim);
+  background:var(--ascent-raised);
+}
+.pm-xp-fill { background:linear-gradient(90deg,var(--turq),var(--ascent-sage)); }
+.pm-level-card .pm-mascot-line-text { background:rgba(20,230,199,.045); border-color:var(--turq); }
+.pm-badge-tile.pm-unlocked {
+  border-color:rgba(185,240,138,.4); background:rgba(185,240,138,.06);
+}
+.pm-badge-tile.pm-unlocked::before { color:var(--ok); }
+.pm-rank-list li { background:var(--surface); border-color:var(--ascent-rim); }
+.pm-reward {
+  background:linear-gradient(150deg,rgba(20,230,199,.085),transparent 70%),var(--surface);
+  border-color:var(--ascent-rim);
+}
+.pm-reward-xp { color:var(--turq); text-shadow:0 0 22px rgba(20,230,199,.16); }
+.pm-reward .pm-xp-fill { background:linear-gradient(90deg,var(--turq),var(--ascent-sage)); }
+.pm-reward-level.pm-levelup { color:var(--ok); }
+.pm-reward-records li { border-left-color:var(--ascent-sage); }
