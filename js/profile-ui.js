@@ -10,6 +10,7 @@ import { buildBilan } from './bilan.js';
 import { mondayOf } from './programs.js';
 import { addDays } from './stats.js';
 import { loadCatalog } from './catalog.js';
+import { korvGuide } from './jeu-ui.js';
 import { isRealProfile as real } from './profiles.js';
 import { APP_VERSION } from './version.js';
 import { getUiSettings, setUiSettings } from './ui-settings.js';
@@ -273,7 +274,7 @@ async function render() {
   const head = section('', '');
   head.replaceChildren(el('h3', '', PEOPLE[profile].name), el('p', 'pm-muted', profile === 'demo' ? 'Mode démo — données fictives' : PEOPLE[profile].goal.replace(/^./, c => c.toUpperCase())),
     btn('Changer de profil', 'pm-secondary', () => document.getElementById('switch-profile')?.click()));
-  add(page, el('div', 'eyebrow', 'Mon espace'), el('h2', '', 'Profil'), head, chronoSection(profile, config), usageSection(profile, ui), effectsSection(profile, ui), backupSection(profile), bilan, localDataSection(profile), demoSection(profile));
+  add(page, el('div', 'eyebrow', 'Mon espace'), el('h2', '', 'Profil'), head, korvGuide(profile), chronoSection(profile, config), usageSection(profile, ui), effectsSection(profile, ui), backupSection(profile), bilan, localDataSection(profile), demoSection(profile));
   page.append(section('À propos', null, el('p', 'pm-muted', 'PM Musculation · version ' + APP_VERSION + ' · fonctionne hors connexion après installation.')));
   const update = btn('Rechercher une mise à jour', 'pm-secondary', async () => {
     try {

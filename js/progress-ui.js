@@ -8,6 +8,7 @@ import { barChart, lineChart } from './charts.js';
 import { loadCatalog } from './catalog.js';
 import { computeProgress, progressionStartFor } from './gamification.js';
 import { levelCard, badgesPanel, rankingsPanel, howPanel } from './jeu-ui.js';
+import { icon } from './icons.js';
 import { ALL_PROFILES as KNOWN } from './profiles.js';
 import { el, btn, clear, add, fmtNum, parseNum, formatMinutes, formatDateFr, localISODate, toast, confirmDialog } from './dom.js';
 
@@ -17,6 +18,8 @@ const S = { machine: null, rev: 0 };
 const shortDate = iso => iso.slice(8, 10) + '/' + iso.slice(5, 7);
 
 function panel(title, ...children) { return add(el('article', 'panel'), el('h3', '', title), ...children); }
+/** Panneau ASCENT : titre précédé d'une icône du sprite. */
+function iconPanel(ico, title, ...children) { const p = panel(title, ...children); const h = p.firstChild; h.prepend(icon(ico)); h.classList.add('pm-panel-title-ico'); return p; }
 
 async function render() {
   const profile = root.dataset.pmProfile, mine = ++S.rev;
@@ -35,14 +38,14 @@ async function render() {
   [[t.sessions, 'séances'], [t.completed + ' / ' + t.partial, 'complètes / partielles'], [t.sets, 'séries'], [fmtNum(t.volumeKg) + ' kg', 'volume total'],
    [formatMinutes(t.minutes), 'temps d’entraînement'], [formatMinutes(t.cardioMinutes), 'cardio']]
     .forEach(([v, l]) => stats.append(add(el('div', 'pm-stat'), el('strong', '', v), el('span', '', l))));
-  page.append(panel('Vue d’ensemble', stats));
+  page.append(iconPanel('progression', 'Vue d’ensemble', stats));
 
   if (!closed.length) {
     page.append(add(el('article', 'panel empty'), el('div', 'empty-icon', '↗'), el('h3', '', 'Premiers résultats à venir'),
       el('p', '', 'Les statistiques apparaîtront dès qu’une séance sera terminée.')));
   } else {
     const weeks = perWeek(closed, { weeks: 8 });
-    page.append(panel('Fréquence d’entraînement', el('p', 'pm-muted', 'Séances par semaine (8 dernières semaines)'),
+    page.append(iconPanel('calendrier', 'Fréquence d’entraînement', el('p', 'pm-muted', 'Séances par semaine (8 dernières semaines)'),
       barChart(weeks.map(w => ({ label: shortDate(w.weekStart), value: w.sessions })), { title: 'Séances par semaine' })));
     page.append(panel('Volume d’entraînement', el('p', 'pm-muted', 'Charge × répétitions des séries validées, par semaine'),
       barChart(weeks.map(w => ({ label: shortDate(w.weekStart), value: Math.round(w.volumeKg / 100) / 10 })), { title: 'Volume par semaine', unit: 'tonnes' })));
@@ -74,7 +77,7 @@ async function render() {
       const list = el('ul', 'list');
       recs.forEach(r => list.append(add(el('li'), el('span', '', name(r.machineId)), el('span', '', fmtNum(r.kg) + ' kg × ' + r.reps +
         (r.previousKg !== null && r.kg > r.previousKg ? ' · +' + fmtNum(r.kg - r.previousKg) : '') + ' · ' + shortDate(r.date)))));
-      page.append(panel('Records récents', list));
+      page.append(iconPanel('record', 'Records récents', list));
     }
     const cardio = cardioSummary(closed);
     if (cardio.length) {
@@ -94,7 +97,7 @@ async function render() {
   page.append(badgesPanel(game), rankingsPanel(game, name), howPanel());
 
   // poids corporel
-  const wBox = panel('Poids corporel');
+  const wBox = iconPanel('feuille', 'Poids corporel');
   const asc = weights.slice().sort((a, b) => a.date.localeCompare(b.date));
   if (asc.length) {
     wBox.append(lineChart(asc.slice(-16).map(w => ({ label: shortDate(w.date), value: w.kg })), { title: 'Évolution du poids', unit: 'kg' }));

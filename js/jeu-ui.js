@@ -5,7 +5,7 @@
  */
 import { el, add, fmtNum } from './dom.js';
 import { renderMascot, mascotLine } from './mascot.js';
-import { XP } from './gamification.js';
+import { XP, TITLES, BADGES, xpAtLevel, progressionStartFor } from './gamification.js';
 
 const longStart = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }); };
 const shortDate = iso => iso.slice(8, 10) + '/' + iso.slice(5, 7);
@@ -95,6 +95,27 @@ export function howPanel() {
    ['Séance complète', '+' + XP.completed], ['Séance partielle', '+' + XP.partial], ['Record de charge battu', '+' + XP.record + ' (une fois par machine et par séance)']]
     .forEach(([a, b]) => list.append(add(el('li'), el('span', '', a), el('span', '', b))));
   box.append(list, el('p', 'pm-muted', 'Tout est calculé depuis ton historique : corriger ou supprimer une séance met ton niveau à jour. Une semaine sans séance ne fait jamais perdre de niveau.'));
+  return box;
+}
+
+/** Guide de Korv (page Profil) : à quoi servent XP, niveaux, grades, succès et série. */
+export function korvGuide(profile) {
+  const box = el('details', 'panel pm-korv-guide');
+  const sum = el('summary', 'pm-korv-guide-sum');
+  const img = el('img', 'pm-korv-guide-img'); img.src = 'assets/ascent/korv-accueil-neutre.webp'; img.alt = ''; img.decoding = 'async';
+  add(sum, img, add(el('span', 'pm-korv-guide-title'), el('strong', '', 'Le guide de Korv'), el('span', 'pm-muted', 'Niveaux, grades, succès, série')));
+  box.append(sum);
+  const start = progressionStartFor(profile);
+  const intro = el('p', 'pm-muted', 'Ton niveau ne dépend que de tes séances enregistrées. Il ne baisse jamais, et corriger une séance met tout à jour.' +
+    (start ? ' Ta progression compte à partir du ' + new Date(start + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ; avant, tes séances servent seulement de référence pour les records.' : ''));
+  const xp = el('ul', 'list');
+  [['Série validée', '+' + XP.perSet + ' XP'], ['Séance complète', '+' + XP.completed + ' XP'], ['Séance partielle', '+' + XP.partial + ' XP'], ['Record de charge', '+' + XP.record + ' XP']]
+    .forEach(([a, b]) => xp.append(add(el('li'), el('span', '', a), el('span', '', b))));
+  const grades = el('ul', 'list');
+  TITLES.forEach(t => grades.append(add(el('li'), el('span', '', t.name), el('span', '', 'dès le niveau ' + t.from + ' · ' + fmtNum(xpAtLevel(t.from)) + ' XP'))));
+  add(box, intro, el('h4', '', 'Gagner de l’XP'), xp, el('h4', '', 'Les 12 grades'), grades,
+    el('h4', '', 'Succès et série'),
+    el('p', 'pm-muted', BADGES.length + ' succès à débloquer (séances, séries, volume, records, cardio, régularité). La série compte les semaines de suite avec au moins une séance.'));
   return box;
 }
 
