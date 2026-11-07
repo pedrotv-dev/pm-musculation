@@ -874,8 +874,9 @@ export async function demoWorkspace() {
  * `base` = scratch.base (génération + révision du stockage au moment de la copie). Refus (CONFLICT, rien n'est écrit)
  * si le stockage demo a été réinitialisé (autre génération) ou modifié d'une façon quelconque depuis (autre
  * révision) : une modification concurrente n'est jamais écrasée, même avec un updatedAt identique.
- * `authorize` (synchrone) est appelé APRÈS toute attente, puis le contrôle d'identité et l'écriture suivent sans
- * aucune attente : s'il lève une erreur (profil changé), rien n'est écrit.
+ * `authorize` (synchrone) est appelé APRÈS toute attente, puis suivent, sans aucune attente : le contrôle que le
+ * stockage obtenu est toujours le stockage demo ACTIF (pas remplacé par une réinitialisation pendant l'attente), le
+ * contrôle génération + révision, et l'écriture. Toute erreur à ces étapes : rien n'est écrit.
  */
 export async function commitDemoSession(prepared, base, { authorize } = {}) {
   if (!isObj(prepared) || prepared.profileId !== DEMO || !isOpenStatus(prepared.status)) {
@@ -884,9 +885,14 @@ export async function commitDemoSession(prepared, base, { authorize } = {}) {
   if (!isObj(base) || typeof base.generation !== 'string' || !Number.isInteger(base.revision)) {
     throw new WorkoutError('Copie de travail inconnue.', 'INVALID_ARGUMENT');
   }
-  const st = await demoReady();
-  // ---- à partir d'ici, aucune attente : autorisation, contrôle et écriture forment une seule étape
+  const used = demoReady();   // promesse du stockage demo ACTIF au moment de l'appel
+  const st = await used;
+  // ---- à partir d'ici, aucune attente : autorisation, contrôles et écriture forment une seule étape
   if (authorize) authorize();
+  // une réinitialisation pendant l'attente remplace demoState.promise : le stockage obtenu n'est alors plus actif
+  if (demoState.promise !== used) {
+    throw new WorkoutError('La démo a été réinitialisée pendant l’application : rien n’a été appliqué.', 'CONFLICT');
+  }
   if (st.generation !== base.generation || st.revision !== base.revision) {
     throw new WorkoutError('La démo a changé pendant la préparation (modification ou réinitialisation) : rien n’a été appliqué.', 'CONFLICT');
   }

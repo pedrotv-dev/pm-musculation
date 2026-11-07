@@ -23,6 +23,11 @@ const fresh = async () => { setProfile('demo'); events.length = 0; await W.reset
 const sim = (o, hooks = {}) => T.prepareDemoSession({ record: false, levelUp: false, feeling5: false, ...o }, { open: false, ...hooks });
 const refused = re => e => e.name === 'SimulationRefused' && re.test(e.message) && /Rien n’a été modifié/.test(e.message);
 const recapEvents = () => events.filter(e => e.type === 'pm:resume-workout');
+/** Empreinte d'un état Démo, indépendante des identifiants et des heures : séances, statuts, séries faites, niveau. */
+const signature = async () => {
+  const rows = await W.listWorkouts('demo');
+  return { n: rows.length, level: await level(), sessions: rows.map(r => r.status + ':' + r.activities.map(a => a.status + '/' + (a.sets || []).filter(t => t.done).length).join(',')).sort() };
+};
 
 test('limite moteur inchangée : 20 séries par activité', () => { assert.equal(MAX, 20); });
 
@@ -218,6 +223,40 @@ test('C · réinitialisation de la démo pendant la préparation : copie obsolè
     after = await snapshot();
   } }), e => e.code === 'CONFLICT');
   assert.equal(await snapshot(), after, 'la démo réinitialisée n’a pas été écrasée par la copie obsolète');
+});
+
+test('C2 · scénario Codex : réinitialisation PENDANT l’attente interne de l’application → stockage obsolète, CONFLICT, démo réinitialisée intacte', async () => {
+  await fresh();
+  const g0 = (await W.demoWorkspace()).base.generation;
+  let resetDone = null;
+  // 1-2. simulation préparée, application lancée ; 3. la réinitialisation survient pendant l'attente de commitDemoSession
+  await assert.rejects(
+    () => T.prepareDemoSession({ complete: true, record: true }, { open: true, beforeCommit: () => queueMicrotask(() => { resetDone = W.resetDemoWorkouts(); }) }),
+    e => e.code === 'CONFLICT' && /réinitialisée pendant l’application/.test(e.message)); // 5. refus par le contrôle du stockage actif
+  assert.ok(resetDone, 'la réinitialisation a bien eu lieu pendant l’application');
+  await resetDone;
+  // 4. le stockage attendu par l'application n'est plus le stockage actif
+  const g1 = (await W.demoWorkspace()).base.generation;
+  assert.notEqual(g1, g0);
+  // 6. état réinitialisé intact : identique (hors identifiants et heures) à une réinitialisation de référence
+  const got = await signature();
+  await W.resetDemoWorkouts();
+  assert.deepEqual(got, await signature());
+  const open = (await W.listWorkouts('demo')).find(r => r.status === 'in_progress');
+  assert.ok(open && open.activities.some(a => a.status === 'pending'), 'la séance réinitialisée n’a pas été remplie');
+  assert.equal(recapEvents().length, 0);
+  assert.equal(T.isSimulationRunning(), false);
+});
+
+test('C3 · ordre inverse : réinitialisation TERMINÉE avant la tentative d’application → CONFLICT (génération), démo réinitialisée intacte', async () => {
+  await fresh();
+  let after = null;
+  await assert.rejects(() => sim({ complete: true }, { onStep: async () => {
+    if (after !== null) return;
+    await W.resetDemoWorkouts();
+    after = await snapshot();
+  } }), e => e.code === 'CONFLICT' && /a changé pendant la préparation/.test(e.message));
+  assert.equal(await snapshot(), after);
 });
 
 // ------------------------------------------------------------ isolation
