@@ -100,7 +100,7 @@
   font-size:13px; font-weight:850; color:var(--turq);
   background:rgba(41,212,194,.10);
 }
-.pm-rank-list li > span:first-child { flex:1; min-width:0; overflow-wrap:anywhere; }
+.pm-rank-list li > span:first-child { flex:1; min-width:0; overflow-wrap:break-word; } /* coupe entre les mots, jamais au milieu (« Semaine du ») */
 .pm-rank-value {
   flex:0 1 auto; min-width:0; font-variant-numeric:tabular-nums;
   color:var(--text); font-weight:750; text-align:right; overflow-wrap:anywhere;
@@ -156,7 +156,11 @@
   .pm-level-head .pm-mascot-md, .pm-reward-head .pm-mascot-md { width:68px; height:68px; }
   .pm-badges { gap:8px; }
   .pm-badge-tile { padding:12px 10px; min-height:112px; }
-  .pm-rank-list li { flex-wrap:wrap; }
+  /* petit écran : rang | libellé, puis la valeur en dessous du libellé (plus de mot coupé en deux) */
+  .pm-rank-list li { display:grid; grid-template-columns:30px minmax(0,1fr); column-gap:10px; row-gap:2px; }
+  .pm-rank-list li::before { grid-row:1 / span 2; align-self:center; }
+  .pm-rank-list li > span:first-child { grid-column:2; }
+  .pm-rank-list .pm-rank-value { grid-column:2; text-align:left; overflow-wrap:break-word; }
 }
 @media (prefers-reduced-motion:reduce) {
   .pm-mascot { animation:none!important; }
