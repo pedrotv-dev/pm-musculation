@@ -1,0 +1,222 @@
+name: Site (production + aperçu)
+
+# Publie le site sur la branche gh-pages : la PRODUCTION à la racine (copie de main), l'APERÇU d'une PR dans /preview/.
+# - push sur main            -> la racine est resynchronisée avec main (l'aperçu n'est pas touché)
+# - PR de ce dépôt           -> /preview/ montre cette PR (la racine n'est pas touchée) ; lien posté dans la PR
+# - PR fermée                -> /preview/ est retiré si c'était cette PR
+# - lancement manuel         -> avec une branche : aperçu de cette branche ; sans : resynchronise la production
+# Règles de sécurité : voir docs/apercu.md. Les scripts (tools/*.mjs) sont toujours ceux de main une fois ce fichier fusionné.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, closed]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branche à prévisualiser (vide = resynchroniser seulement la production)"
+        required: false
+        default: ""
+
+concurrency:
+  group: pm-site
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  pages: write
+
+env:
+  SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+
+jobs:
+  site:
+    # PR venant d'un fork : jamais (le jeton n'a pas le droit d'écrire, et on ne publie pas le code d'un inconnu)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Code de main (production et règles de confiance)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+          persist-credentials: false
+
+      - name: Code à prévisualiser
+        if: (github.event_name == 'pull_request' && github.event.action != 'closed') || (github.event_name == 'workflow_dispatch' && inputs.ref != '')
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || inputs.ref }}
+          path: src
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Récupérer la branche gh-pages (la créer au besoin)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir site && cd site
+          git init -q
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch --depth=1 origin gh-pages 2>/dev/null; then
+            git checkout -q -B gh-pages FETCH_HEAD
+            echo "gh-pages récupérée ($(git rev-parse --short HEAD))"
+          else
+            git checkout -q --orphan gh-pages
+            echo "gh-pages créée (première fois)"
+          fi
+
+      - name: Choisir les scripts de confiance
+        id: trust
+        run: |
+          # Une fois ce workflow fusionné, scripts et règles viennent TOUJOURS de main. Avant (PR d'installation) : de la PR elle-même.
+          if [ -f main/tools/assemble-site.mjs ] && [ -f main/js/env.js ]; then
+            echo "tools=main/tools" >> "$GITHUB_OUTPUT"; echo "trusted=main" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Installation initiale : scripts et règles pris dans la PR (main ne les contient pas encore)."
+            echo "tools=src/tools" >> "$GITHUB_OUTPUT"; echo "trusted=src" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ---------- production : push sur main, ou lancement manuel sans branche ----------
+      - name: Production — synchroniser la racine avec main
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.ref == '')
+        run: |
+          set -euo pipefail
+          node main/tools/assemble-site.mjs prod --src main --site site
+          diff -rq --exclude=.git --exclude=.github --exclude=node_modules --exclude=preview --exclude=.nojekyll main site
+          echo "La production publiée est identique à main."
+
+      # ---------- aperçu : PR ou lancement manuel avec une branche ----------
+      - name: Production — amorcer la racine si elle est absente (première fois seulement)
+        if: (github.event_name == 'pull_request' && github.event.action != 'closed') || (github.event_name == 'workflow_dispatch' && inputs.ref != '')
+        run: |
+          set -euo pipefail
+          if [ ! -f site/index.html ]; then
+            node ${{ steps.trust.outputs.tools }}/assemble-site.mjs prod --src main --site site
+            diff -rq --exclude=.git --exclude=.github --exclude=node_modules --exclude=preview --exclude=.nojekyll main site
+            cd site && git add -A && git commit -q -m "Production : copie initiale de main ($(git -C ../main rev-parse --short HEAD))"
+            echo "Racine amorcée avec une copie fidèle de main."
+          else
+            echo "La racine existe déjà : elle n'est pas touchée."
+          fi
+
+      - name: Aperçu — construire /preview/
+        id: preview
+        if: (github.event_name == 'pull_request' && github.event.action != 'closed') || (github.event_name == 'workflow_dispatch' && inputs.ref != '')
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || inputs.ref }}
+          SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || '' }}
+        run: |
+          set -uo pipefail
+          node ${{ steps.trust.outputs.tools }}/assemble-site.mjs preview --src src --site site --trusted ${{ steps.trust.outputs.trusted }} \
+            --pr "${PR:-}" --ref "$REF" --sha "${SHA:-$(git -C src rev-parse HEAD)}" 2>&1 | tee build.log
+          test "${PIPESTATUS[0]}" -eq 0
+          # filet de sécurité : rien en dehors de preview/ ne doit avoir changé
+          outside=$(git -C site status --porcelain | grep -v ' preview/' || true)
+          if [ -n "$outside" ]; then echo "REFUSÉ : fichiers hors preview/ modifiés :"; echo "$outside"; exit 1; fi
+          echo "sha7=$(git -C src rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      # ---------- PR fermée : retirer l'aperçu s'il montrait cette PR ----------
+      - name: Aperçu — retirer si c'était cette PR
+        if: github.event_name == 'pull_request' && github.event.action == 'closed'
+        env:
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if [ -f site/preview/preview-info.json ] && node -e "process.exit(JSON.parse(require('fs').readFileSync('site/preview/preview-info.json','utf8')).pr===Number(process.env.PR)?0:1)"; then
+            node main/tools/assemble-site.mjs clear-preview --site site
+            echo "Aperçu retiré (PR $PR fermée)."
+          else
+            echo "L'aperçu montre une autre PR : rien à retirer."
+          fi
+
+      - name: Publier sur gh-pages
+        id: publish
+        run: |
+          set -euo pipefail
+          cd site
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Rien à publier."; echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          git commit -q -m "Site : ${GITHUB_EVENT_NAME} ${GITHUB_SHA::7}"
+          for i in 1 2 3; do
+            if git push origin HEAD:gh-pages; then ok=1; break; fi
+            git fetch --depth=1 origin gh-pages && git rebase FETCH_HEAD || true
+          done
+          test "${ok:-0}" = 1
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          # demande explicite d'une construction Pages (sans effet, et sans erreur, si Pages ne sert pas encore gh-pages)
+          curl -sS -o /dev/null -w "Pages build : HTTP %{http_code}\n" -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pages/builds" || true
+
+      - name: Vérifier que la publication est servie (informatif)
+        if: steps.publish.outputs.changed == 'true'
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          if [ "${{ steps.preview.outcome }}" = "success" ]; then
+            want="${{ steps.preview.outputs.sha7 }}"
+            for i in $(seq 1 24); do
+              live=$(curl -fsS "$SITE_URL/preview/preview-info.json?c=$RANDOM" 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).sha||'')}catch(e){console.log('')}})")
+              echo "aperçu en ligne : '${live:0:7}' (attendu $want)"
+              [ -n "$live" ] && [ "${live:0:7}" = "$want" ] && { echo "Aperçu en ligne : $SITE_URL/preview/"; exit 0; }
+              sleep 15
+            done
+          else
+            want=$(grep -o "VERSION = '[^']*'" main/sw.js | head -1)
+            for i in $(seq 1 24); do
+              live=$(curl -fsS "$SITE_URL/sw.js?c=$RANDOM" 2>/dev/null | grep -o "VERSION = '[^']*'" | head -1)
+              echo "production en ligne : $live (attendu $want)"
+              [ "$live" = "$want" ] && { echo "Production en ligne."; exit 0; }
+              sleep 15
+            done
+          fi
+          echo "::warning::Pas encore servi après 6 minutes. Vérifier Settings > Pages : la source doit être « Deploy from a branch » > gh-pages > / (root)."
+          exit 1
+
+      - name: Aperçu — commenter la PR (lien)
+        if: github.event_name == 'pull_request' && github.event.action != 'closed' && steps.preview.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- pm-preview -->';
+            const url = `${process.env.SITE_URL}/preview/`;
+            const sha = '${{ steps.preview.outputs.sha7 }}';
+            const body = [marker, '**Aperçu de cette PR**', '',
+              `Lien à ouvrir sur le téléphone : ${url}`, '',
+              `Commit prévisualisé : \`${sha}\``, '',
+              '- Safari iPhone ou Chrome Android. Les données de l\'aperçu sont **séparées** de la vraie application (rien n\'est partagé).',
+              '- Disponible 1 à 2 minutes après chaque envoi. Si l\'ancienne version s\'affiche : fermer puis rouvrir ; au message « Mise à jour installée », choisir « Redémarrer l\'application ».',
+              '- Un seul aperçu à la fois : le dernier envoyé remplace le précédent.',
+              '- Ne fusionner qu\'après validation sur le téléphone.'].join('\n');
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const mine = comments.find(c => c.body && c.body.startsWith(marker));
+            if (mine) await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            else await github.rest.issues.createComment({ owner, repo, issue_number, body });
+
+      - name: Aperçu — signaler un refus de publication
+        if: failure() && github.event_name == 'pull_request' && github.event.action != 'closed' && steps.preview.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const log = fs.existsSync('build.log') ? fs.readFileSync('build.log', 'utf8').trim().split('\n').slice(-6).join('\n') : 'voir le journal du workflow';
+            const marker = '<!-- pm-preview -->';
+            const body = [marker, '**Aperçu refusé**', '', 'Le site de production n\'a pas été modifié.', '', '```', log, '```'].join('\n');
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const mine = comments.find(c => c.body && c.body.startsWith(marker));
+            if (mine) await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            else await github.rest.issues.createComment({ owner, repo, issue_number, body });

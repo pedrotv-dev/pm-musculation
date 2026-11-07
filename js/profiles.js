@@ -9,6 +9,7 @@ export const PROFILE_INFO = Object.freeze({
   manon: Object.freeze({ name: 'Manon', goal: 'Perte de graisse et renforcement musculaire', short: 'Renforcement', theme: 'Violet', accent: '#bd8aff', rgb: '189, 138, 255' }),
   demo: Object.freeze({ name: 'Démo', goal: 'Explorer sans enregistrer', short: 'Explorer sans enregistrer', theme: 'Violet démo', accent: '#c2a1ef', rgb: '194, 161, 239' })
 });
-export const PROFILE_STORAGE_KEY = 'pm-musculation:profile:v2';
+import { ENV } from './env.js';
+export const PROFILE_STORAGE_KEY = 'pm-musculation:profile:v2' + ENV.suffix; // production : clé inchangée
 export const isRealProfile = id => REAL_PROFILES.indexOf(id) !== -1;
 export const isKnownProfile = id => ALL_PROFILES.indexOf(id) !== -1;

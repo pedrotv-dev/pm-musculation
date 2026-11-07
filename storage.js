@@ -7,7 +7,10 @@
  * Ce fichier ne modifie pas l'interface : il sera branche au moteur plus tard.
  */
 
-const DB_NAME = 'pm-musculation-v2';
+import { ENV } from './js/env.js';
+
+// Production : 'pm-musculation-v2' (inchangé). Aperçu : 'pm-musculation-v2-preview' (base distincte, voir js/env.js).
+const DB_NAME = 'pm-musculation-v2' + ENV.suffix;
 const DB_VERSION = 1;
 const PROFILE_IDS = new Set(['pierre', 'manon']);
 const STORES = ['programs', 'sessions', 'weights', 'settings'];
