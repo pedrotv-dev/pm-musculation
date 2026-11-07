@@ -26,6 +26,12 @@ await page.click('.pm-footer button:has-text("Machines")'); await audit('liste m
 await page.click('button:has-text("Ajouter une machine")'); await audit('dialogue');
 await page.click('.pm-modal-btn:has-text("Annuler")'); await page.click('button:has-text("Retour à la machine")');
 await page.click('.pm-footer button:has-text("Terminer")'); await audit('récapitulatif');
+// Outils de test (profil Démo) : section ouverte, aperçu de récompense, aperçu « Niveau supérieur »
+await page.click('button:has-text("Retour à la séance")'); await page.click('#pm-workout-screen .pm-bar-actions button:has-text("Quitter")');
+await page.click('.nav-btn[data-go="profil"]'); await page.click('.pm-demo-tools > summary'); await audit('outils de test');
+await page.click('.pm-demo-tools button:has-text("Voir la récompense de fin de séance")'); await page.waitForSelector('.pm-demo-preview .pm-reward'); await audit('aperçu récompense');
+await page.click('.pm-demo-preview button:has-text("Fermer l’aperçu")');
+await page.click('.pm-demo-tools button:has-text("Voir « Niveau supérieur »")'); await page.waitForSelector('.pm-levelup-overlay'); await audit('aperçu niveau supérieur');
 for (const [id, e] of seen) { console.log(`\n[${e.v.impact}] ${id} — ${e.v.help}\n  écrans : ${[...e.screens].join(', ')}`); [...e.nodes].slice(0, 5).forEach(n => console.log('   -', n)); }
 console.log('\nrègles en violation :', seen.size);
 await browser.close(); srv.close();
