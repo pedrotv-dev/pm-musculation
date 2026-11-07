@@ -120,6 +120,7 @@ function showWorkout(session) {
   S.clock = setInterval(tickClock, 1000);
   S.history = [];
   const profile = S.profile, rev = S.rev;
+  S.revealed = null;
   listWorkouts(profile).then(rows => { if (valid(profile, rev)) { S.history = rows.filter(r => r.id !== session.id && isClosed(r)); render(); } }).catch(() => {});
   render();
   emit('pm:workout-open', { profile: S.profile, sessionId: session.id, activityKey: S.selected });
@@ -137,6 +138,7 @@ function tickClock() {
 }
 
 function select(key, { persist = true } = {}) {
+  S.revealed = null; // retour sur une machine : son cadre « Série en cours » est remis en vue
   if (!S.session || !act(S.session, key) || key === S.selected) { S.view = 'activity'; render(); return; }
   flushAll();
   S.selected = key; S.view = 'activity';
@@ -198,6 +200,28 @@ function stepper({ id, label, value, kind, onStep }) {
   add(wrap, name, row);
   return { wrap, input };
 }
+/**
+ * Série en cours visible sans défiler (audit V1, C2) : quand la série en cours CHANGE (ouverture d'une machine,
+ * validation, reprise), le cadre charge / répétitions / « Valider » est amené entre le haut de l'écran et le chrono
+ * de récupération. Défilement minimal et instantané ; un simple rafraîchissement de la même série ne bouge rien.
+ */
+function revealCurrentSet() {
+  const box = panel.querySelector('.pm-current-set');
+  if (!box || panel.hidden) return;
+  const rest = document.querySelector('.pm-rest-ui:not([hidden])');
+  const limit = (rest ? rest.getBoundingClientRect().top : window.innerHeight) - 8;
+  const r = box.getBoundingClientRect();
+  if (r.top >= 8 && r.bottom <= limit) return;
+  const delta = r.bottom > limit ? Math.min(r.bottom - limit, r.top - 8) : r.top - 8;
+  if (Math.abs(delta) >= 1) window.scrollBy(0, delta);
+}
+function scheduleReveal(key) {
+  if (S.revealed === key) return;
+  S.revealed = key;
+  // deux passages : après l'affichage, puis après l'ouverture du chrono (sa hauteur change à la validation)
+  requestAnimationFrame(() => revealCurrentSet());
+  setTimeout(() => { if (S.revealed === key) revealCurrentSet(); }, 320);
+}
 function renderSets(card, a) {
   const current = a.sets.find(s => !s.done);
   const curIdx = current ? a.sets.indexOf(current) : -1;
@@ -237,7 +261,32 @@ function renderSets(card, a) {
     add(box, head, grid);
     if (plan) box.append(el('p', 'pm-current-plan', 'Objectif du programme : ' + fmtNum(plan.kg) + ' kg × ' + plan.reps));
     box.inputs = { kg: kgF.input, reps: repsF.input };
+    // « Valider » fait partie du cadre : charge, répétitions et validation restent groupées (audit V1, C2)
+    const idx = curIdx, next = { set: current };
+    const validate = withIcon(btn('Valider la ' + setLabel(a, idx), 'pm-validate', async () => {
+      if (S.busy) return;
+      const v = readSet(box.inputs.kg, box.inputs.reps);
+      if (!v) { setStatus('Renseigne une charge et des répétitions valides.', 'error'); toast('Charge ou répétitions invalides.'); return; }
+      S.busy = true;
+      try {
+        await flushAll();
+        const session = await commit((p, id) => logSet(p, id, a.key, next.set.id, v), {
+          after: () => {
+            fx('set-validated', { machineId: a.machineId });
+            if (a.sets.every(x => x.done || x.id === next.set.id)) fx('activity-done', { kind: 'strength', machineId: a.machineId });
+            emit('pm:workout-set-validated', {
+              profile: S.profile, sessionId: S.session.id, activityKey: a.key, machineId: a.machineId,
+              setId: next.set.id, restSeconds: a.restSeconds
+            });
+          }
+        });
+        if (session) offerUndo(a, next.set.id);
+      } finally { S.busy = false; }
+    }), 'valider');
+    validate.id = 'pm-validate-set';
+    box.append(validate);
     card.append(box);
+    scheduleReveal(S.session.id + ':' + a.key + ':' + current.id);
   }
 
   // ---- liste des séries : ✓ faite · ◉ en cours · ○ à faire
@@ -284,31 +333,7 @@ function renderSets(card, a) {
   });
   card.append(list);
 
-  if (current) {
-    const idx = curIdx, next = { set: current };
-    const validate = withIcon(btn('Valider la ' + setLabel(a, idx), 'pm-validate', async () => {
-      if (S.busy) return;
-      const v = readSet(box.inputs.kg, box.inputs.reps);
-      if (!v) { setStatus('Renseigne une charge et des répétitions valides.', 'error'); toast('Charge ou répétitions invalides.'); return; }
-      S.busy = true;
-      try {
-        await flushAll();
-        const session = await commit((p, id) => logSet(p, id, a.key, next.set.id, v), {
-          after: () => {
-            fx('set-validated', { machineId: a.machineId });
-            if (a.sets.every(x => x.done || x.id === next.set.id)) fx('activity-done', { kind: 'strength', machineId: a.machineId });
-            emit('pm:workout-set-validated', {
-              profile: S.profile, sessionId: S.session.id, activityKey: a.key, machineId: a.machineId,
-              setId: next.set.id, restSeconds: a.restSeconds
-            });
-          }
-        });
-        if (session) offerUndo(a, next.set.id);
-      } finally { S.busy = false; }
-    }), 'valider');
-    validate.id = 'pm-validate-set';
-    card.append(validate);
-  } else if (a.sets.length) {
+  if (!current && a.sets.length) {
     card.append(el('p', 'pm-machine-done', '✓ Machine terminée'));
   }
 }
@@ -474,7 +499,7 @@ function renderList() {
   });
   box.append(list);
   box.append(btn('+ Ajouter une machine', 'pm-secondary', addMachineDialog));
-  box.append(btn('Retour à la machine', 'pm-validate', () => { S.view = 'activity'; render(); }));
+  box.append(btn('Retour à la machine', 'pm-validate', () => { S.view = 'activity'; S.revealed = null; render(); }));
   return box;
 }
 async function addMachineDialog() {
