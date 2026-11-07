@@ -301,3 +301,54 @@
 .pm-levelup-ico { flex:none; width:22px; text-align:center; color:var(--turq); font-weight:900; }
 @media (prefers-reduced-motion: reduce) { .pm-levelup-overlay * { animation:none !important; transition:none !important; } }
 .pm-reward-korv .pm-korv-bubble { grid-column:2; grid-row:1; }
+
+/* ASCENT — barres d'XP : lisibles, sans mouvement de mise en page. */
+.pm-xp-track {
+  height:14px;
+  border:1px solid rgba(20,230,199,.24);
+  border-radius:999px;
+  background:linear-gradient(180deg,#101a1e,#2a353a);
+  box-shadow:inset 0 2px 3px rgba(0,0,0,.35);
+  isolation:isolate;
+}
+.pm-xp-track::after {
+  content:'';
+  position:absolute; inset:0; z-index:2;
+  border-radius:inherit;
+  background:linear-gradient(90deg,rgba(255,255,255,.12) 1px,transparent 1px);
+  background-size:25% 100%;
+  pointer-events:none;
+}
+.pm-xp-fill {
+  position:relative; z-index:1; min-height:100%;
+  background:linear-gradient(90deg,#14e6c7 4%,#37e8bd 62%,#b9f08a 100%);
+  box-shadow:0 0 10px rgba(20,230,199,.23);
+  transition:none; /* largeur fournie par js/jeu-ui.js, jamais animee */
+}
+.pm-xp-fill::after {
+  content:''; position:absolute; inset:0 0 auto; height:40%;
+  border-radius:inherit; background:rgba(255,255,255,.16);
+  pointer-events:none;
+}
+.pm-level-card .pm-xp-track { margin:1px 0 2px; }
+.pm-level-xp,.pm-reward-xpcount { font-variant-numeric:tabular-nums; }
+.pm-level-xp { color:var(--text); font-weight:740; letter-spacing:.01em; }
+.pm-level-next { color:var(--muted); font-variant-numeric:tabular-nums; }
+.pm-reward .pm-xp-track { height:16px; }
+.pm-reward .pm-xp-fill {
+  background:linear-gradient(90deg,#14e6c7,#5ae9ba 64%,#b9f08a);
+}
+.pm-reward-xpcount { font-weight:780; color:var(--text); }
+
+/* Effet bref, a activer uniquement si animations=true via l'integration JS.
+   Sans classe pm-xp-celebrate, la barre reste strictement statique. */
+.pm-xp-track.pm-xp-celebrate .pm-xp-fill {
+  animation:ascent-xp-emphasis 380ms var(--ease-out, ease-out) both;
+}
+@keyframes ascent-xp-emphasis {
+  from { opacity:.75; transform:scaleX(.975); }
+  to { opacity:1; transform:scaleX(1); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .pm-xp-track.pm-xp-celebrate .pm-xp-fill { animation:none!important; }
+}

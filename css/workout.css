@@ -217,3 +217,41 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-current-grid { gap:8px; }
 .pm-stepper-row { gap:4px; }
 @media (max-width:374px) { .pm-current-grid { grid-template-columns:1fr; } }
+
+/* ASCENT — progression de la seance : rails nets et etats explicites. */
+.pm-workout-screen .pm-progress {
+  gap:9px; margin:0 0 17px; color:var(--text);
+}
+.pm-workout-screen .pm-progress > span {
+  font-size:13px; font-weight:780; letter-spacing:.012em;
+  font-variant-numeric:tabular-nums;
+}
+.pm-workout-screen .pm-dots {
+  gap:3px; flex-wrap:wrap; align-items:center;
+  padding:2px 0 3px;
+}
+.pm-workout-screen .pm-dots .pm-dot {
+  border-radius:12px;
+  transition:transform 120ms var(--ease-out, ease-out);
+}
+.pm-workout-screen .pm-dots .pm-dot::before {
+  width:29px; height:10px; border-radius:8px;
+  background:#3b4a51;
+}
+.pm-workout-screen .pm-dots .pm-dot-done::before {
+  background:var(--ascent-sage, #b9f08a);
+}
+.pm-workout-screen .pm-dots .pm-dot-current {
+  outline:2px solid var(--turq); outline-offset:-3px;
+}
+.pm-workout-screen .pm-dots .pm-dot-current:not(.pm-dot-done):not(.pm-dot-skipped):not(.pm-dot-postponed)::before {
+  background:var(--turq);
+  box-shadow:0 0 0 3px rgba(20,230,199,.12);
+}
+.pm-workout-screen .pm-dots .pm-dot:active { transform:scale(.96); }
+.pm-workout-screen .pm-dots .pm-dot:focus-visible {
+  outline:3px solid var(--text); outline-offset:-2px;
+}
+@media (prefers-reduced-motion:reduce) {
+  .pm-workout-screen .pm-dots .pm-dot { transition:none!important; }
+}
