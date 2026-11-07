@@ -7,32 +7,32 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-bar-actions { display:flex; align-items:center; gap:8px; }
 .pm-badge { font-size:11px; font-weight:800; color:var(--accent); letter-spacing:.07em; text-transform:uppercase; }
 .pm-clock { font-size:19px; font-weight:850; font-variant-numeric:tabular-nums; padding:0 4px; }
-.pm-progress { display:flex; flex-direction:column; gap:8px; margin-bottom:14px; font-size:12px; color:var(--muted); }
+.pm-progress { display:flex; flex-direction:column; gap:8px; margin-bottom:16px; font-size:13px; font-weight:650; color:var(--muted); }
 .pm-dots { display:flex; gap:6px; flex-wrap:wrap; }
 .pm-dot { width:26px; height:12px; border-radius:6px; border:0; background:var(--stroke); padding:0; min-height:0; }
 .pm-dot-done { background:var(--ok); }
 .pm-dot-skipped { background:var(--warn); }
 .pm-dot-postponed { background:#7d8bdd; }
 .pm-dot-current { outline:2px solid var(--text); outline-offset:2px; }
-.pm-workout-card { background:var(--surface); border:1px solid var(--stroke); border-radius:20px; padding:16px; }
-.pm-workout-card h2 { font-size:clamp(21px,5vw,26px); margin:8px 0 4px; letter-spacing:-.02em; }
-.pm-machine-head { display:flex; gap:14px; align-items:center; margin-bottom:14px; }
-.pm-machine-titles { min-width:0; }
-.pm-sets-title { font-size:15px; margin:14px 0 8px; }
-.pm-sets { display:grid; gap:8px; }
-.pm-set-row { display:grid; grid-template-columns:30px minmax(0,1fr) minmax(0,1fr) auto; gap:8px; align-items:end; padding:9px; border-radius:14px; border:1px solid transparent; background:var(--surface-raised); }
-.pm-set-row.pm-set-current { border-color:var(--turq); background:rgba(46,211,192,.08); }
-.pm-set-row.pm-set-done { opacity:.92; background:rgba(63,174,112,.09); }
-.pm-set-mark { align-self:center; text-align:center; font-weight:850; color:var(--muted); }
+.pm-workout-card { background:var(--surface); border:1px solid var(--stroke); border-radius:var(--radius, 16px); padding:18px; box-shadow:var(--shadow-card, 0 7px 18px rgba(4,10,18,.12)); }
+.pm-workout-card h2 { font-size:clamp(23px,5.8vw,29px); margin:7px 0 5px; line-height:1.12; letter-spacing:-.035em; font-weight:850; text-wrap:balance; }
+.pm-machine-head { display:flex; gap:15px; align-items:center; margin-bottom:19px; min-width:0; }
+.pm-machine-titles { min-width:0; flex:1; }
+.pm-sets-title { font-size:14px; letter-spacing:.01em; font-weight:800; margin:18px 0 10px; color:var(--text); }
+.pm-sets { display:grid; gap:10px; }
+.pm-set-row { position:relative; display:grid; grid-template-columns:30px minmax(0,1fr) minmax(0,1fr) auto; gap:9px; align-items:end; padding:10px; border-radius:14px; border:1px solid var(--stroke); background:var(--surface-raised); min-width:0; }
+.pm-set-row.pm-set-current { border-color:var(--turq); background:rgba(41,212,194,.095); box-shadow:inset 3px 0 0 var(--turq); }
+.pm-set-row.pm-set-done { opacity:.76; background:rgba(127,220,171,.055); border-color:var(--stroke); box-shadow:none; }
+.pm-set-mark { align-self:center; text-align:center; font-size:16px; font-variant-numeric:tabular-nums; font-weight:850; color:var(--muted); }
 .pm-set-done .pm-set-mark { color:var(--ok); }
 .pm-set-mark { display:flex; flex-direction:column; align-items:center; gap:2px; }
-.pm-set-side { font-size:.72rem; font-weight:850; line-height:1; padding:2px 5px; border-radius:6px; background:rgba(46,211,192,.16); color:var(--turq); }
-.pm-set-side.pm-side-right { background:rgba(255,184,77,.18); color:var(--warn, #ffb84d); }
+.pm-set-side { font-size:11px; font-weight:850; line-height:1.2; padding:3px 6px; border:1px solid rgba(41,212,194,.4); border-radius:6px; background:rgba(41,212,194,.12); color:var(--turq); }
+.pm-set-side.pm-side-right { background:rgba(41,212,194,.12); color:var(--turq); }
 .pm-side-note { margin:0 0 6px; font-size:.9rem; }
 .pm-set-tools { display:flex; gap:5px; align-self:end; }
 .pm-set-tools .pm-icon-btn { min-width:38px; min-height:48px; padding:0 6px; }
 .pm-gap { grid-column:2 / -1; font-size:11px; color:var(--warn); margin-top:-2px; }
-.pm-machine-done { text-align:center; font-weight:850; color:var(--ok); padding:14px 0 2px; font-size:16px; }
+.pm-machine-done { text-align:center; font-weight:850; color:var(--ok); padding:18px 0 7px; font-size:17px; }
 .pm-footer { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:16px; }
 .pm-postponed-note { margin-top:14px; font-size:13px; color:#b9c6ff; }
 .pm-save-state { min-height:18px; margin:12px 0 0; font-size:12px; color:var(--muted); text-align:center; }
@@ -57,20 +57,78 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-home-card { padding:16px; border-radius:16px; border:1px solid rgba(var(--accent-rgb),.38); background:rgba(var(--accent-rgb),.08); margin:14px 0; }
 .pm-start-workout { width:100%; min-height:50px; border:0; border-radius:14px; margin-bottom:12px; background:var(--turq); color:var(--turq-dark); font-weight:850; font-size:16px; }
 @media (max-width:420px) { .pm-machine-image { width:76px; height:76px; } .pm-set-row { grid-template-columns:22px minmax(0,1fr) minmax(0,1fr) auto; gap:6px; padding:8px 6px; } }
-.pm-progress-line { font-size:12px; color:var(--turq); margin:0 0 10px; }
+.pm-progress-line { font-size:13px; line-height:1.5; color:var(--muted); margin:0 0 14px; padding:9px 11px; border-left:2px solid var(--turq); background:rgba(41,212,194,.055); border-radius:0 9px 9px 0; }
 /* points de progression : zone tactile agrandie, trait visuel inchangé */
-.pm-dot { width:36px; height:32px; padding:10px 4px; background-clip:content-box; background-color:var(--stroke); border:0; }
-.pm-dot-done { background-color:var(--ok); }
-.pm-dot-skipped { background-color:var(--warn); }
-.pm-dot-postponed { background-color:#7d8bdd; }
-.pm-dots { gap:2px; }
+.pm-dot { position:relative; width:44px; height:44px; min-width:44px; min-height:44px; padding:0; background:transparent; border:0; border-radius:10px; color:var(--text); display:grid; place-items:center; }
+.pm-dot-done { color:var(--ok); }
+.pm-dot-skipped { color:var(--warn); }
+.pm-dot-postponed { color:var(--text-postponed); }
+.pm-dots { gap:3px; }
 .pm-set-tools .pm-icon-btn { min-width:44px; }
 @media (max-width:420px) { .pm-set-row { grid-template-columns:22px minmax(0,1fr) minmax(0,1fr) auto; } .pm-set-tools { gap:3px; } }
 
-.pm-cardio-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px; margin:6px 0; }
-.pm-cardio-hint { margin:0 0 8px; font-size:.88rem; }
+.pm-cardio-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; margin:12px 0 15px; }
+.pm-cardio-hint { margin:0 0 14px; font-size:13px; line-height:1.5; color:var(--muted); }
 
 .pm-fun { margin:14px 0; padding:14px; border-radius:16px; border:1px dashed var(--turq); background:rgba(46,211,192,.07); text-align:center; }
 .pm-fun-kicker { margin:0 0 6px; font-size:.85rem; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
 .pm-fun-text { margin:0 0 10px; font-size:1.15rem; font-weight:800; line-height:1.35; }
 .pm-hist-metrics { flex-wrap:wrap; } .pm-hist-metrics .pm-input { min-width:56px; }
+
+/* PULSE · Etape 3 : hierarchie visuelle pendant la séance.
+   Les etats sont toujours identifiables par texte/symbole, pas seulement couleur. */
+.pm-workout-screen .pm-chip { font-size:11px; letter-spacing:.02em; font-weight:850; }
+.pm-workout-screen .pm-machine-image { border-radius:13px; flex:none; }
+.pm-workout-screen .pm-machine-titles .pm-muted { font-size:13px; line-height:1.45; }
+.pm-workout-screen .pm-set-current .pm-set-mark { color:var(--turq); }
+.pm-workout-screen .pm-set-current .pm-input {
+  background:var(--bg); border-color:var(--turq); color:var(--text);
+}
+.pm-workout-screen .pm-sets .pm-input { min-width:0; min-height:50px; font-size:21px; font-weight:850; }
+.pm-workout-screen .pm-set-done .pm-input { background:var(--surface); }
+.pm-workout-screen .pm-set-tools .pm-icon-btn { min-width:44px; min-height:48px; }
+.pm-workout-screen .pm-set-current .pm-set-mark::before {
+  content:'EN COURS'; display:block; position:absolute; top:-8px; left:10px;
+  background:var(--turq); color:var(--turq-dark); padding:2px 6px;
+  border-radius:5px; font-size:9px; letter-spacing:.05em; line-height:1.35;
+}
+.pm-workout-screen .pm-validate {
+  min-height:64px; margin:20px 0 12px; border-radius:14px;
+  background:var(--turq); color:var(--turq-dark); font-size:18px;
+  font-weight:900; letter-spacing:-.015em;
+  transition:transform 120ms var(--ease-out), opacity 120ms var(--ease-out);
+}
+.pm-workout-screen .pm-validate:active:not(:disabled) { transform:scale(.985); }
+.pm-workout-screen .pm-validate:focus-visible { outline:3px solid var(--text); outline-offset:3px; }
+.pm-workout-screen .pm-validate:disabled { opacity:.45; }
+.pm-workout-screen .pm-row-actions .pm-secondary,
+.pm-workout-screen .pm-row-actions .pm-warning { min-height:46px; }
+.pm-workout-screen .pm-dots .pm-dot::before {
+  content:''; display:block; width:28px; height:10px; border-radius:99px;
+  background:var(--stroke); transition:transform 120ms var(--ease-out);
+}
+.pm-workout-screen .pm-dots .pm-dot-done::before { background:var(--ok); }
+.pm-workout-screen .pm-dots .pm-dot-skipped::before { background:var(--warn); }
+.pm-workout-screen .pm-dots .pm-dot-postponed::before { background:var(--text-postponed); }
+.pm-workout-screen .pm-dots .pm-dot-done::after,
+.pm-workout-screen .pm-dots .pm-dot-skipped::after,
+.pm-workout-screen .pm-dots .pm-dot-postponed::after {
+  position:absolute; top:2px; right:0; font-size:11px; font-weight:900;
+}
+.pm-workout-screen .pm-dots .pm-dot-done::after { content:'✓'; }
+.pm-workout-screen .pm-dots .pm-dot-skipped::after { content:'–'; }
+.pm-workout-screen .pm-dots .pm-dot-postponed::after { content:'↷'; }
+.pm-workout-screen .pm-dots .pm-dot-current { outline:2px solid var(--turq); outline-offset:-3px; }
+.pm-workout-screen .pm-dots .pm-dot-current::before { transform:scaleX(1.13); }
+.pm-workout-screen .pm-dots .pm-dot:focus-visible { outline:3px solid var(--text); outline-offset:-2px; }
+.pm-workout-screen .pm-side-note { color:var(--muted); }
+.pm-workout-screen .pm-cardio-grid .pm-input { min-height:56px; font-size:22px; }
+@media (max-width:420px) {
+  .pm-workout-card { padding:14px; }
+  .pm-workout-screen .pm-machine-head { gap:11px; }
+  .pm-workout-screen .pm-set-row { grid-template-columns:24px minmax(0,1fr) minmax(0,1fr) auto; gap:6px; padding:12px 7px 9px; }
+  .pm-workout-screen .pm-set-tools { gap:3px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .pm-workout-screen .pm-validate, .pm-workout-screen .pm-dots .pm-dot::before { transition:none; }
+}
