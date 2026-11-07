@@ -87,36 +87,70 @@ export function howPanel() {
   return box;
 }
 
-/** Récompense affichée à la fin d'une séance. `reward` vient de rewardFor(). */
+/** Récompense affichée à la fin d'une séance (planche ASCENT). `reward` vient de rewardFor(). */
 export function rewardCard(reward, name) {
   const card = el('section', 'pm-reward');
   card.setAttribute('aria-label', 'Récompense de la séance');
-  const up = reward.leveledUp;
-  const head = el('div', 'pm-reward-head');
-  const text = el('div', 'pm-reward-text');
-  add(text, el('p', 'pm-reward-xp', '+' + fmtNum(reward.xp) + ' XP'),
-    el('p', 'pm-mascot-line-text', '« ' + mascotLine(up ? 'levelup' : reward.records.length ? 'record' : 'done', String(reward.xp)) + ' »'));
-  add(head, renderMascot({ mood: up ? 'levelup' : reward.records.length ? 'cheer' : 'happy', stage: reward.after.stage, size: 'md' }), text);
-  card.append(head);
+  const up = reward.leveledUp, after = reward.after;
+  card.append(el('p', 'pm-reward-xp', '+' + fmtNum(reward.xp) + ' XP'));
+  // niveau actuel → barre → niveau suivant
+  const levels = el('div', 'pm-reward-levels');
+  const mid = el('div', 'pm-reward-mid');
+  add(mid, xpBar(after, { before: reward.before.level === after.level ? reward.before.progress : 0 }), el('p', 'pm-reward-xpcount', fmtNum(after.into) + ' / ' + fmtNum(after.need) + ' XP'));
+  add(levels, levelHex(after.level, { size: 'sm', label: 'Niveau actuel : ' + after.level }), mid, levelHex(after.level + 1, { size: 'sm', label: 'Niveau suivant : ' + (after.level + 1) }));
+  card.append(levels);
+  card.append(el('p', 'pm-muted pm-reward-level' + (up ? ' pm-levelup' : ''), up
+    ? 'Niveau ' + reward.levelBefore + ' → niveau ' + reward.levelAfter + ' : ' + after.title + ' !'
+    : 'Niveau ' + after.level + ' · ' + after.title));
+  // détail des XP
   const parts = [['Séries validées', reward.parts.sets], ['Cardio', reward.parts.cardio], ['Fin de séance', reward.parts.finish], ['Records', reward.parts.records]].filter(x => x[1] > 0);
   const list = el('ul', 'pm-reward-parts');
   parts.forEach(([l, v]) => list.append(add(el('li'), el('span', '', l), el('span', '', '+' + fmtNum(v)))));
-  card.append(list, xpBar(reward.after, { before: reward.before.level === reward.after.level ? reward.before.progress : 0 }));
-  card.append(el('p', 'pm-muted pm-reward-level', up
-    ? 'Niveau ' + reward.levelBefore + ' → niveau ' + reward.levelAfter + ' : ' + reward.after.title + ' !'
-    : 'Niveau ' + reward.after.level + ' · ' + fmtNum(reward.after.into) + ' / ' + fmtNum(reward.after.need) + ' XP'));
-  if (up) card.querySelector('.pm-reward-level').classList.add('pm-levelup');
-  if (reward.records.length) {
-    const rec = el('ul', 'pm-reward-records');
-    reward.records.forEach(r => rec.append(el('li', '', 'Record : ' + name(r.machineId) + ' ' + fmtNum(r.kg) + ' kg (avant ' + fmtNum(r.previous) + ' kg)')));
-    card.append(rec);
+  card.append(list);
+  // cartes « Nouveau badge ! » et « Nouveau record ! »
+  if (reward.newBadges.length || reward.records.length) {
+    const cards = el('div', 'pm-reward-cards');
+    reward.newBadges.forEach(x => {
+      const c = el('article', 'pm-reward-card pm-reward-badge');
+      add(c, el('p', 'pm-reward-card-kicker', 'Nouveau badge !'), add(el('div', 'pm-badge-hex'), el('span', '', '★')), el('strong', '', x.name), el('span', 'pm-muted', x.desc));
+      cards.append(c);
+    });
+    reward.records.forEach(r => {
+      const c = el('article', 'pm-reward-card pm-reward-record');
+      add(c, el('p', 'pm-reward-card-kicker', 'Nouveau record !'), el('strong', 'pm-reward-record-kg', fmtNum(r.kg) + ' kg'),
+        el('span', 'pm-muted', name(r.machineId)), el('span', 'pm-reward-gain', '+' + fmtNum(Math.round((r.kg - r.previous) * 100) / 100) + ' kg'));
+      cards.append(c);
+    });
+    card.append(cards);
   }
-  if (reward.newBadges.length) {
-    const b = el('ul', 'pm-reward-badges');
-    reward.newBadges.forEach(x => b.append(add(el('li'), el('strong', '', 'Succès : ' + x.name), el('span', 'pm-muted', ' — ' + x.desc))));
-    card.append(b);
-  }
+  // Korv
+  const korv = el('div', 'pm-reward-korv');
+  const bubble = el('div', 'pm-korv-bubble');
+  add(bubble, el('span', 'pm-korv-name', 'Korv'), el('p', 'pm-korv-line', '« ' + mascotLine(up ? 'levelup' : reward.records.length ? 'record' : 'done', String(reward.xp)) + ' »'));
+  add(korv, renderMascot({ mood: up ? 'levelup' : reward.records.length ? 'cheer' : 'happy', stage: after.stage, size: 'md' }), bubble);
+  card.append(korv);
   return card;
+}
+
+/** Contenu du plein écran « Niveau supérieur » (planche ASCENT) ; affiché par dialog() avec le bouton « Parfait ! ». */
+export function levelUpContent(reward) {
+  const box = el('div', 'pm-levelup');
+  const korv = el('div', 'pm-levelup-korv');
+  const img = el('img'); img.alt = ''; img.decoding = 'async'; img.width = 640; img.height = 800;
+  img.addEventListener('error', () => korv.replaceChildren(renderMascot({ mood: 'levelup', stage: reward.after.stage, size: 'lg' })), { once: true });
+  img.src = new URL('../assets/ascent/korv-accueil-motive.webp', import.meta.url).href;
+  korv.append(img);
+  const hex = el('div', 'pm-levelup-hex');
+  hex.append(levelHex(reward.levelAfter, { size: 'lg', label: 'Niveau ' + reward.levelAfter }));
+  const lines = el('ul', 'pm-levelup-lines');
+  const line = (ico, text) => lines.append(add(el('li'), el('span', 'pm-levelup-ico', ico), el('span', '', text)));
+  line('↑', '+' + fmtNum(reward.xp) + ' XP cette séance');
+  if (reward.after.stage !== reward.before.stage) line('★', 'Nouveau grade : ' + reward.after.title);
+  else line('★', 'Grade : ' + reward.after.title);
+  if (reward.newBadges.length) line('✓', reward.newBadges.length + (reward.newBadges.length > 1 ? ' succès débloqués' : ' succès débloqué'));
+  line('⚑', 'Prochain palier : niveau ' + (reward.levelAfter + 1) + ' dans ' + fmtNum(reward.after.need - reward.after.into) + ' XP');
+  add(box, korv, hex, lines);
+  return box;
 }
 
 /** Hexagone de niveau (« NIV. 18 »), comme sur la planche ASCENT. */

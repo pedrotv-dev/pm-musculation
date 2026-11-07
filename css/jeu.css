@@ -250,3 +250,54 @@
 .pm-play:active { transform:scale(.96); }
 .pm-play:focus-visible { outline:3px solid var(--text); outline-offset:3px; }
 @media (max-width:370px) { .pm-hero-korv { width:120px; height:150px; } .pm-tile strong { font-size:17px; } }
+
+/* ===== ASCENT · fin de séance et niveau supérieur (structure Claude Code ; habillage fin : mission 1) ===== */
+.pm-done { padding-top:0; overflow:hidden; }
+.pm-done::before { content:none; }
+.pm-done-hero { margin:14px 0 6px; padding:28px 14px 18px; border-radius:14px; text-align:center;
+  background:linear-gradient(180deg, rgba(11,15,18,.05), rgba(11,15,18,.55) 70%, var(--surface)), url(../assets/ascent/hero-fin.webp) center 25% / cover no-repeat; }
+.pm-done-hero h2 { margin:10px 0 4px; font-size:clamp(26px,7vw,32px); letter-spacing:-.03em; }
+.pm-done-sub { margin:0 0 6px; color:var(--text); font-size:15px; }
+.pm-done-continue { margin:16px 0 6px; }
+.pm-reward { text-align:center; }
+.pm-reward .pm-reward-xp { margin:0; font-size:clamp(40px,11vw,52px); color:var(--turq); }
+.pm-reward-levels { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; }
+.pm-reward-mid { display:grid; gap:6px; }
+.pm-reward-xpcount { margin:0; font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.pm-hex-sm { width:50px; height:56px; } .pm-hex-sm .pm-hex-value { font-size:18px; } .pm-hex-sm .pm-hex-label { font-size:8px; }
+.pm-hex-lg { width:120px; height:134px; } .pm-hex-lg .pm-hex-value { font-size:44px; } .pm-hex-lg .pm-hex-label { font-size:13px; }
+.pm-reward-parts { text-align:left; }
+.pm-reward-cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:10px; }
+.pm-reward-card { display:grid; justify-items:center; align-content:start; gap:4px; padding:12px 10px; border-radius:14px; text-align:center;
+  border:1px solid var(--ascent-rim, var(--stroke)); background:var(--surface-raised); }
+.pm-reward-card-kicker { margin:0 0 4px; font-size:12px; font-weight:820; color:var(--turq); }
+.pm-reward-record .pm-reward-card-kicker { color:var(--ok); }
+.pm-reward-card strong { font-size:15px; }
+.pm-reward-record-kg { font-size:24px !important; font-weight:880; }
+.pm-reward-gain { margin-top:4px; padding:2px 10px; border-radius:99px; font-size:12px; font-weight:800; color:var(--ok); border:1px solid rgba(185,240,138,.45); }
+.pm-badge-hex { display:grid; place-items:center; width:46px; height:52px; margin:2px 0 4px; color:#ffd36b; font-size:20px;
+  clip-path:polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background:rgba(255,211,107,.16); }
+.pm-reward-korv { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:10px; text-align:left; }
+.pm-reward-korv .pm-mascot-md { width:76px; height:76px; }
+.pm-reward-korv .pm-korv-bubble { margin:0; }
+.pm-reward-korv .pm-korv-bubble::after { left:-7px; right:auto; transform:rotate(-135deg); }
+
+.pm-levelup-overlay { align-items:stretch; padding:0; background:rgba(5,8,12,.94); }
+.pm-levelup-overlay .pm-modal { width:100%; max-width:none; min-height:100%; margin:0; border-radius:0; border:0; display:flex; flex-direction:column; justify-content:center;
+  text-align:center; padding:28px 20px calc(24px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg, rgba(11,15,18,.15), rgba(11,15,18,.85) 60%, var(--bg)), url(../assets/ascent/hero-fin.webp) center top / cover no-repeat, var(--bg); }
+.pm-levelup-overlay .pm-modal-title { order:1; margin-top:-6px; font-size:clamp(28px,8vw,36px); margin:0 0 14px; letter-spacing:-.03em; }
+.pm-levelup-overlay .pm-levelup { display:contents; }
+.pm-levelup-overlay .pm-levelup-korv { order:0; align-self:center; }
+.pm-levelup-overlay .pm-levelup-hex { order:2; align-self:center; margin-bottom:14px; }
+.pm-levelup-overlay .pm-levelup-lines { order:3; align-self:center; }
+.pm-levelup-overlay .pm-modal-actions { order:4; margin-top:20px; }
+.pm-levelup-overlay .pm-modal-btn.pm-primary { width:100%; min-height:58px; font-size:18px; font-weight:850; }
+.pm-levelup-korv { width:170px; height:212px; filter:drop-shadow(0 0 22px rgba(20,230,199,.28)); }
+.pm-levelup-korv img { width:100%; height:100%; object-fit:contain; -webkit-mask-image:linear-gradient(180deg, #000 72%, transparent); mask-image:linear-gradient(180deg, #000 72%, transparent); }
+.pm-levelup-hex { position:relative; filter:drop-shadow(0 0 18px rgba(20,230,199,.35)); }
+.pm-levelup-lines { list-style:none; margin:0; padding:0; display:grid; gap:8px; width:100%; max-width:420px; text-align:left; }
+.pm-levelup-lines li { display:flex; align-items:center; gap:12px; min-height:48px; padding:8px 14px; border-radius:12px; border:1px solid var(--ascent-rim, var(--stroke)); background:rgba(26,33,39,.85); font-size:15px; }
+.pm-levelup-ico { flex:none; width:22px; text-align:center; color:var(--turq); font-weight:900; }
+@media (prefers-reduced-motion: reduce) { .pm-levelup-overlay * { animation:none !important; transition:none !important; } }
+.pm-reward-korv .pm-korv-bubble { grid-column:2; grid-row:1; }

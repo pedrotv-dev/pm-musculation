@@ -13,7 +13,7 @@ import {
 } from './workouts.js';
 import { el, btn, clear, add, dialog, confirmDialog, toast, formatClock, formatMinutes, fmtNum, parseNum, localISODate } from './dom.js';
 import { loadCatalog, machineImage } from './catalog.js';
-import { ALL_PROFILES as KNOWN, isRealProfile } from './profiles.js';
+import { ALL_PROFILES as KNOWN, isRealProfile, PROFILE_INFO } from './profiles.js';
 import { machineHistory, isClosed } from './stats.js';
 import { runBackup } from './backup.js';
 import { holdAwake } from './wakelock.js';
@@ -21,7 +21,7 @@ import { getUiSettings, peekUiSettings } from './ui-settings.js';
 import { plannedIndex, SIDE_LABEL, SIDE_SHORT, stepWeight } from './machine-rules.js';
 import { funComparisons } from './fun-volume.js';
 import { rewardFor, progressionStartFor } from './gamification.js';
-import { rewardCard } from './jeu-ui.js';
+import { rewardCard, levelUpContent } from './jeu-ui.js';
 import { fx } from './fx.js';
 import { metricsFor, metricsText } from './cardio.js';
 
@@ -603,17 +603,23 @@ async function commitPartial() {
 }
 function renderDone(session) {
   clearInterval(S.clock); S.clock = null;
+  if (S.undo) { S.undo.dismiss(); S.undo = null; } // la séance est validée : plus d'« Annuler » sur la dernière série
   S.finished = true; holdAwake(false);
   emit('pm:workout-close', {});
   clear(panel);
   const sum = session.summary || getWorkoutSummary(session);
   const box = el('article', 'pm-workout-card pm-done');
-  add(box, el('div', 'pm-done-icon', '✓'),
-    el('h2', '', session.status === 'completed' ? 'Séance terminée' : 'Séance partielle enregistrée'),
+  const complete = session.status === 'completed';
+  const hero = el('div', 'pm-done-hero');
+  add(hero, el('div', 'pm-done-icon', '✓'),
+    el('h2', '', complete ? 'Séance terminée !' : 'Séance partielle enregistrée'),
+    el('p', 'pm-done-sub', complete ? 'Belle séance, ' + (PROFILE_INFO[S.profile]?.name || '') + ' !' : 'Tout ce que tu as fait compte.'),
     el('p', 'pm-muted', sum.setsDone + ' séries · ' + fmtNum(sum.volumeKg) + ' kg de volume · ' + formatMinutes(sum.durationMinutes)));
+  box.append(hero);
   let reward = null;
   try { reward = rewardFor([...S.history, session], session.id, { today: localISODate(), startDate: progressionStartFor(S.profile) }); } catch (e) { console.error('PM jeu :', e); }
   if (reward) box.append(rewardCard(reward, id => S.catalog.byId.get(id)?.name || id));
+  box.append(btn('Continuer', 'pm-validate pm-done-continue', () => closeWorkout({ goTo: 'accueil' })));
   const jokes = funComparisons(sum.volumeKg, session.id);
   if (jokes.length) {
     let shown = 0;
@@ -635,8 +641,7 @@ function renderDone(session) {
     });
     box.append(save, note);
   }
-  box.append(btn('Voir l’historique', 'pm-validate', () => closeWorkout({ goTo: 'historique' })));
-  box.append(btn('Retour à l’accueil', 'pm-secondary', () => closeWorkout({ goTo: 'accueil' })));
+  box.append(btn('Voir l’historique', 'pm-secondary', () => closeWorkout({ goTo: 'historique' })));
   panel.append(box);
   window.scrollTo(0, 0);
   // effets : un seul point d'entrée (js/fx.js) pour les sons et animations
@@ -645,7 +650,12 @@ function renderDone(session) {
     fx('xp', { amount: reward.xp });
     reward.records.forEach(r => fx('record', { machineId: r.machineId, kg: r.kg }));
     reward.newBadges.forEach(b => fx('badge', { id: b.id, name: b.name }));
-    if (reward.leveledUp) fx('level-up', { level: reward.levelAfter, title: reward.after.title, stage: reward.after.stage });
+    if (reward.leveledUp) {
+      fx('level-up', { level: reward.levelAfter, title: reward.after.title, stage: reward.after.stage });
+      // plein écran « Niveau supérieur » (décision de Pierre : bouton « Parfait ! » à toucher)
+      dialog({ title: 'Niveau supérieur !', content: levelUpContent(reward), className: 'pm-levelup-overlay',
+        choices: [{ label: 'Parfait !', value: true, kind: 'primary' }] });
+    }
   }
 }
 

@@ -76,18 +76,42 @@ await step('séance de Pierre : récompense (XP, succès Premier pas) et événe
   await page.waitForSelector(screen + ' .pm-reward');
   const r = await text(screen + ' .pm-reward');
   assert.match(r, /\+80 XP/);                       // 2 séries × 10 + séance complète 60
-  assert.match(r, /Succès : Premier pas/); assert.match(r, /Succès : Une tonne/);
+  assert.match(r, /Nouveau badge !/); assert.match(r, /Premier pas/); assert.match(r, /Une tonne/);
   const fx = await page.evaluate(() => window.__fx);
   for (const t of ['set-validated', 'activity-done', 'session-done', 'xp', 'badge']) assert.ok(fx.includes(t), t + ' manquant : ' + fx);
   assert.equal(fx.filter(t => t === 'set-validated').length, 2);
   assert.ok(await page.locator(screen + ' .pm-reward .pm-mascot').count() === 1);
 });
 await step('retour à l’accueil : niveau mis à jour (80 XP), puis succès dans Progrès', async () => {
-  await page.click(screen + ' button:has-text("Retour à l’accueil")');
+  await page.click(screen + ' button:has-text("Continuer")');
   await page.waitForFunction(() => /80 \/ 200 XP/.test(document.querySelector('.pm-level-card')?.innerText || ''), null, { timeout: 8000 }).catch(async e => { throw new Error('carte : ' + JSON.stringify(await page.evaluate(() => [...document.querySelectorAll('.pm-level-card')].map(c => c.innerText)))); });
   await page.click('.nav-btn[data-go="progres"]');
   await page.waitForFunction(() => /Succès · 2 \/ 18/.test(document.querySelector('.pm-badges-panel h3')?.innerText || ''));
   assert.equal(await page.locator('.pm-badge-tile.pm-unlocked').count(), 2); // Premier pas + Une tonne ! (2 × 60 kg × 12 = 1 440 kg)
+});
+await step('passage de niveau : plein écran « Niveau supérieur » avec Korv, hexagone et bouton « Parfait ! »', async () => {
+  const c = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await c.clock.install({ time: new Date(2026, 10, 10, 18, 0, 0) });
+  const p = await c.newPage(); watch(p, errors);
+  const prog = { schemaVersion: 1, weekStart: mondayISO(new Date(2026, 10, 10)), programs: { manon: { days: ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'].map(id => ({
+    id, name: 'Jambes', activities: [{ type: 'strength', machineId: 'leg-press', shared: true, restSeconds: 30, sets: Array.from({ length: 15 }, () => ({ kg: 40, reps: 12 })) }] })) } } };
+  await p.goto(srv.url); await p.click('[data-select-profile="manon"]');
+  await p.click('.nav-btn[data-go="seances"]'); await p.click('.pm-import summary');
+  await p.fill('.pm-textarea', JSON.stringify(prog)); await p.click('.pm-action-verify');
+  await p.waitForSelector('.pm-action-save:not([disabled])'); await p.click('.pm-action-save');
+  await p.click('.pm-start-workout'); await p.waitForSelector('#pm-validate-set');
+  for (let i = 0; i < 15; i++) { await p.click('#pm-validate-set'); await p.waitForFunction(n => document.querySelectorAll('#pm-workout-screen .pm-set-done').length === n, i + 1); }
+  await p.click('#pm-workout-screen .pm-validate:has-text("Terminer la séance")');
+  await p.click('#pm-workout-screen .pm-validate:has-text("Valider ma séance")');
+  await p.waitForSelector('.pm-levelup-overlay');                         // 15 × 10 + 60 = 210 XP : niveau 2
+  const t = await p.locator('.pm-levelup-overlay').innerText();
+  assert.match(t, /Niveau supérieur !/); assert.match(t, /\+210 XP cette séance/); assert.match(t, /Initié/);
+  assert.equal(await p.getAttribute('.pm-levelup-overlay [role="img"]', 'aria-label'), 'Niveau 2');
+  assert.equal(await p.evaluate(() => document.activeElement?.textContent), 'Parfait !');
+  await p.click('.pm-levelup-overlay .pm-primary');
+  await p.waitForSelector('.pm-levelup-overlay', { state: 'detached' });
+  assert.match(await p.locator('#pm-workout-screen .pm-reward').innerText(), /Niveau 1 → niveau 2/);
+  await c.close();
 });
 await step('avant le 9 novembre : niveau 1, 0 XP, et l\'annonce du début de la progression', async () => {
   const before = await browser.newContext({ viewport: { width: 390, height: 844 } });
