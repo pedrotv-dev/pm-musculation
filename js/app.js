@@ -33,7 +33,11 @@ function chooseProfile(profile, persist = true) {
   $('#screen-select').hidden = true;
   $('#app-pages').hidden = false;
   $('#bottom-nav').hidden = false;
-  $('#switch-profile').hidden = false;
+  // un seul profil en haut : le profil ACTIF, qui sert aussi de bouton pour en changer (nom accessible = « Changer de profil (Pierre) »)
+  const switcher = $('#switch-profile');
+  switcher.replaceChildren(document.createTextNode(data.name + ' '), Object.assign(document.createElement('span'), { textContent: '▾', ariaHidden: 'true' }));
+  switcher.setAttribute('aria-label', 'Changer de profil (' + data.name + ')');
+  switcher.hidden = false;
   if (persist) {
     try { localStorage.setItem(PROFILE_STORAGE_KEY, profile); }
     catch (error) { console.warn('Impossible de mémoriser le profil sur cet appareil.', error); }
