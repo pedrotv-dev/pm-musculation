@@ -1,3 +1,0 @@
-/* Bandeau de l'aperçu (visible seulement quand l'application tourne sous /preview/ ; js/env.js pose data-pm-env="preview"). */
-html[data-pm-env="preview"] body { padding-top:22px; }
-html[data-pm-env="preview"] body::before { content:"APERÇU — données séparées de ta vraie application"; position:fixed; top:0; left:0; right:0; height:22px; z-index:2147483000; display:flex; align-items:center; justify-content:center; background:#ffcf33; color:#1b1400; font:800 11px/1 system-ui, sans-serif; letter-spacing:.04em; text-transform:uppercase; pointer-events:none; }
