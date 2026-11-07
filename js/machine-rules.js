@@ -30,3 +30,17 @@ export function expandSides(sets) {
 
 /** Série prévue correspondant à la série n° `idx` (0, 1, 2…) de la séance. */
 export function plannedIndex(idx, perSide) { return perSide ? Math.floor(idx / 2) : idx; }
+
+/**
+ * Boutons − / + de la charge : saute à la charge connue suivante (dir = 1) ou précédente (dir = -1) parmi `known`
+ * (charges du programme, de la séance et de l'historique de la machine, triées). Au-delà, pas = plus petit écart connu
+ * (2,5 kg s'il n'y en a pas). Exemple Basic-Fit : 66 → 73 kg. Jamais en dessous de 0.
+ */
+export function stepWeight(value, known, dir) {
+  const v = Number.isFinite(value) ? value : 0;
+  const gaps = known.slice(1).map((k, i) => k - known[i]).filter(g => g > 0);
+  const inc = gaps.length ? Math.min(...gaps) : 2.5;
+  if (dir > 0) { const up = known.find(k => k > v); return up !== undefined ? up : Math.round((v + inc) * 100) / 100; }
+  const down = [...known].reverse().find(k => k < v);
+  return Math.max(0, down !== undefined ? down : Math.round((v - inc) * 100) / 100);
+}

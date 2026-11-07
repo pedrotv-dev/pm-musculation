@@ -26,7 +26,7 @@ await step('stockage plein : la série n’est PAS affichée comme enregistrée'
   assert.ok(await page.locator('.pm-toast').isVisible());
 });
 await step('brouillon refusé : message d’erreur, valeurs encore saisies à l’écran', async () => {
-  const kg = page.locator(screen + ' .pm-set-row').first().locator('input').first();
+  const kg = page.locator('#pm-current-kg');
   await kg.fill('51'); await kg.blur(); await page.waitForTimeout(500);
   assert.equal(await page.locator('#pm-save-state').getAttribute('data-state'), 'error');
 });

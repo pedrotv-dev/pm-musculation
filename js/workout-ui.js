@@ -18,7 +18,7 @@ import { machineHistory, isClosed } from './stats.js';
 import { runBackup } from './backup.js';
 import { holdAwake } from './wakelock.js';
 import { getUiSettings, peekUiSettings } from './ui-settings.js';
-import { plannedIndex, SIDE_LABEL, SIDE_SHORT } from './machine-rules.js';
+import { plannedIndex, SIDE_LABEL, SIDE_SHORT, stepWeight } from './machine-rules.js';
 import { funComparisons } from './fun-volume.js';
 import { rewardFor, progressionStartFor } from './gamification.js';
 import { rewardCard } from './jeu-ui.js';
@@ -173,42 +173,90 @@ function plannedFor(a, idx) {
 }
 const sideName = set => (set.side ? SIDE_LABEL[set.side] : '');
 const setLabel = (a, idx) => 'série ' + (idx + 1) + (a.sets[idx]?.side ? ' · côté ' + sideName(a.sets[idx]).toLowerCase() : '');
+/** Charges connues pour cette machine (programme, séance, historique) : les boutons − / + sautent de l'une à l'autre. */
+function knownWeights(a) {
+  const set = new Set();
+  (a.planned?.sets || []).forEach(t => set.add(t.kg));
+  a.sets.forEach(t => set.add(t.kg));
+  for (const s of S.history) for (const x of s.activities || []) if (x.machineId === a.machineId) (x.sets || []).forEach(t => { if (t.done) set.add(t.kg); });
+  return [...set].filter(Number.isFinite).sort((x, y) => x - y);
+}
+function stepper({ id, label, value, kind, onStep }) {
+  const wrap = el('div', 'pm-stepper');
+  const name = el('span', 'pm-stepper-name', label); name.id = id + '-label';
+  const row = el('div', 'pm-stepper-row');
+  const input = el('input', 'pm-input pm-stepper-input');
+  input.id = id; input.type = 'text'; input.inputMode = kind === 'reps' ? 'numeric' : 'decimal';
+  input.autocomplete = 'off'; input.setAttribute('enterkeyhint', 'done'); input.setAttribute('aria-labelledby', name.id);
+  input.value = fmtNum(value);
+  input.addEventListener('focus', () => input.select());
+  const minus = btn('−', 'pm-step-btn', () => onStep(input, -1));
+  const plus = btn('+', 'pm-step-btn', () => onStep(input, 1));
+  minus.setAttribute('aria-label', 'Moins : ' + label.toLowerCase()); plus.setAttribute('aria-label', 'Plus : ' + label.toLowerCase());
+  add(row, minus, input, plus);
+  add(wrap, name, row);
+  return { wrap, input };
+}
 function renderSets(card, a) {
-  const current = a.sets.find(s => !s.done)?.id;
+  const current = a.sets.find(s => !s.done);
+  const curIdx = current ? a.sets.indexOf(current) : -1;
   const done = a.sets.filter(s => s.done).length;
-  card.append(el('h3', 'pm-sets-title', 'Séries · ' + done + '/' + a.sets.length));
-  if (a.perSide) card.append(el('p', 'pm-muted pm-side-note', '1 série = 1 côté : gauche, puis droite.'));
-  const list = el('div', 'pm-sets');
-  const rows = [];
-  a.sets.forEach((set, idx) => {
-    const row = el('div', 'pm-set-row' + (set.done ? ' pm-set-done' : '') + (set.id === current ? ' pm-set-current' : ''));
-    const kg = inputField('kg', set.kg, { kind: 'kg' });
-    const reps = inputField('reps', set.reps, { kind: 'reps' });
-    const marker = el('span', 'pm-set-mark', set.done ? '✓' : String(idx + 1));
-    if (set.side) {
-      const side = el('span', 'pm-set-side pm-side-' + set.side, SIDE_SHORT[set.side]);
-      side.title = 'Côté ' + sideName(set).toLowerCase(); side.setAttribute('aria-label', 'côté ' + sideName(set).toLowerCase());
-      marker.append(side);
-    }
+
+  // ---- cadre « Série en cours » : charge et répétitions avec − / + (brouillon enregistré avant validation)
+  let box = null;
+  if (current) {
+    box = el('section', 'pm-current-set');
+    box.setAttribute('aria-label', 'Série en cours');
+    const head = el('div', 'pm-current-head');
+    const tag = el('span', 'pm-current-tag', 'Série en cours');
+    add(head, tag, el('span', 'pm-current-count', 'Série ' + (curIdx + 1) + ' / ' + a.sets.length + (current.side ? ' · côté ' + sideName(current).toLowerCase() : '')));
     let timer = null;
+    const known = knownWeights(a);
+    const kgF = stepper({ id: 'pm-current-kg', label: 'Charge (kg)', value: current.kg, kind: 'kg',
+      onStep: (input, dir) => { input.value = fmtNum(stepWeight(parseNum(input.value), known, dir)); schedule(); } });
+    const repsF = stepper({ id: 'pm-current-reps', label: 'Répétitions', value: current.reps, kind: 'reps',
+      onStep: (input, dir) => { const r = parseNum(input.value); input.value = String(Math.max(1, (Number.isInteger(r) ? r : current.reps) + dir)); schedule(); } });
     const save = async ({ final = false } = {}) => {
       clearTimeout(timer);
-      const v = readSet(kg.input, reps.input);
-      if (!v || (v.kg === set.kg && v.reps === set.reps)) return;
-      set.kg = v.kg; set.reps = v.reps; // evite les doubles ecritures
-      // brouillon : charge et repetitions sont conservees meme sans validation
-      await commit((p, id) => updateSet(p, id, a.key, set.id, v), { silent: !final || formFocused() });
+      const v = readSet(kgF.input, repsF.input);
+      if (!v || (v.kg === current.kg && v.reps === current.reps)) return;
+      current.kg = v.kg; current.reps = v.reps; // évite les doubles écritures
+      await commit((p, id) => updateSet(p, id, a.key, current.id, v), { silent: !final || formFocused() });
     };
     const schedule = () => { clearTimeout(timer); timer = setTimeout(() => save(), 350); };
-    for (const i of [kg.input, reps.input]) {
+    for (const i of [kgF.input, repsF.input]) {
       i.addEventListener('input', schedule);
       i.addEventListener('blur', () => save());
       i.addEventListener('keydown', e => { if (e.key === 'Enter') i.blur(); });
     }
-    const flusher = () => save({ final: true });
-    S.flushers.add(flusher);
-    rows.push({ set, kg, reps, save });
-    row.append(marker, kg.wrap, reps.wrap);
+    S.flushers.add(() => save({ final: true }));
+    const grid = el('div', 'pm-current-grid');
+    add(grid, kgF.wrap, repsF.wrap);
+    const plan = plannedFor(a, curIdx);
+    add(box, head, grid);
+    if (plan) box.append(el('p', 'pm-current-plan', 'Objectif du programme : ' + fmtNum(plan.kg) + ' kg × ' + plan.reps));
+    box.inputs = { kg: kgF.input, reps: repsF.input };
+    card.append(box);
+  }
+
+  // ---- liste des séries : ✓ faite · ◉ en cours · ○ à faire
+  card.append(el('h3', 'pm-sets-title', 'Séries · ' + done + '/' + a.sets.length));
+  if (a.perSide) card.append(el('p', 'pm-muted pm-side-note', '1 série = 1 côté : gauche, puis droite.'));
+  const list = el('ol', 'pm-sets');
+  a.sets.forEach((set, idx) => {
+    const isCur = current && set.id === current.id;
+    const row = el('li', 'pm-set-row' + (set.done ? ' pm-set-done' : '') + (isCur ? ' pm-set-current' : ''));
+    const mark = el('span', 'pm-set-mark', set.done ? '✓' : isCur ? '◉' : '○');
+    mark.setAttribute('aria-hidden', 'true');
+    const label = el('span', 'pm-set-label', 'Série ' + (idx + 1));
+    if (set.side) {
+      const side = el('span', 'pm-set-side pm-side-' + set.side, SIDE_SHORT[set.side]);
+      side.title = 'Côté ' + sideName(set).toLowerCase(); side.setAttribute('aria-label', 'côté ' + sideName(set).toLowerCase());
+      label.append(' ', side);
+    }
+    const state = el('span', 'pm-visually-hidden', set.done ? ' (faite)' : isCur ? ' (en cours)' : ' (à faire)');
+    const value = el('span', 'pm-set-value', fmtNum(set.kg) + ' kg × ' + set.reps);
+    add(row, mark, add(label, state), value);
     const plan = plannedFor(a, idx);
     if (set.done && plan && (set.reps < plan.reps || set.kg < plan.kg)) {
       const gap = el('span', 'pm-gap', 'objectif ' + fmtNum(plan.kg) + ' kg × ' + plan.reps);
@@ -235,12 +283,11 @@ function renderSets(card, a) {
   });
   card.append(list);
 
-  const next = rows.find(r => !r.set.done);
-  if (next) {
-    const idx = a.sets.indexOf(next.set);
-    const validate = btn('Valider la ' + setLabel(a, idx), 'pm-validate', async () => {
+  if (current) {
+    const idx = curIdx, next = { set: current };
+    const validate = btn('✓ Valider la ' + setLabel(a, idx), 'pm-validate', async () => {
       if (S.busy) return;
-      const v = readSet(next.kg.input, next.reps.input);
+      const v = readSet(box.inputs.kg, box.inputs.reps);
       if (!v) { setStatus('Renseigne une charge et des répétitions valides.', 'error'); toast('Charge ou répétitions invalides.'); return; }
       S.busy = true;
       try {
@@ -263,9 +310,6 @@ function renderSets(card, a) {
   } else if (a.sets.length) {
     card.append(el('p', 'pm-machine-done', '✓ Machine terminée'));
   }
-  const extra = el('div', 'pm-row-actions');
-  add(extra, btn('+ Série', 'pm-secondary', () => commit((p, id) => addSet(p, id, a.key))));
-  card.append(extra);
 }
 function offerUndo(a, setId) {
   if (S.undo) S.undo.dismiss();
@@ -354,18 +398,19 @@ function renderMachine(a) {
       () => commit((p, id) => completeActivity(p, id, a.key, { done: false }))));
   }
 
-  const tools = el('div', 'pm-row-actions');
+  const tools = el('div', 'pm-row-actions pm-quick-actions');
   if (a.type === 'strength' && a.status === 'pending' && !a.postponed && !a.sets.some(s => s.done)) {
-    add(tools, btn('Machine occupée — Reporter', 'pm-secondary', async () => {
+    add(tools, btn('Machine occupée', 'pm-secondary pm-quick', async () => {
       await flushAll();
       const successor = neighbour(S.session, a.key, 1);
       const s = await commit((p, id) => postponeActivity(p, id, a.key));
       if (s) { const n = (successor && act(s, successor)?.status === 'pending' && successor) || getNextActivity(s)?.key; if (n) select(n); }
     }));
   }
+  if (a.type === 'strength') add(tools, btn('Ajouter une série', 'pm-secondary pm-quick', () => commit((p, id) => addSet(p, id, a.key))));
   if (a.postponed) add(tools, btn('↶ Y revenir maintenant', 'pm-secondary', () => commit((p, id) => returnToPostponed(p, id, a.key))));
   if (a.status !== 'skipped' && a.status !== 'done') {
-    add(tools, btn('Passer', 'pm-warning', async () => {
+    add(tools, btn('Passer', 'pm-warning pm-quick', async () => {
       if (!(await confirmDialog('Passer cette activité ? La séance ne pourra alors se terminer qu’en partielle.', { ok: 'Passer', danger: true }))) return;
       await flushAll();
       const successor = neighbour(S.session, a.key, 1);
