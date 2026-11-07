@@ -1,0 +1,23 @@
+PACK KORV — ASCENT / PM Musculation
+===================================
+
+originaux_HD/ : 5 illustrations originales 1254×1254 px, PNG transparent,
+renommées avec l'expression en français.
+
+assets/mascot/ : versions optimisées 320×320 px, PNG transparent,
+chaque image < 40 Ko pour les téléphones et la PWA.
+- stage-0.png          = Korv neutre (fallback idle, sleepy si aucune autre image)
+- stage-0-happy.png    = Korv heureux
+- stage-0-cheer.png    = Korv motivé
+- stage-0-levelup.png  = Korv surpris (récompense / niveau supérieur)
+- korv-determine.png   = variante supplémentaire « déterminé » ; non appelée
+                         automatiquement par js/mascot.js à l'heure actuelle.
+
+index.json : manifeste compatible avec le code actuel, ne liste que les
+images effectivement utilisées automatiquement.
+
+Pour Claude : copier le dossier assets/mascot/ dans le dépôt ; adapter le
+precache PWA et publier une nouvelle VERSION lors de l'intégration.
+Le mood « sleepy » ne dispose pas d'illustration spécifique dans ce pack :
+l'application utilisera stage-0.png grâce au repli prévu.
+Aucune modification du JavaScript n'est fournie dans le ZIP.

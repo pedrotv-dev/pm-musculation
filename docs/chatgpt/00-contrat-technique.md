@@ -75,6 +75,8 @@ Après une séance, ils partent dans cet ordre : `session-done`, `xp`, `record`(
 - Écrans : carte « niveau » (accueil et Progrès) · récompense de fin de séance (`.pm-reward`) · grille de succès (`.pm-badges`) · classements (`.pm-rankings`). Classes et structure : lis `js/jeu-ui.js` (affichage) et `css/jeu.css`.
 
 ## Mascotte (contrat des images)
+**La mascotte existe : KORV**, un corbeau adulte aux plumes graphite et à l'œil turquoise (planche ASCENT). Stade 0 livré (`assets/mascot/stage-0*.png`, 320×320, < 40 Ko). Les 11 autres stades **font évoluer le même personnage** (même tête, mêmes yeux turquoise, même emblème de plume turquoise sur la cape) ; tant qu'un stade n'existe pas, l'application utilise le dernier stade dessiné (`pickMascotFile` dans `js/mascot.js`). Originaux HD : `Ui/korv/`.
+
 - Dossier `assets/mascot/`. Noms : `stage-<N>.svg` ou `stage-<N>.png` (N de 0 à 11, une **évolution par grade**), et facultativement `stage-<N>-<humeur>.svg|png` avec les humeurs `idle`, `happy`, `cheer`, `sleepy`, `levelup`.
 - Chaque fichier créé est **listé dans `assets/mascot/index.json`** : `{ "available": ["stage-0.svg", "stage-0-cheer.svg", …] }`.
 - SVG : `viewBox="0 0 100 100"`, fond transparent, **pas de police externe**, pas de `<script>`, ≤ 6 Ko. Le personnage de repli intégré (une forme turquoise minimale — un simple repère, pas une proposition de style) montre l'échelle et la place.
