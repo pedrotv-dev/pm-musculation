@@ -1,44 +1,164 @@
-/* PM Musculation — niveaux, succès, classements personnels, mascotte (sobre : l'habillage final viendra ensuite). */
-.pm-level-card { display:grid; gap:10px; }
-.pm-level-head { display:flex; align-items:center; gap:14px; }
-.pm-level-text { min-width:0; }
-.pm-level-text h3 { margin:2px 0 4px; }
-.pm-xp-track { height:14px; border-radius:99px; background:var(--surface-raised); border:1px solid var(--stroke); overflow:hidden; }
-.pm-xp-fill { height:100%; border-radius:99px; background:var(--turq); transition:width .5s ease-out; }
-.pm-mascot-line-text { margin:0; font-style:italic; color:var(--text); }
-.pm-streak { margin:0; }
+/* PM Musculation — PULSE : progression personnelle, succes et recompenses.
+   Palette retenue : turquoise d'action, lavande reservee aux recompenses. */
+:root { --pulse-reward:#b8a4ef; }
 
+/* Carte de niveau : le grade prime sur le chiffre, Korv accompagne en retrait. */
+.pm-level-card { display:grid; gap:14px; }
+.pm-level-head { display:flex; align-items:center; gap:16px; min-width:0; }
+.pm-level-text { min-width:0; flex:1; }
+.pm-level-text .tag {
+  display:inline-block; margin-bottom:7px; padding:5px 10px;
+  border:1px solid rgba(var(--accent-rgb),.30); letter-spacing:.035em;
+}
+.pm-level-text h3 {
+  margin:0 0 6px; font-size:clamp(24px,5.8vw,30px);
+  line-height:1.13; letter-spacing:-.035em; font-weight:870;
+}
+.pm-level-text .pm-muted { font-size:13px; line-height:1.45; }
+.pm-streak { margin:0; font-size:13px; line-height:1.55; color:var(--muted); }
+
+/* XP : remplissage calcule par le JS; pas d'animation de largeur/layout.
+   Un futur effet via transform pourra etre gere par js/effets.js et ses reglages. */
+.pm-xp-track {
+  position:relative; height:11px; overflow:hidden; border-radius:99px;
+  background:var(--surface-raised); border:1px solid var(--stroke);
+}
+.pm-xp-fill {
+  height:100%; border-radius:99px; background:var(--turq);
+  transition:opacity 120ms ease-out, transform 120ms ease-out;
+  transform-origin:left center;
+}
+.pm-level-card .pm-mascot-line-text {
+  padding:10px 12px; border-left:2px solid var(--turq);
+  border-radius:0 10px 10px 0; background:rgba(41,212,194,.055);
+}
+.pm-mascot-line-text {
+  margin:0; color:var(--text); font-size:13px;
+  font-style:normal; line-height:1.5;
+}
+
+/* Korv : conteneur seulement; illustrations et animations dediees en etapes 5/9. */
 .pm-mascot { flex:none; display:grid; place-items:center; }
-.pm-mascot-sm { width:56px; height:56px; } .pm-mascot-md { width:84px; height:84px; } .pm-mascot-lg { width:140px; height:140px; }
+.pm-mascot-sm { width:56px; height:56px; }
+.pm-mascot-md { width:84px; height:84px; }
+.pm-mascot-lg { width:140px; height:140px; }
 .pm-mascot-art { width:100%; height:100%; object-fit:contain; }
-.pm-mascot-body { fill:var(--turq); } .pm-mascot-shadow { fill:rgba(0,0,0,.28); }
+.pm-mascot-body { fill:var(--turq); }
+.pm-mascot-shadow { fill:rgba(0,0,0,.28); }
 .pm-mascot-eye { fill:var(--turq-dark); }
 .pm-mascot-line { fill:none; stroke:var(--turq-dark); stroke-width:4; stroke-linecap:round; }
 .pm-mascot-mouth-open { fill:var(--turq-dark); stroke:var(--turq-dark); stroke-width:3; stroke-linejoin:round; }
-.pm-mascot-star { fill:#ffd84d; stroke:#b58900; stroke-width:1.5; }
-.pm-mascot[data-mood="cheer"], .pm-mascot[data-mood="levelup"] { animation:pm-hop .6s ease-out 1; } /* une seule fois, jamais en boucle */
-@keyframes pm-hop { 0%,100% { transform:translateY(0); } 40% { transform:translateY(-8px); } }
+.pm-mascot-star { fill:var(--pulse-reward); stroke:var(--stroke); stroke-width:1.5; }
 
-.pm-badges { list-style:none; margin:10px 0 0; padding:0; display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; }
-.pm-badge-tile { display:grid; gap:2px; padding:10px; border-radius:13px; border:1px dashed var(--stroke); background:var(--surface-raised); }
-.pm-badge-tile.pm-unlocked { border:1px solid var(--turq); background:rgba(46,211,192,.1); }
-.pm-badge-name { font-weight:850; font-size:14px; }
-.pm-badge-desc { font-size:12px; color:var(--muted); }
+/* Succes : verrouille = discret, debloque = contraste et coche textuelle. */
+.pm-badges {
+  list-style:none; margin:14px 0 0; padding:0;
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px;
+}
+.pm-badge-tile {
+  display:flex; flex-direction:column; align-items:flex-start; gap:6px;
+  min-width:0; min-height:112px; padding:14px 12px; border-radius:13px;
+  border:1px solid var(--stroke); background:var(--surface-raised);
+}
+.pm-badge-tile:not(.pm-unlocked) { opacity:.82; }
+.pm-badge-tile::before {
+  content:'À débloquer'; color:var(--muted); font-size:10px;
+  font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+}
+.pm-badge-tile.pm-unlocked {
+  border:1px solid rgba(41,212,194,.65); background:rgba(41,212,194,.085);
+}
+.pm-badge-tile.pm-unlocked::before { content:'✓ Débloqué'; color:var(--turq); }
+.pm-badge-name {
+  display:block; max-width:100%; overflow-wrap:anywhere;
+  font-weight:850; font-size:15px; line-height:1.25; color:var(--text);
+}
+.pm-badge-desc {
+  font-size:12px; color:var(--muted); line-height:1.5;
+  overflow-wrap:anywhere;
+}
 .pm-unlocked .pm-badge-desc { color:var(--text); }
 
-.pm-rank-title { margin:14px 0 6px; font-size:14px; }
-.pm-rank-list { list-style:none; counter-reset:rank; margin:0; padding:0; display:grid; gap:6px; }
-.pm-rank-list li { counter-increment:rank; display:flex; justify-content:space-between; gap:10px; padding:8px 10px; border-radius:11px; background:var(--surface-raised); font-size:14px; }
-.pm-rank-list li::before { content:counter(rank); font-weight:850; color:var(--turq); min-width:1.2em; }
-.pm-rank-list li > span:first-child { flex:1; }
-.pm-rank-value { font-variant-numeric:tabular-nums; color:var(--muted); text-align:right; }
-.pm-how summary { cursor:pointer; font-weight:750; min-height:44px; display:flex; align-items:center; }
+/* Classements strictement personnels : metriques lisibles, jamais comparatives. */
+.pm-rank-title {
+  margin:20px 0 9px; font-size:13px; color:var(--muted);
+  font-weight:820; letter-spacing:.015em;
+}
+.pm-rank-list {
+  list-style:none; counter-reset:rank; margin:0; padding:0;
+  display:grid; gap:8px;
+}
+.pm-rank-list li {
+  counter-increment:rank; display:flex; align-items:center;
+  gap:10px; min-width:0; padding:12px; border-radius:12px;
+  border:1px solid var(--stroke); background:var(--surface-raised);
+  font-size:13px; line-height:1.45;
+}
+.pm-rank-list li::before {
+  content:counter(rank); flex:none; width:30px; height:30px;
+  border-radius:9px; display:grid; place-items:center;
+  font-size:13px; font-weight:850; color:var(--turq);
+  background:rgba(41,212,194,.10);
+}
+.pm-rank-list li > span:first-child { flex:1; min-width:0; overflow-wrap:anywhere; }
+.pm-rank-value {
+  flex:0 1 auto; min-width:0; font-variant-numeric:tabular-nums;
+  color:var(--text); font-weight:750; text-align:right; overflow-wrap:anywhere;
+}
+.pm-how summary {
+  cursor:pointer; font-weight:750; min-height:44px;
+  display:flex; align-items:center;
+}
 
-.pm-reward { margin:14px 0; padding:14px; border-radius:16px; border:1px solid var(--turq); background:rgba(46,211,192,.08); display:grid; gap:10px; text-align:left; }
-.pm-reward-head { display:flex; align-items:center; gap:14px; }
-.pm-reward-xp { margin:0; font-size:30px; font-weight:900; color:var(--turq); font-variant-numeric:tabular-nums; }
-.pm-reward-parts, .pm-reward-records, .pm-reward-badges { list-style:none; margin:0; padding:0; display:grid; gap:4px; font-size:14px; }
-.pm-reward-parts li { display:flex; justify-content:space-between; }
-.pm-reward-level { margin:0; font-weight:750; }
-.pm-reward-level.pm-levelup { color:var(--turq); font-size:17px; font-weight:900; }
-@media (prefers-reduced-motion: reduce) { .pm-mascot { animation:none !important; } .pm-xp-fill { transition:none; } }
+/* Fin de seance : recompense precise et calme, sans ecran bloquant. */
+.pm-reward {
+  margin:14px 0; padding:19px; border-radius:16px;
+  border:1px solid rgba(184,164,239,.48);
+  background:linear-gradient(145deg,rgba(184,164,239,.095),rgba(41,212,194,.045) 76%),var(--surface);
+  display:grid; gap:15px; text-align:left;
+}
+.pm-reward-head {
+  display:flex; align-items:center; gap:16px; min-width:0;
+}
+.pm-reward-text { min-width:0; }
+.pm-reward-xp {
+  margin:0 0 5px; font-size:clamp(34px,8vw,44px);
+  line-height:1.05; letter-spacing:-.045em; font-weight:900;
+  color:var(--pulse-reward); font-variant-numeric:tabular-nums;
+}
+.pm-reward .pm-mascot-line-text { font-size:13px; color:var(--text); }
+.pm-reward .pm-xp-track { height:12px; background:var(--surface-raised); }
+.pm-reward .pm-xp-fill { background:var(--turq); }
+.pm-reward-parts, .pm-reward-records, .pm-reward-badges {
+  list-style:none; margin:0; padding:0; display:grid; gap:7px; font-size:13px;
+}
+.pm-reward-parts li {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; min-height:28px; border-bottom:1px solid var(--stroke);
+}
+.pm-reward-parts li span:last-child {
+  color:var(--text); font-weight:830; font-variant-numeric:tabular-nums;
+}
+.pm-reward-level { margin:0; font-size:13px; font-weight:750; line-height:1.5; }
+.pm-reward-level.pm-levelup {
+  color:var(--pulse-reward); font-size:17px; font-weight:900; line-height:1.35;
+}
+.pm-reward-records li, .pm-reward-badges li {
+  padding:9px 11px; background:var(--surface-raised);
+  border:1px solid var(--stroke); border-radius:10px;
+  line-height:1.5; overflow-wrap:anywhere;
+}
+.pm-reward-records li { border-left:3px solid var(--pulse-reward); }
+.pm-reward-badges li { border-left:3px solid var(--turq); }
+
+@media (max-width:390px) {
+  .pm-level-head, .pm-reward-head { gap:11px; }
+  .pm-level-head .pm-mascot-md, .pm-reward-head .pm-mascot-md { width:68px; height:68px; }
+  .pm-badges { gap:8px; }
+  .pm-badge-tile { padding:12px 10px; min-height:112px; }
+  .pm-rank-list li { flex-wrap:wrap; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .pm-mascot { animation:none!important; }
+  .pm-xp-fill { transition:none!important; }
+}
