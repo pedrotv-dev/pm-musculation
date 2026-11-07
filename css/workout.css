@@ -73,7 +73,11 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-fun { margin:14px 0; padding:14px; border-radius:16px; border:1px dashed var(--turq); background:rgba(46,211,192,.07); text-align:center; }
 .pm-fun-kicker { margin:0 0 6px; font-size:.85rem; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
 .pm-fun-text { margin:0 0 10px; font-size:1.15rem; font-weight:800; line-height:1.35; }
-.pm-hist-metrics { flex-wrap:wrap; } .pm-hist-metrics .pm-input { min-width:56px; }
+/* Audit V1, C1 : réglages cardio de l'historique, chaque libellé au-dessus de son champ, sans débordement. */
+.pm-hist-metrics { display:grid; grid-template-columns:repeat(auto-fit, minmax(88px, 1fr)); gap:10px; margin:10px 0 7px; min-width:0; }
+.pm-hist-metric { display:grid; gap:5px; min-width:0; }
+.pm-hist-metric .pm-unit { white-space:normal; overflow-wrap:anywhere; line-height:1.25; }
+.pm-hist-metric .pm-input { width:100%; min-width:0; }
 
 /* PULSE · Etape 3 : hierarchie visuelle pendant la séance.
    Les etats sont toujours identifiables par texte/symbole, pas seulement couleur. */
@@ -265,3 +269,16 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-quick-actions .pm-quick.pm-has-ico { flex-direction:column; gap:4px; }
 .pm-quick-actions .pm-quick .pm-ico { width:20px; height:20px; }
 .pm-done-icon .pm-ico { width:30px; height:30px; }
+
+/* Audit V1, C2 : « Valider » dans le cadre « Série en cours » ; sur petit écran, libellé à gauche du − / + pour
+   que charge, répétitions et validation tiennent entre le haut de l'écran et le chrono (320×568). */
+.pm-current-set .pm-validate { margin-top:12px; }
+@media (max-width:374px) {
+  .pm-current-head { margin-bottom:8px; }
+  .pm-current-grid { gap:6px; }
+  .pm-current-set .pm-stepper { grid-template-columns:minmax(0,1fr) auto; align-items:center; justify-items:stretch; gap:8px; }
+  .pm-current-set .pm-stepper-row { grid-template-columns:44px 64px 44px; width:auto; }
+  .pm-current-set .pm-stepper-input { min-height:48px; }
+  .pm-current-plan { margin-top:6px; }
+  .pm-current-set .pm-validate { min-height:52px; margin-top:10px; }
+}
