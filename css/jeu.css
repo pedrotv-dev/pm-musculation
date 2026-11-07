@@ -4,7 +4,7 @@
 .pm-level-text { min-width:0; }
 .pm-level-text h3 { margin:2px 0 4px; }
 .pm-xp-track { height:14px; border-radius:99px; background:var(--surface-raised); border:1px solid var(--stroke); overflow:hidden; }
-.pm-xp-fill { height:100%; border-radius:99px; background:var(--turq); transition:width .9s ease-out; }
+.pm-xp-fill { height:100%; border-radius:99px; background:var(--turq); transition:width .5s ease-out; }
 .pm-mascot-line-text { margin:0; font-style:italic; color:var(--text); }
 .pm-streak { margin:0; }
 
@@ -16,10 +16,8 @@
 .pm-mascot-line { fill:none; stroke:var(--turq-dark); stroke-width:4; stroke-linecap:round; }
 .pm-mascot-mouth-open { fill:var(--turq-dark); stroke:var(--turq-dark); stroke-width:3; stroke-linejoin:round; }
 .pm-mascot-star { fill:#ffd84d; stroke:#b58900; stroke-width:1.5; }
-.pm-mascot[data-mood="idle"], .pm-mascot[data-mood="happy"] { animation:pm-bob 3.2s ease-in-out infinite; }
-.pm-mascot[data-mood="cheer"], .pm-mascot[data-mood="levelup"] { animation:pm-hop .9s ease-in-out infinite; }
-@keyframes pm-bob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-4px); } }
-@keyframes pm-hop { 0%,100% { transform:translateY(0); } 40% { transform:translateY(-12px); } }
+.pm-mascot[data-mood="cheer"], .pm-mascot[data-mood="levelup"] { animation:pm-hop .6s ease-out 1; } /* une seule fois, jamais en boucle */
+@keyframes pm-hop { 0%,100% { transform:translateY(0); } 40% { transform:translateY(-8px); } }
 
 .pm-badges { list-style:none; margin:10px 0 0; padding:0; display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; }
 .pm-badge-tile { display:grid; gap:2px; padding:10px; border-radius:13px; border:1px dashed var(--stroke); background:var(--surface-raised); }

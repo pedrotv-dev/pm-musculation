@@ -2,8 +2,8 @@
 
 **Avant tout : lis `docs/chatgpt/00-contrat-technique.md` et respecte son protocole** (étapes courtes, une PR par étape, 5 lignes de plan, tu t'arrêtes à chaque étape et tu attends « OK »).
 
-**Objectif** : des **micro-sons** qui rendent chaque action *satisfaisante* (surtout valider une série, des dizaines de fois par séance) sans jamais fatiguer.
-**Différence avec la mission 2** : ici, des sons **très courts, liés aux actions** (20 à 300 ms). Les jingles de récompense et la mélodie de fin de repos sont la mission 2 — **ne joue donc rien pour `rest-end`, `session-done`, `level-up`, `badge`, `record`**.
+**Objectif** : des **micro-sons** qui rendent chaque action *satisfaisante* (surtout valider une série, des dizaines de fois par séance), **professionnels** (timbres secs et propres, type retour haptique d'une application premium — pas de « bips de jeu vidéo »), sans jamais fatiguer. **Durée : 150 ms maximum par son** (la plupart autour de 60 à 120 ms).
+**Différence avec la mission 2** : ici, des sons **très courts, liés aux actions** (20 à 150 ms). Les jingles de récompense et la mélodie de fin de repos sont la mission 2 — **ne joue donc rien pour `rest-end`, `session-done`, `level-up`, `badge`, `record`**.
 **Ton fichier** : `js/sfx.js` (et rien d'autre).
 **Technique** : synthèse **Web Audio** (oscillateurs, bruit filtré, enveloppes), **aucun fichier audio**. Petit haut-parleur : 500–4 000 Hz, volume maître **0,18**, pas de clipping, fondu de 3 ms minimum. Anti-spam : jamais deux sons identiques à moins de 40 ms.
 
@@ -19,7 +19,7 @@
 - *C'est fini quand* : ≤ 100 lignes, propre. *Stop* : PR n° 1.
 
 ### Étape 2 — `set-validated` (le plus important)
-- *Fais* : un son net et gratifiant (≈ 120 ms) dont la **hauteur monte d'un demi-ton à chaque série validée d'affilée sur la même machine** (3 à 5 paliers, puis plafond) ; le compteur revient à zéro si on change de `machineId` ou après 3 minutes sans série.
+- *Fais* : un son net et gratifiant (≈ 100 ms) dont la **hauteur monte d'un demi-ton à chaque série validée d'affilée sur la même machine** (3 à 5 paliers, puis plafond) ; le compteur revient à zéro si on change de `machineId` ou après 3 minutes sans série.
 - *Stop* : PR n° 2.
 
 ### Étape 3 — `set-undone`, `activity-done`, `rest-start`

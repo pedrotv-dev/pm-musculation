@@ -17,7 +17,7 @@ test('niveaux : paliers croissants, niveau 1 à 0 XP, titres et étapes de la ma
   assert.deepEqual([0, 199, 200, 499, 500].map(x => levelFromXp(x).level), [1, 1, 2, 2, 3]);
   const l = levelFromXp(350); assert.deepEqual([l.level, l.into, l.need, l.progress], [2, 150, 300, 0.5]);
   assert.equal(levelFromXp(-5).level, 1);
-  assert.equal(titleFor(1), 'Œuf de gym'); assert.equal(titleFor(3), 'Poussin de fonte'); assert.equal(titleFor(99), 'Légende de la machine');
+  assert.equal(titleFor(1), 'Recrue'); assert.equal(titleFor(3), 'Initié'); assert.equal(titleFor(99), 'Légende');
   assert.equal(stageFor(1), 0); assert.equal(stageFor(40), TITLES.length - 1);
   assert.ok(TITLES.every((t, i) => i === 0 || t.from > TITLES[i - 1].from));
 });

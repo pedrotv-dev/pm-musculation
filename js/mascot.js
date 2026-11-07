@@ -59,14 +59,14 @@ export function renderMascot({ mood = 'idle', stage = 0, size = 'md' } = {}) {
 }
 
 const LINES = Object.freeze({
-  new: ['Salut ! On commence quand tu veux.', 'Première séance ? Je serai là, juste là, à te regarder soulever.', 'Un petit pas pour toi, un grand pas pour mes biscotos.'],
-  idle: ['Prêt(e) quand tu l’es !', 'La fonte ne se soulève pas toute seule. Enfin, pas encore.', 'Je t’ai gardé la meilleure machine. Peut-être.', 'On s’échauffe, on y va, on rigole.'],
-  streak: ['Série de semaines en cours : on la garde en vie !', 'Toujours là, toujours régulier. J’adore.', 'Les semaines s’enchaînent : respect.'],
-  rest: ['Une semaine sans séance ? Ce n’est pas grave : on repart doucement.', 'Je ne juge pas. Je fais juste une petite sieste en t’attendant.'],
-  done: ['Bravo, belle séance !', 'Les muscles ont dit merci. En silence, mais merci.', 'Ça, c’est fait. Hydratation, étirements, câlin à la mascotte.'],
-  partial: ['Une séance partielle vaut mieux que pas de séance. Chapeau.', 'Tout ce que tu as fait compte. Je note tout.'],
-  levelup: ['NIVEAU SUPÉRIEUR ! Je me sens plus fort moi aussi.', 'Ding ! Tu viens d’évoluer. Moi aussi, un petit peu.'],
-  record: ['Record battu : c’est officiel, tu es plus fort qu’avant.', 'Nouveau record ! Je le grave dans le métal.']
+  new: ['Bienvenue. La première séance pose la base.', 'On commence quand tu veux.', 'Un premier pas, puis le suivant.'],
+  idle: ['Prêt quand tu l’es.', 'Une séance de plus, une base plus solide.', 'La régularité fait le travail.', 'Échauffement d’abord, le reste suit.'],
+  streak: ['Semaines enchaînées : la régularité paie.', 'Belle constance.', 'Tu tiens le rythme.'],
+  rest: ['Une semaine off ne compte pas : on repart tranquillement.', 'Reprendre, c’est déjà progresser.'],
+  done: ['Séance validée.', 'Bon travail. Pense à t’hydrater et à t’étirer.', 'Chaque série compte.'],
+  partial: ['Séance partielle enregistrée : tout ce que tu as fait compte.', 'Mieux vaut une séance partielle que pas de séance.'],
+  levelup: ['Niveau supérieur.', 'Nouveau palier atteint.'],
+  record: ['Nouveau record.', 'Record battu : la progression est là.']
 });
 /** Une réplique de la mascotte pour un contexte (new, idle, streak, rest, done, partial, levelup, record) ; stable pour un `seed` donné. */
 export function mascotLine(context, seed = '') {

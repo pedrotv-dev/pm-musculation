@@ -45,12 +45,12 @@ await step('Profil : section Ambiance (animations, bruitages, jingles) activable
   await boxes.nth(1).click();
   assert.equal(await boxes.nth(1).isChecked(), false);
 });
-await step('Pierre (vide) : niveau 1, « Œuf de gym », aucun succès', async () => {
+await step('Pierre (vide) : niveau 1, « Recrue », aucun succès', async () => {
   await page.goto(srv.url);
   await page.click('[data-select-profile="pierre"]');
   await page.waitForSelector('.pm-level-card');
   const t = await text('.pm-level-card');
-  assert.match(t, /Niveau 1/); assert.match(t, /Œuf de gym/); assert.match(t, /0 \/ 200 XP/);
+  assert.match(t, /Niveau 1/); assert.match(t, /Recrue/); assert.match(t, /0 \/ 200 XP/);
 });
 await step('séance de Pierre : récompense (XP, succès Premier pas) et événements d’effets', async () => {
   await page.click('.nav-btn[data-go="programme"]');
@@ -68,7 +68,7 @@ await step('séance de Pierre : récompense (XP, succès Premier pas) et événe
   await page.waitForSelector(screen + ' .pm-reward');
   const r = await text(screen + ' .pm-reward');
   assert.match(r, /\+80 XP/);                       // 2 séries × 10 + séance complète 60
-  assert.match(r, /Succès : Premier pas/); assert.match(r, /Succès : Une tonne !/);
+  assert.match(r, /Succès : Premier pas/); assert.match(r, /Succès : Une tonne/);
   const fx = await page.evaluate(() => window.__fx);
   for (const t of ['set-validated', 'activity-done', 'session-done', 'xp', 'badge']) assert.ok(fx.includes(t), t + ' manquant : ' + fx);
   assert.equal(fx.filter(t => t === 'set-validated').length, 2);
