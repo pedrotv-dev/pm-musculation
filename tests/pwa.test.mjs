@@ -14,7 +14,8 @@ const list = dir => fs.readdirSync(path.join(ROOT, dir)).filter(f => !fs.statSyn
 
 test('la version du service worker suit js/version.js', () => {
   assert.equal(sw.match(/const VERSION = '([^']+)'/)[1], APP_VERSION);
-  assert.match(sw, /const CACHE = 'pm-musculation-' \+ VERSION/);
+  assert.match(sw, /const PREFIX = PREVIEW \? 'pmprev-' : 'pm-musculation-'/);
+  assert.match(sw, /const CACHE = PREFIX \+ VERSION/);
 });
 test('tout fichier précaché existe, et tout fichier de code est précaché', () => {
   for (const f of precache) if (f !== './') assert.ok(fs.existsSync(path.join(ROOT, f)), 'fichier absent : ' + f);

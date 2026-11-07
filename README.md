@@ -58,6 +58,7 @@ Jours : `lundi` … `dimanche`. Les `machineId` viennent de `data/machines.json`
 | `js/nav-history.js`, `js/wakelock.js`, `js/ui-settings.js` | bouton retour du téléphone (historique du navigateur), écran allumé (Screen Wake Lock), réglages d'usage par profil |
 | `js/app.js`, `js/profiles.js` | démarrage (profil mémorisé, onglets, service worker) et définition des profils |
 | `css/base.css`, `css/app.css`, `css/workout.css`, `css/rest.css`, `css/programs.css` | styles (aucun style en ligne) |
+| `js/env.js`, `tools/build-preview.mjs`, `tools/assemble-site.mjs`, `.github/workflows/site.yml` | production / aperçu : noms de stockage séparés, construction de `/preview/`, publication sur `gh-pages` |
 | `sw.js`, `manifest.webmanifest`, `assets/icons/`, `assets/machines/` | PWA hors ligne, icônes, photos des machines |
 
 ## Tests
@@ -71,6 +72,7 @@ node tests/e2e/offline-flow.mjs  # hors ligne (service worker)
 node tests/e2e/update-flow.mjs   # mise à jour de l'application sans perte
 node tests/e2e/nav-flow.mjs      # bouton retour du téléphone + écran allumé pendant une séance
 node tests/e2e/retours-flow.mjs  # séries par côté, réglages cardio, son de fin de repos, comparaisons idiotes
+node tests/e2e/isolation-flow.mjs # production + aperçu sur la même origine : données, service workers et caches séparés
 node tests/e2e/jeu-flow.mjs      # niveaux, succès, classements personnels, mascotte, événements d'effets
 node tests/e2e/audit-faults.mjs  # stockage plein / refusé
 node tests/e2e/audit-ui.mjs      # audit mobile : cibles < 44 px, champs < 16 px, débordements
@@ -93,6 +95,7 @@ Le service worker ne touche jamais à IndexedDB. Le code est servi **depuis le c
 ## Documentation
 
 - `docs/reference-programme-chatgpt.json` : **fichier de référence à envoyer à ChatGPT** pour préparer le programme hebdomadaire (format, règles, catalogue des machines, exemple Pierre + Manon, exemple de bilan). Régénéré par `node tools/make-reference.mjs` (test de cohérence inclus).
+- `docs/apercu.md` : **prévisualiser une PR sur le téléphone avant de la fusionner** (production et aperçu isolés), procédure et mise en route.
 - `docs/chatgpt/` : **les 3 missions confiées à ChatGPT** (style et animations, sons, bruitages) + le contrat technique commun (fichiers autorisés, événements `pm:fx`, mascotte, protocole par petites étapes). Un test vérifie que ces consignes restent fidèles au code.
 - `docs/prompt-design-chatgpt.md` : prompt complet pour confier l'habillage visuel à ChatGPT.
 - `docs/sauvegarde-persistante.md` : sauvegarde des données à 0 € (état actuel et options).

@@ -9,12 +9,17 @@
  * - Ne touche JAMAIS a IndexedDB ni a localStorage : une mise a jour du code ne supprime aucune donnee.
  * VERSION est recalculee par `node tools/release.mjs` (date + empreinte des fichiers) ; tests/pwa.test.mjs verifie qu'elle est a jour.
  */
-const VERSION = '2026.11.07-2e01cf23';
-const CACHE = 'pm-musculation-' + VERSION;
+const VERSION = '2026.11.07-42389640';
+// Production : caches « pm-musculation-<version> » (inchangés). Aperçu (/preview/sw.js) : « pmprev-<version> ». Les deux préfixes ne se
+// recouvrent pas : chaque service worker ne supprime QUE ses propres anciens caches, jamais ceux de l'autre.
+const PREVIEW = /\/preview\/sw\.js$/.test(self.location.pathname);
+const PREFIX = PREVIEW ? 'pmprev-' : 'pm-musculation-';
+const CACHE = PREFIX + VERSION;
+const PREVIEW_PATH = new URL('preview/', self.registration.scope).pathname; // la production ne gère jamais les fichiers de l'aperçu
 const PRECACHE = [
   './', 'index.html', 'manifest.webmanifest', 'storage.js',
-  'css/app.css', 'css/base.css', 'css/effets.css', 'css/jeu.css', 'css/programs.css', 'css/rest.css', 'css/workout.css',
-  'js/app.js', 'js/backup.js', 'js/bilan.js', 'js/cardio.js', 'js/catalog.js', 'js/charts.js', 'js/demo-fixtures.js', 'js/dom.js', 'js/effets.js', 'js/fun-volume.js', 'js/fx.js', 'js/gamification.js', 'js/jeu-ui.js', 'js/history-ui.js',
+  'css/apercu.css', 'css/app.css', 'css/base.css', 'css/effets.css', 'css/jeu.css', 'css/programs.css', 'css/rest.css', 'css/workout.css',
+  'js/app.js', 'js/backup.js', 'js/bilan.js', 'js/cardio.js', 'js/catalog.js', 'js/charts.js', 'js/demo-fixtures.js', 'js/dom.js', 'js/effets.js', 'js/env.js', 'js/fun-volume.js', 'js/fx.js', 'js/gamification.js', 'js/jeu-ui.js', 'js/history-ui.js',
   'js/home-ui.js', 'js/machine-rules.js', 'js/mascot.js', 'js/nav-history.js', 'js/profiles.js', 'js/profile-ui.js', 'js/program-ui.js', 'js/programs.js', 'js/progress-ui.js', 'js/rest-audio.js', 'js/rest-melody.js', 'js/rest-timer.js', 'js/rest-ui.js', 'js/sfx.js', 'js/sons.js',
   'js/stats.js', 'js/ui-settings.js', 'js/version.js', 'js/wakelock.js', 'js/weights.js', 'js/workout-ui.js', 'js/workouts.js',
   'data/machines.json', 'data/exemple-programme.json', 'assets/machines/index.json', 'assets/mascot/index.json',
@@ -43,7 +48,7 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
-    for (const key of await caches.keys()) if (key.startsWith('pm-musculation-') && key !== CACHE) await caches.delete(key);
+    for (const key of await caches.keys()) if (key.startsWith(PREFIX) && key !== CACHE) await caches.delete(key);
     await self.clients.claim();
   })());
 });
@@ -66,6 +71,7 @@ self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET') return;
   if (new URL(request.url).origin !== self.location.origin) return;
+  if (!PREVIEW && new URL(request.url).pathname.startsWith(PREVIEW_PATH)) return; // aperçu : ni lu ni mis en cache par la production
   event.respondWith(cacheFirst(request));
 });
 
