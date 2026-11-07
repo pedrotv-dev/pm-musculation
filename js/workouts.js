@@ -840,6 +840,42 @@ export function resetDemoWorkouts({ now } = {}) {
   return promise.then(() => undefined);
 }
 
+// ---------------------------------------------------------------- outils de test du profil demo (js/demo-tools.js)
+
+/** Limite du moteur (inchangée), exposée en lecture pour que les outils de test évaluent la faisabilité AVANT d'agir. */
+export const MAX_SETS_PER_ACTIVITY = MAX_SETS;
+
+/**
+ * Copie de travail du stockage demo : les outils de test y préparent une séance avec les VRAIES fonctions
+ * (option `store`), donc avec les mêmes contrôles et limites. Le stockage demo réel n'est pas touché.
+ */
+export async function demoWorkspace() {
+  const st = await demoReady();
+  const scratch = makeDemoStore();
+  st.programs.forEach((v, k) => scratch.programs.set(k, clone(v)));
+  st.sessions.forEach((v, k) => scratch.sessions.set(k, clone(v)));
+  return scratch;
+}
+
+/**
+ * Applique EN UNE SEULE ÉCRITURE une séance demo préparée dans demoWorkspace(). Refus (rien n'est écrit) si la
+ * séance demo a changé entre-temps (`expectedUpdatedAt` différent : une modification concurrente n'est jamais
+ * écrasée) ou si une séance est apparue alors qu'on en créait une (`expectedUpdatedAt` = null). Demo uniquement.
+ */
+export async function commitDemoSession(prepared, expectedUpdatedAt) {
+  if (!isObj(prepared) || prepared.profileId !== DEMO || !isOpenStatus(prepared.status)) {
+    throw new WorkoutError('Séance de simulation invalide.', 'INVALID_ARGUMENT');
+  }
+  const st = await demoReady();
+  if (expectedUpdatedAt === null) { st.create(clone(prepared)); return clone(prepared); }
+  return st.update(prepared.id, current => {
+    if (!current || current.updatedAt !== expectedUpdatedAt || !isOpenStatus(current.status)) {
+      throw new WorkoutError('La séance Démo a changé pendant la préparation : rien n’a été appliqué.', 'CONFLICT');
+    }
+    return clone(prepared);
+  });
+}
+
 /**
  * Programme actif du profil demo (semaine en cours), meme forme que celui d'un vrai profil
  * { schemaVersion, weekStart, profileId:'demo', days:[{id, name, activities}] }.

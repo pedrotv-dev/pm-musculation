@@ -44,6 +44,28 @@ for (const [w, h] of SIZES) {
   const closePreview = async () => { await page.click(preview + ' button:has-text("Fermer l’aperçu")'); await page.waitForSelector(preview, { state: 'detached' }); };
 
   await page.goto(srv.url);
+  const exportOf = p => page.evaluate(async p => { const d = await (await import('./storage.js')).exportProfileData(p); delete d.exportedAt; return JSON.stringify(d); }, p);
+  let realBefore;
+
+  await step(`préparation : historiques préexistants pour Pierre et Manon (séances terminées en base) (${w} px)`, async () => {
+    await page.click('[data-select-profile="pierre"]');
+    await page.waitForSelector('.nav-btn[data-go="accueil"]');
+    await page.evaluate(async () => {
+      const { importProgram } = await import('./js/programs.js'); const W = await import('./js/workouts.js');
+      const src = { schemaVersion: 1, weekStart: '2026-11-09', programs: {} };
+      for (const p of ['pierre', 'manon']) src.programs[p] = { days: [{ id: 'mardi', name: 'Réel ' + p, activities: [
+        { type: 'strength', machineId: 'chest-press', shared: false, restSeconds: 90, sets: [{ kg: 40, reps: 10 }, { kg: 42.5, reps: 8 }] }] }] };
+      for (const p of ['pierre', 'manon']) {
+        await importProgram(p, src);
+        const s = await W.startWorkout(p, { now: new Date(2026, 10, 10, 10) });
+        for (const sid of ['s1', 's2']) await W.logSet(p, s.id, 'a1', sid, { kg: 41, reps: 9 });
+        await W.finishWorkout(p, s.id, 'completed', { now: new Date(2026, 10, 10, 10, 40) });
+      }
+    });
+    realBefore = { pierre: await exportOf('pierre'), manon: await exportOf('manon') };
+    assert.match(realBefore.pierre, /Réel pierre/); assert.match(realBefore.manon, /Réel manon/);
+    await page.click('#switch-profile');
+  });
 
   await step(`isolation : aucun « Outils de test » pour Pierre ni Manon (${w} px)`, async () => {
     for (const p of ['pierre', 'manon']) {
@@ -66,7 +88,7 @@ for (const [w, h] of SIZES) {
       res.pierre = (await (await import('./js/workouts.js')).listWorkouts('pierre')).length;
       return res;
     });
-    assert.deepEqual(r, { section: true, prepare: 'NotDemo', pierre: 0 });
+    assert.deepEqual(r, { section: true, prepare: 'NotDemo', pierre: 1 }); // sa séance réelle, intacte
     await page.click('#switch-profile');
   });
 
@@ -185,8 +207,10 @@ for (const [w, h] of SIZES) {
     await page.evaluate(() => { document.documentElement.dataset.pmProfile = 'pierre'; });
     await page.click(tools + ' button:has-text("Voir le gain d’XP")');
     await page.waitForTimeout(300);
+    await page.waitForSelector('.pm-modal:has-text("Simulation non lancée")');
     assert.equal(await page.locator(preview).count(), 0);
-    assert.match(await page.locator('.pm-toast').last().innerText(), /réservés au profil Démo/);
+    assert.match(await page.locator('.pm-modal').innerText(), /réservés au profil Démo/);
+    await page.click('.pm-modal .pm-primary');
     await page.evaluate(() => { document.documentElement.dataset.pmProfile = 'demo'; });
   });
 
@@ -208,6 +232,40 @@ for (const [w, h] of SIZES) {
     await page.waitForFunction(l => new RegExp('Niveau ' + (l + 1)).test(document.querySelector('.pm-home-card, .pm-level-strip, [data-page="accueil"]')?.innerText || ''), lvl);
   });
 
+  const demoLevel = () => page.evaluate(async () => (await import('./js/gamification.js')).computeProgress(await (await import('./js/workouts.js')).listWorkouts('demo')).level);
+  const openCount = () => page.evaluate(async () => (await (await import('./js/workouts.js')).listWorkouts('demo')).filter(s => s.status === 'in_progress').length);
+
+  await step(`Mode B · 2e simulation complète avec montée (double clic : une seule préparation), ≤ 20 séries par machine (${w} px)`, async () => {
+    const lvl = await demoLevel();
+    await openTools();
+    await page.selectOption(tools + ' .pm-demo-field:has-text("Issue") select', 'complete');
+    await page.locator(tools + ' button:has-text("Préparer la séance fictive")').dblclick();
+    await page.waitForSelector('.pm-recap-feedback');
+    assert.equal(await page.locator('.pm-modal:has-text("déjà en cours")').count(), 0); // le 2e clic n'a rien lancé (bouton désactivé)
+    const sets = await page.evaluate(async () => (await (await import('./js/workouts.js')).listWorkouts('demo')).find(s => s.status === 'in_progress').activities.map(a => (a.sets || []).length));
+    assert.ok(Math.max(...sets) <= 20, String(sets));
+    await page.click('.pm-validate:has-text("Valider ma séance")');
+    await page.waitForSelector('.pm-levelup-overlay');
+    assert.equal(await page.locator('.pm-levelup-overlay .pm-hex-value').innerText(), String(lvl + 1));
+    await page.click('.pm-levelup-overlay button:has-text("Parfait")');
+    await page.click('#pm-workout-screen button:has-text("Continuer")');
+    assert.equal(await demoLevel(), lvl + 1);
+  });
+
+  await step(`Mode B · 3e montée impossible : message clair, aucun récapitulatif, rien de modifié, menu réutilisable (${w} px)`, async () => {
+    const before = await demoSnapshot();
+    await openTools();
+    await page.click(tools + ' button:has-text("Préparer la séance fictive")');
+    await page.waitForSelector('.pm-modal:has-text("Simulation non lancée")');
+    const msg = await page.locator('.pm-modal').innerText();
+    assert.match(msg, /Montée de niveau impossible/); assert.match(msg, /20 séries par machine/); assert.match(msg, /Rien n’a été modifié/);
+    await page.click('.pm-modal .pm-primary');
+    assert.equal(await page.locator('.pm-recap-feedback').count(), 0);
+    assert.equal(await demoSnapshot(), before);
+    assert.equal(await openCount(), 0);
+    assert.equal(await page.locator(tools + ' button:has-text("Préparer la séance fictive")').isEnabled(), true);
+  });
+
   await step(`Mode B · séance fictive partielle : vraie confirmation puis « Séance partielle enregistrée » (${w} px)`, async () => {
     await openTools();
     await page.selectOption(tools + ' .pm-demo-field:has-text("Issue") select', 'partial');
@@ -223,11 +281,13 @@ for (const [w, h] of SIZES) {
     await page.click('#pm-workout-screen button:has-text("Continuer")');
   });
 
-  await step(`Mode B · données en mémoire Démo uniquement : rien en IndexedDB, Pierre et Manon vides (${w} px)`, async () => {
+  await step(`Mode B · données en mémoire Démo uniquement : rien en IndexedDB pour Démo, historiques de Pierre et Manon identiques (${w} px)`, async () => {
     const idb = await idbProfiles();
     assert.equal(idb.demo, undefined, JSON.stringify(idb));
     const n = await page.evaluate(async () => { const w = await import('./js/workouts.js'); return [(await w.listWorkouts('pierre')).length, (await w.listWorkouts('manon')).length]; });
-    assert.deepEqual(n, [0, 0]);
+    assert.deepEqual(n, [1, 1]);
+    assert.equal(await exportOf('pierre'), realBefore.pierre, 'Pierre modifié');
+    assert.equal(await exportOf('manon'), realBefore.manon, 'Manon modifiée');
   });
 
   await step(`« Réinitialiser la démo » : retour à l’état de départ (niveau, séances) (${w} px)`, async () => {
