@@ -164,7 +164,10 @@
       "id": "recumbent-bike",
       "name": "Vélo assis",
       "kind": "cardio",
-      "muscleGroup": "Cardio"
+      "muscleGroup": "Cardio",
+      "metrics": [
+        "level"
+      ]
     },
     {
       "id": "elliptical",

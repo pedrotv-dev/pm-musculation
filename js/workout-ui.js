@@ -20,7 +20,7 @@ import { holdAwake } from './wakelock.js';
 import { getUiSettings, peekUiSettings } from './ui-settings.js';
 import { plannedIndex, SIDE_LABEL, SIDE_SHORT } from './machine-rules.js';
 import { funComparisons } from './fun-volume.js';
-import { CARDIO_METRICS, metricsText } from './cardio.js';
+import { metricsFor, metricsText } from './cardio.js';
 
 const root = document.documentElement;
 const appPages = document.getElementById('app-pages');
@@ -310,7 +310,8 @@ function renderMachine(a) {
     const grid = el('div', 'pm-cardio-grid');
     grid.append(dur.wrap);
     const treadmill = a.name === 'Tapis de course';
-    const metricFields = CARDIO_METRICS.map(m => {
+    const cardioMachine = (S.catalog.list || []).find(m => m.kind === 'cardio' && m.name === a.name);
+    const metricFields = metricsFor(cardioMachine).map(m => {
       const v = a.actual?.[m.key] ?? a.planned?.[m.key];
       const unit = m.key === 'speed' ? (treadmill ? m.unit : '') : m.unit;
       const f = inputField(m.label + (unit ? ' (' + unit + ')' : ''), v ?? '', { kind: m.integer ? 'reps' : 'kg' });
@@ -320,7 +321,7 @@ function renderMachine(a) {
       return { m, input: f.input };
     });
     card.append(grid);
-    card.append(el('p', 'pm-muted pm-cardio-hint', 'Inclinaison, vitesse et niveau sont facultatifs : laisse vide ce que la machine n’a pas.'));
+    card.append(el('p', 'pm-muted pm-cardio-hint', 'Réglages facultatifs : laisse vide ce que tu ne veux pas noter.'));
     const confirmDone = btn(a.status === 'done' ? 'Fait ✓ — modifier' : 'Fait ✓', 'pm-validate', () => {
       const v = parseNum(dur.input.value);
       if (!Number.isFinite(v) || v < 0 || v > 300) { setStatus('Durée invalide (0 à 300 minutes).', 'error'); return; }

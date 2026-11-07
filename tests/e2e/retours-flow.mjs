@@ -22,7 +22,8 @@ const program = () => ({ schemaVersion: 1, weekStart: mondayISO(), programs: { p
     { type: 'strength', machineId: 'hip-abduction-open-close', shared: false, restSeconds: 60, sets: [{ kg: 30, reps: 15 }] },
     { type: 'strength', machineId: 'hip-abduction-close-open', shared: false, restSeconds: 60, sets: [{ kg: 30, reps: 15 }] },
     { type: 'cardio', name: 'Escalier', durationMinutes: 8, level: 6 },
-    { type: 'cardio', name: 'Tapis de course', durationMinutes: 10, incline: 3, speed: 6 }
+    { type: 'cardio', name: 'Tapis de course', durationMinutes: 10, incline: 3, speed: 6 },
+    { type: 'cardio', name: 'Vélo assis', durationMinutes: 6, level: 4 }
   ] })) } } });
 
 console.log('Retours du samedi');
@@ -100,6 +101,15 @@ await step('Tapis de course : valeurs saisies refusées si hors limites, puis en
   await page.click(screen + ' .pm-validate:has-text("Fait")');
   await page.waitForSelector(screen + ' .pm-validate:has-text("modifier")');
 });
+await step('Vélo assis : seulement durée et niveau (pas d’inclinaison ni de vitesse)', async () => {
+  await page.click(screen + ' .pm-validate:has-text("Machine suivante")');
+  assert.match(await text(screen + ' h2'), /Vélo assis/);
+  const labels = await page.locator(screen + ' .pm-cardio-grid .pm-field-name').allInnerTexts();
+  assert.deepEqual(labels, ['minutes', 'niveau']);
+  assert.equal(await page.locator(screen + ' .pm-cardio-grid input').nth(1).inputValue(), '4');
+  await page.click(screen + ' .pm-validate:has-text("Fait")');
+  await page.waitForSelector(screen + ' .pm-validate:has-text("modifier")');
+});
 await step('récapitulatif puis fin : comparaison idiote affichée, bouton « Une autre ! »', async () => {
   await page.click(screen + ' .pm-validate:has-text("Terminer la séance")');
   await page.waitForSelector(screen + ' h2:has-text("Récapitulatif")');
@@ -121,6 +131,7 @@ await step('historique : côtés visibles, réglages cardio corrigeables', async
   await page.click('.pm-history-card');
   await page.waitForSelector('[data-page="historique"] .pm-set-side');
   assert.deepEqual(await page.locator('[data-page="historique"] .pm-set-side').allInnerTexts(), ['G', 'D', 'G', 'D']);
+  assert.equal(await page.locator('[data-page="historique"] input[aria-label$="Vélo assis"]').count(), 1); // niveau seulement
   const inc = page.locator('[data-page="historique"] input[aria-label="inclinaison — Tapis de course"]');
   assert.equal(await inc.inputValue(), '4,5');
   await inc.fill('5'); await inc.blur();
