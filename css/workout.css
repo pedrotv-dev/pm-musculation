@@ -1,0 +1,76 @@
+/* PM Musculation — écran de séance (une machine par écran). */
+html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bottom)); }
+.pm-workout-screen[hidden] { display:none!important; }
+.pm-workout-bar { display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.pm-bar-title { display:flex; flex-direction:column; min-width:0; }
+.pm-bar-title strong, .pm-bar-title .pm-bar-h1 { font-size:16px; margin:0; font-weight:700; letter-spacing:normal; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pm-bar-actions { display:flex; align-items:center; gap:8px; }
+.pm-badge { font-size:11px; font-weight:800; color:var(--accent); letter-spacing:.07em; text-transform:uppercase; }
+.pm-clock { font-size:19px; font-weight:850; font-variant-numeric:tabular-nums; padding:0 4px; }
+.pm-progress { display:flex; flex-direction:column; gap:8px; margin-bottom:14px; font-size:12px; color:var(--muted); }
+.pm-dots { display:flex; gap:6px; flex-wrap:wrap; }
+.pm-dot { width:26px; height:12px; border-radius:6px; border:0; background:var(--stroke); padding:0; min-height:0; }
+.pm-dot-done { background:var(--ok); }
+.pm-dot-skipped { background:var(--warn); }
+.pm-dot-postponed { background:#7d8bdd; }
+.pm-dot-current { outline:2px solid var(--text); outline-offset:2px; }
+.pm-workout-card { background:var(--surface); border:1px solid var(--stroke); border-radius:20px; padding:16px; }
+.pm-workout-card h2 { font-size:clamp(21px,5vw,26px); margin:8px 0 4px; letter-spacing:-.02em; }
+.pm-machine-head { display:flex; gap:14px; align-items:center; margin-bottom:14px; }
+.pm-machine-titles { min-width:0; }
+.pm-sets-title { font-size:15px; margin:14px 0 8px; }
+.pm-sets { display:grid; gap:8px; }
+.pm-set-row { display:grid; grid-template-columns:30px minmax(0,1fr) minmax(0,1fr) auto; gap:8px; align-items:end; padding:9px; border-radius:14px; border:1px solid transparent; background:var(--surface-raised); }
+.pm-set-row.pm-set-current { border-color:var(--turq); background:rgba(46,211,192,.08); }
+.pm-set-row.pm-set-done { opacity:.92; background:rgba(63,174,112,.09); }
+.pm-set-mark { align-self:center; text-align:center; font-weight:850; color:var(--muted); }
+.pm-set-done .pm-set-mark { color:var(--ok); }
+.pm-set-mark { display:flex; flex-direction:column; align-items:center; gap:2px; }
+.pm-set-side { font-size:.72rem; font-weight:850; line-height:1; padding:2px 5px; border-radius:6px; background:rgba(46,211,192,.16); color:var(--turq); }
+.pm-set-side.pm-side-right { background:rgba(255,184,77,.18); color:var(--warn, #ffb84d); }
+.pm-side-note { margin:0 0 6px; font-size:.9rem; }
+.pm-set-tools { display:flex; gap:5px; align-self:end; }
+.pm-set-tools .pm-icon-btn { min-width:38px; min-height:48px; padding:0 6px; }
+.pm-gap { grid-column:2 / -1; font-size:11px; color:var(--warn); margin-top:-2px; }
+.pm-machine-done { text-align:center; font-weight:850; color:var(--ok); padding:14px 0 2px; font-size:16px; }
+.pm-footer { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:16px; }
+.pm-postponed-note { margin-top:14px; font-size:13px; color:#b9c6ff; }
+.pm-save-state { min-height:18px; margin:12px 0 0; font-size:12px; color:var(--muted); text-align:center; }
+.pm-save-state[data-state="ok"] { color:var(--ok); }
+.pm-save-state[data-state="error"] { color:var(--danger); }
+.pm-field-wide { max-width:180px; margin:6px 0; }
+.pm-list { list-style:none; margin:14px 0; padding:0; display:grid; gap:8px; }
+.pm-list-item { display:flex; align-items:center; gap:8px; border:1px solid var(--stroke); background:var(--surface-raised); border-radius:14px; padding:8px; }
+.pm-list-current { border-color:var(--turq); }
+.pm-list-main { flex:1; min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:3px; background:none; border:0; color:var(--text); text-align:left; padding:4px; font:inherit; }
+.pm-list-tools { display:flex; gap:5px; }
+.pm-recap-block { border-top:1px solid var(--stroke); padding:11px 0; }
+.pm-recap-title { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; }
+.pm-recap-set { display:grid; grid-template-columns:26px minmax(0,1fr) minmax(0,1fr) auto; gap:8px; align-items:end; margin-bottom:6px; }
+.pm-recap-set.pm-undone { opacity:.85; }
+.pm-feelings { display:flex; flex-wrap:wrap; gap:7px; }
+.pm-feeling { flex:1 1 90px; min-height:44px; border-radius:11px; border:1px solid var(--stroke); background:var(--surface-raised); color:var(--text); font:inherit; font-size:12px; font-weight:750; }
+.pm-feeling.pm-on { background:rgba(46,211,192,.18); border-color:var(--turq); color:var(--turq); }
+.pm-done { text-align:center; }
+.pm-done-icon { width:64px; height:64px; margin:6px auto 4px; border-radius:50%; background:var(--turq); color:var(--turq-dark); display:grid; place-items:center; font-size:32px; font-weight:900; }
+.pm-recap-kind { margin:0 0 4px; }
+.pm-home-card { padding:16px; border-radius:16px; border:1px solid rgba(var(--accent-rgb),.38); background:rgba(var(--accent-rgb),.08); margin:14px 0; }
+.pm-start-workout { width:100%; min-height:50px; border:0; border-radius:14px; margin-bottom:12px; background:var(--turq); color:var(--turq-dark); font-weight:850; font-size:16px; }
+@media (max-width:420px) { .pm-machine-image { width:76px; height:76px; } .pm-set-row { grid-template-columns:22px minmax(0,1fr) minmax(0,1fr) auto; gap:6px; padding:8px 6px; } }
+.pm-progress-line { font-size:12px; color:var(--turq); margin:0 0 10px; }
+/* points de progression : zone tactile agrandie, trait visuel inchangé */
+.pm-dot { width:36px; height:32px; padding:10px 4px; background-clip:content-box; background-color:var(--stroke); border:0; }
+.pm-dot-done { background-color:var(--ok); }
+.pm-dot-skipped { background-color:var(--warn); }
+.pm-dot-postponed { background-color:#7d8bdd; }
+.pm-dots { gap:2px; }
+.pm-set-tools .pm-icon-btn { min-width:44px; }
+@media (max-width:420px) { .pm-set-row { grid-template-columns:22px minmax(0,1fr) minmax(0,1fr) auto; } .pm-set-tools { gap:3px; } }
+
+.pm-cardio-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px; margin:6px 0; }
+.pm-cardio-hint { margin:0 0 8px; font-size:.88rem; }
+
+.pm-fun { margin:14px 0; padding:14px; border-radius:16px; border:1px dashed var(--turq); background:rgba(46,211,192,.07); text-align:center; }
+.pm-fun-kicker { margin:0 0 6px; font-size:.85rem; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
+.pm-fun-text { margin:0 0 10px; font-size:1.15rem; font-weight:800; line-height:1.35; }
+.pm-hist-metrics { flex-wrap:wrap; } .pm-hist-metrics .pm-input { min-width:56px; }

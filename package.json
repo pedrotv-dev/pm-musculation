@@ -1,0 +1,10 @@
+{
+  "name": "pm-musculation",
+  "private": true,
+  "type": "module",
+  "description": "PM Musculation — suivi d'entraînement Pierre & Manon (JavaScript natif, sans dépendance)",
+  "scripts": {
+    "test": "node --test",
+    "e2e": "node tests/e2e/pierre-flow.mjs && node tests/e2e/demo-flow.mjs && node tests/e2e/data-flow.mjs && node tests/e2e/offline-flow.mjs && node tests/e2e/update-flow.mjs"
+  }
+}
