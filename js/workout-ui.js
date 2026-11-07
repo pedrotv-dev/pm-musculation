@@ -20,7 +20,7 @@ import { holdAwake } from './wakelock.js';
 import { getUiSettings, peekUiSettings } from './ui-settings.js';
 import { plannedIndex, SIDE_LABEL, SIDE_SHORT } from './machine-rules.js';
 import { funComparisons } from './fun-volume.js';
-import { rewardFor } from './gamification.js';
+import { rewardFor, progressionStartFor } from './gamification.js';
 import { rewardCard } from './jeu-ui.js';
 import { fx } from './fx.js';
 import { metricsFor, metricsText } from './cardio.js';
@@ -567,7 +567,7 @@ function renderDone(session) {
     el('h2', '', session.status === 'completed' ? 'Séance terminée' : 'Séance partielle enregistrée'),
     el('p', 'pm-muted', sum.setsDone + ' séries · ' + fmtNum(sum.volumeKg) + ' kg de volume · ' + formatMinutes(sum.durationMinutes)));
   let reward = null;
-  try { reward = rewardFor([...S.history, session], session.id, { today: localISODate() }); } catch (e) { console.error('PM jeu :', e); }
+  try { reward = rewardFor([...S.history, session], session.id, { today: localISODate(), startDate: progressionStartFor(S.profile) }); } catch (e) { console.error('PM jeu :', e); }
   if (reward) box.append(rewardCard(reward, id => S.catalog.byId.get(id)?.name || id));
   const jokes = funComparisons(sum.volumeKg, session.id);
   if (jokes.length) {

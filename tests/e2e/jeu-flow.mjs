@@ -5,6 +5,8 @@ import { serve, launch, watch, step, summary, mondayISO } from './lib.mjs';
 const srv = await serve();
 const { browser, context } = await launch();
 await context.addInitScript(() => { window.__fx = []; document.addEventListener('pm:fx', e => window.__fx.push(e.detail.type)); });
+// la progression de Pierre et Manon démarre le lundi 9 novembre 2026 : ce parcours se déroule le mardi 10
+await context.clock.install({ time: new Date(2026, 10, 10, 10, 0, 0) });
 const page = await context.newPage();
 const errors = watch(page);
 const demoContext = await browser.newContext({ viewport: { width: 390, height: 844 } }); // la démo mémorise son profil : contexte à part
@@ -12,7 +14,7 @@ const demo = await demoContext.newPage();
 watch(demo, errors);
 const text = sel => page.locator(sel).innerText();
 const screen = '#pm-workout-screen';
-const program = () => ({ schemaVersion: 1, weekStart: mondayISO(), programs: { pierre: { days: ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'].map(id => ({
+const program = () => ({ schemaVersion: 1, weekStart: mondayISO(new Date(2026, 10, 10)), programs: { pierre: { days: ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'].map(id => ({
   id, name: 'Jambes', activities: [{ type: 'strength', machineId: 'leg-press', shared: true, restSeconds: 30, sets: [{ kg: 60, reps: 12 }, { kg: 60, reps: 12 }] }] })) } } });
 
 console.log('Jeu : niveaux, succès, classements, mascotte');
@@ -86,6 +88,16 @@ await step('retour à l’accueil : niveau mis à jour (80 XP), puis succès dan
   await page.click('.nav-btn[data-go="progres"]');
   await page.waitForFunction(() => /Succès · 2 \/ 18/.test(document.querySelector('.pm-badges-panel h3')?.innerText || ''));
   assert.equal(await page.locator('.pm-badge-tile.pm-unlocked').count(), 2); // Premier pas + Une tonne ! (2 × 60 kg × 12 = 1 440 kg)
+});
+await step('avant le 9 novembre : niveau 1, 0 XP, et l\'annonce du début de la progression', async () => {
+  const before = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await before.clock.install({ time: new Date(2026, 10, 7, 10, 0, 0) });
+  const p = await before.newPage(); watch(p, errors);
+  await p.goto(srv.url); await p.click('[data-select-profile="manon"]');
+  await p.waitForSelector('.pm-level-card');
+  const t = await p.locator('.pm-level-card').innerText();
+  assert.match(t, /Niveau 1/); assert.match(t, /0 \/ 200 XP/); assert.match(t, /démarre le lundi 9 novembre/);
+  await before.close();
 });
 await step('aucune erreur JavaScript ni requête échouée', async () => { assert.deepEqual(errors, [], JSON.stringify(errors)); });
 

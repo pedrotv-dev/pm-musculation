@@ -7,6 +7,7 @@ import { el, add, fmtNum } from './dom.js';
 import { renderMascot, mascotLine } from './mascot.js';
 import { XP } from './gamification.js';
 
+const longStart = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }); };
 const shortDate = iso => iso.slice(8, 10) + '/' + iso.slice(5, 7);
 const plural = (n, one, many) => n + ' ' + (n > 1 ? many : one);
 
@@ -36,6 +37,7 @@ export function levelCard(p, { seed = '', context } = {}) {
   card.append(head, xpBar(p));
   const line = el('p', 'pm-mascot-line-text', '« ' + mascotLine(ctx, seed + p.level) + ' »');
   card.append(line);
+  if (p.notStarted) card.append(el('p', 'pm-muted pm-streak', 'Ta progression démarre le ' + longStart(p.startDate) + ' : tes séances d’avant restent dans ton historique et tes records.'));
   if (streak > 0) card.append(el('p', 'pm-muted pm-streak', 'Série : ' + plural(streak, 'semaine', 'semaines') + ' de suite' +
     (p.streak.thisWeekDone ? ' — cette semaine est déjà validée.' : ' — fais une séance cette semaine pour la garder.')));
   return card;
@@ -67,7 +69,7 @@ export function rankingsPanel(p, name) {
     box.append(list);
   };
   const r = p.rankings;
-  block('Mes meilleures semaines', r.bestWeeks.map(w => ['Semaine du ' + shortDate(w.weekStart), fmtNum(w.xp) + ' XP · ' + plural(w.sessions, 'séance', 'séances')]), 'Pas encore de semaine à classer.');
+  block('Mes meilleures semaines', r.bestWeeks.map(w => ['Semaine du ' + shortDate(w.weekStart), fmtNum(w.volumeKg) + ' kg · ' + plural(w.sessions, 'séance', 'séances')]), 'Pas encore de semaine à classer.');
   block('Mes séances les plus lourdes', r.heaviestSessions.map(s => [shortDate(s.date) + ' · ' + s.dayName, fmtNum(s.volumeKg) + ' kg']), 'Pas encore de séance à classer.');
   block('Mes machines qui progressent le plus', r.risingMachines.map(m => [name(m.machineId), '+' + m.gainPercent + ' % (' + fmtNum(m.firstKg) + ' → ' + fmtNum(m.bestKg) + ' kg)']), 'Il faut au moins deux séances sur une machine.');
   return box;
