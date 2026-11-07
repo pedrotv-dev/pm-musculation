@@ -9,7 +9,7 @@
  * - Ne touche JAMAIS a IndexedDB ni a localStorage : une mise a jour du code ne supprime aucune donnee.
  * VERSION est recalculee par `node tools/release.mjs` (date + empreinte des fichiers) ; tests/pwa.test.mjs verifie qu'elle est a jour.
  */
-const VERSION = '2026.11.07-697ebf24';
+const VERSION = '2026.11.07-a7acb53e';
 // Production : caches « pm-musculation-<version> » (inchangés). Aperçu (/preview/sw.js) : « pmprev-<version> ». Les deux préfixes ne se
 // recouvrent pas : chaque service worker ne supprime QUE ses propres anciens caches, jamais ceux de l'autre.
 const PREVIEW = /\/preview\/sw\.js$/.test(self.location.pathname);
@@ -25,6 +25,7 @@ const PRECACHE = [
   'data/machines.json', 'data/exemple-programme.json', 'assets/machines/index.json', 'assets/mascot/index.json',
   'assets/ascent/hero-accueil.webp', 'assets/ascent/hero-fin.webp',
   'assets/ascent/korv-accueil-neutre.webp', 'assets/ascent/korv-accueil-heureux.webp', 'assets/ascent/korv-accueil-motive.webp', 'assets/ascent/icones.svg',
+  'assets/ascent/hexagone-niveau.svg', 'assets/ascent/hexagone-succes.svg', 'assets/ascent/succes-cardio-300.svg', 'assets/ascent/succes-cardio-60.svg', 'assets/ascent/succes-cargo.svg', 'assets/ascent/succes-elephant.svg', 'assets/ascent/succes-explorer.svg', 'assets/ascent/succes-first-record.svg', 'assets/ascent/succes-first-session.svg', 'assets/ascent/succes-five-hundred-sets.svg', 'assets/ascent/succes-five-records.svg', 'assets/ascent/succes-five-sessions.svg', 'assets/ascent/succes-good-feeling.svg', 'assets/ascent/succes-hundred-sets.svg', 'assets/ascent/succes-streak-2.svg', 'assets/ascent/succes-streak-4.svg', 'assets/ascent/succes-streak-8.svg', 'assets/ascent/succes-ten-sessions.svg', 'assets/ascent/succes-tonne.svg', 'assets/ascent/succes-twentyfive-sessions.svg',
   'assets/mascot/stage-0.png', 'assets/mascot/stage-0-happy.png', 'assets/mascot/stage-0-cheer.png', 'assets/mascot/stage-0-levelup.png',
   'assets/machines/back-extension.png', 'assets/machines/rotary-torso.png', 'assets/machines/shoulder-press.png', 'assets/machines/converging-chest-press.png',
   'assets/machines/converging-shoulder-press.png', 'assets/machines/leg-extension.png', 'assets/machines/chest-press.png', 'assets/machines/seated-leg-curl.png',
