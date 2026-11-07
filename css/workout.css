@@ -212,3 +212,8 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 
 .pm-quick-actions { display:grid; grid-template-columns:repeat(auto-fit, minmax(96px, 1fr)); gap:8px; margin-top:12px; }
 .pm-quick-actions .pm-quick { min-height:56px; padding:6px 8px; font-size:13px; line-height:1.2; text-align:center; white-space:normal; }
+/* place pour le chiffre entre − et + : marges resserrées ; très petits écrans : charge et répétitions l'une sous l'autre */
+.pm-current-set { padding:12px 10px; }
+.pm-current-grid { gap:8px; }
+.pm-stepper-row { gap:4px; }
+@media (max-width:374px) { .pm-current-grid { grid-template-columns:1fr; } }
