@@ -132,7 +132,7 @@ export function levelHex(level, { size = 'md', label = 'Niveau ' + level } = {})
 /** Accueil : salut, Korv en grand à droite, bulle de Korv, sur le décor montagne. */
 export function homeHero(p, { name, seed = '', demo = false } = {}) {
   const hero = el('section', 'pm-hero');
-  hero.setAttribute('aria-label', 'Accueil');
+  hero.setAttribute('aria-label', 'Bienvenue');
   const streak = p.streak.current;
   const ctx = p.totals.sessions === 0 ? 'new' : streak >= 2 ? 'streak' : !p.streak.thisWeekDone && streak === 0 ? 'rest' : 'idle';
   const mood = p.totals.sessions === 0 ? 'idle' : streak >= 2 ? 'happy' : 'idle';
