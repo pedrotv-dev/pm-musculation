@@ -1,1 +1,9 @@
-{ "available": [] }
+{
+  "available": [
+    "stage-0.svg",
+    "stage-0-happy.svg",
+    "stage-0-cheer.svg",
+    "stage-0-sleepy.svg",
+    "stage-0-levelup.svg"
+  ]
+}
