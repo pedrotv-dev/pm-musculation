@@ -162,11 +162,12 @@ jobs:
         if: steps.publish.outputs.changed == 'true'
         continue-on-error: true
         run: |
-          set -uo pipefail
+          set +e   # GitHub lance « bash -e » : une réponse 404 pendant l'attente ne doit pas interrompre la boucle
+          set -u
           if [ "${{ steps.preview.outcome }}" = "success" ]; then
             want="${{ steps.preview.outputs.sha7 }}"
             for i in $(seq 1 24); do
-              live=$(curl -fsS "$SITE_URL/preview/preview-info.json?c=$RANDOM" 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).sha||'')}catch(e){console.log('')}})")
+              live=$(curl -sS -f "$SITE_URL/preview/preview-info.json?c=$RANDOM" 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).sha||'')}catch(e){console.log('')}})")
               echo "aperçu en ligne : '${live:0:7}' (attendu $want)"
               [ -n "$live" ] && [ "${live:0:7}" = "$want" ] && { echo "Aperçu en ligne : $SITE_URL/preview/"; exit 0; }
               sleep 15
