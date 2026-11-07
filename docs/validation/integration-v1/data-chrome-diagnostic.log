@@ -1,0 +1,43 @@
+(node:53992) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+Parcours données
+  ✓ réparation : une base vide préexistante est complétée sans erreur
+  ✓ une séance enregistrée (partielle)
+DOWNLOAD pm-musculation-pierre-2026-11-07.json
+  ✓ rappel de sauvegarde sur l’accueil, puis sauvegarde en un geste
+  ✓ progrès : les statistiques évoluent
+DOWNLOAD pm-musculation-pierre-2026-11-07.json
+  ✗ télécharger la sauvegarde du profil
+      download.saveAs timeout 15s: pm-musculation-pierre-2026-11-07.json
+  ✗ exporter les résultats en CSV
+      page.waitForEvent: Timeout 10000ms exceeded while waiting for event "download"
+      =========================== logs ===========================
+      waiting for event "download"
+      ============================================================
+  ✓ effacer les données du profil (double confirmation)
+  ✗ restaurer en remplacement
+      ENOENT: no such file or directory, stat 'C:\Users\mauge\AppData\Local\Temp\pm-e2e-igOdQN\pierre.json'
+  ✗ restaurer par fusion : aucun doublon
+      ENOENT: no such file or directory, stat 'C:\Users\mauge\AppData\Local\Temp\pm-e2e-igOdQN\pierre.json'
+  ✗ bilan texte de la semaine
+      The input did not match the regular expression /Chest Press/. Input:
+
+      'BILAN HEBDOMADAIRE — PM Musculation\n' +
+        'Semaine du 2 novembre 2026 au 8 novembre 2026\n' +
+  ✓ réglages du chronomètre propres au profil
+  ✗ Manon : espace séparé, bilan commun avec le fichier de Pierre (en mémoire)
+      ENOENT: no such file or directory, stat 'C:\Users\mauge\AppData\Local\Temp\pm-e2e-igOdQN\pierre.json'
+  ✗ rechargement : les données persistent
+      page.waitForSelector: Timeout 10000ms exceeded.
+      Call log:
+      [2m  - waiting for locator('.pm-history-card') to be visible[22m
+
+  ✗ deux onglets : une seule séance ouverte pour un profil
+      page.click: Timeout 10000ms exceeded.
+      Call log:
+      [2m  - waiting for locator('.pm-day-tab:has-text("Lundi")')[22m
+
+  ✓ aucune erreur JavaScript
+
+7 réussi(s), 8 échec(s)

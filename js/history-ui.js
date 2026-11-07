@@ -19,12 +19,38 @@ const STATUS = { completed: 'Complète', partial: 'Partielle', paused: 'En pause
 const nameOf = a => a.type === 'strength' ? (S.catalog.byId.get(a.machineId)?.name || a.machineId) : a.name || (a.type === 'warmup' ? 'Échauffement' : 'Cardio');
 const chipClass = s => s === 'completed' ? 'done' : s === 'partial' ? 'postponed' : 'skipped';
 const profile = () => root.dataset.pmProfile;
+// Les champs gardent leur DOM pendant les corrections. Seuls les patches du champ
+// modifié sont envoyés ; toutes les corrections locales restent dans l'ordre.
+let corrections = Promise.resolve();
+let pendingSets = 0, reloadPending = false, detailView = null;
+const failedFields = new Set();
+const DATA_SOURCE = 'history-set-correction';
+function enqueueCorrection(write) {
+  const run = corrections.then(write);
+  corrections = run.catch(() => {}); // une panne ne bloque pas la correction suivante
+  return run;
+}
+function holdDetail() {
+  return S.mode === 'detail' && (pendingSets > 0 ||
+    (page.contains(document.activeElement) && document.activeElement.matches('.pm-hist-set input')) ||
+    [...failedFields].some(input => input.isConnected));
+}
+function flushReload() {
+  if (reloadPending && !holdDetail()) { reloadPending = false; load().catch(console.error); }
+}
+function acceptSession(p, session) {
+  if (profile() !== p || !session) return;
+  S.rows = S.rows.map(row => row.id === session.id ? session : row);
+  if (detailView?.profile === p && detailView.id === session.id && detailView.box.isConnected) detailView.update(session);
+}
 
 async function load() {
+  if (holdDetail()) { reloadPending = true; return; }
   const p = profile(), mine = ++S.rev;
   if (!KNOWN.includes(p)) return;
   const [catalog, rows] = await Promise.all([loadCatalog(), listWorkouts(p).catch(() => [])]);
   if (mine !== S.rev || profile() !== p) return;
+  if (holdDetail()) { reloadPending = true; return; }
   S.catalog = catalog;
   S.rows = rows.slice().sort((a, b) => (b.date + b.startedAt).localeCompare(a.date + a.startedAt));
   if (S.detail && !S.rows.find(r => r.id === S.detail)) { S.detail = null; S.mode = S.mode === 'detail' ? 'list' : S.mode; }
@@ -100,11 +126,48 @@ function renderCalendar() {
 async function fix(call, message) {
   const p = profile(), id = S.detail;
   try {
-    await call(p, id);
+    const next = await enqueueCorrection(() => call(p, id));
+    acceptSession(p, next);
     if (message) toast(message, { duration: 1800 });
     document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile: p } }));
-    await load();
-  } catch (error) { toast(error?.message || 'Correction impossible.', { duration: 5000 }); await load(); }
+    if (profile() === p) await load();
+  } catch (error) { toast(error?.message || 'Correction impossible.', { duration: 5000 }); if (profile() === p) await load(); }
+}
+/** Une liaison appartient au profil, à la séance et au champ de CE rendu. */
+function bindSetField(input, field, set, target) {
+  let requested = set[field], serial = 0, failed = false;
+  const save = () => {
+    const value = parseNum(input.value);
+    const valid = Number.isFinite(value) && value >= (field === 'kg' ? 0 : 1) && value <= 1000 &&
+      (field === 'kg' || Number.isInteger(value));
+    if (!valid) {
+      input.setAttribute('aria-invalid', 'true');
+      toast('Valeur invalide : ' + (field === 'kg' ? 'charge de 0 à 1 000 kg.' : 'répétitions entières de 1 à 1 000.'));
+      return;
+    }
+    if (value === requested && !failed) return;
+    requested = value; failed = false;
+    failedFields.delete(input);
+    input.removeAttribute('aria-invalid');
+    const request = ++serial;
+    ++pendingSets;
+    enqueueCorrection(() => correctSet(target.profile, target.id, target.activity, target.set, { [field]: value }))
+      .then(session => {
+        acceptSession(target.profile, session);
+        if (request === serial) { failed = false; failedFields.delete(input); input.removeAttribute('aria-invalid'); }
+        document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile: target.profile, source: DATA_SOURCE } }));
+      }, error => {
+        if (request === serial) {
+          failed = true; failedFields.add(input); input.setAttribute('aria-invalid', 'true');
+        }
+        if (input.isConnected && profile() === target.profile) toast('Correction non enregistrée : ' + (error?.message || 'réessaie ce champ.'), { duration: 5000 });
+      }).finally(() => { --pendingSets; flushReload(); });
+  };
+  input.addEventListener('change', save);
+  input.addEventListener('blur', () => {
+    if (failed) save(); // même valeur retapée ou champ refocalisé après une panne
+    setTimeout(flushReload, 0); // laisse le focus passer au prochain champ avant de décider
+  });
 }
 function numInput(value, kind, label) {
   const input = el('input', 'pm-input pm-input-sm');
@@ -118,13 +181,20 @@ function renderDetail() {
   const s = S.rows.find(r => r.id === S.detail);
   const box = el('div');
   if (!s) { box.append(btn('‹ Retour', 'pm-secondary', () => { S.mode = 'list'; render(); })); return box; }
-  const sum = s.summary || getWorkoutSummary(s);
   const open = s.status === 'in_progress' || s.status === 'paused';
   box.append(btn('‹ Retour à la liste', 'pm-secondary', () => { S.mode = 'list'; S.detail = null; render(); }));
   const head = el('article', 'panel');
+  const updates = [];
+  const summaryText = session => {
+    const sum = session.summary || getWorkoutSummary(session);
+    return formatDateFr(session.date) + ' · ' + formatMinutes(sum.durationMinutes) + ' · ' + sum.setsDone + ' séries · ' + fmtNum(sum.volumeKg) + ' kg';
+  };
   add(head, el('div', 'pm-history-top'), el('h3', '', s.dayName || s.dayId));
-  head.firstChild.append(el('span', 'pm-chip pm-chip-' + chipClass(s.status), STATUS[s.status] || s.status));
-  head.append(el('p', 'pm-muted', formatDateFr(s.date) + ' · ' + formatMinutes(sum.durationMinutes) + ' · ' + sum.setsDone + ' séries · ' + fmtNum(sum.volumeKg) + ' kg'));
+  const chip = el('span', 'pm-chip pm-chip-' + chipClass(s.status), STATUS[s.status] || s.status);
+  const figures = el('p', 'pm-muted', summaryText(s));
+  head.firstChild.append(chip);
+  head.append(figures);
+  updates.push(next => { chip.className = 'pm-chip pm-chip-' + chipClass(next.status); chip.textContent = STATUS[next.status] || next.status; figures.textContent = summaryText(next); });
   head.append(el('p', 'pm-muted', 'La date et la durée d’origine sont conservées lors des corrections.'));
   box.append(head);
   if (open) {
@@ -136,20 +206,23 @@ function renderDetail() {
     const a = s.activities.find(x => x.key === key); if (!a) continue;
     const block = el('article', 'panel');
     const t = el('div', 'pm-history-top');
-    add(t, el('strong', '', nameOf(a)), el('span', 'pm-chip pm-chip-' + (a.postponed && a.status === 'pending' ? 'postponed' : a.status),
-      a.status === 'done' ? 'Terminée' : a.status === 'skipped' ? 'Passée' : a.postponed ? 'Reportée' : 'Non terminée'));
+    const activityChip = el('span');
+    const updateActivity = next => {
+      const activity = next.activities.find(x => x.key === key);
+      if (!activity) return;
+      activityChip.className = 'pm-chip pm-chip-' + (activity.postponed && activity.status === 'pending' ? 'postponed' : activity.status);
+      activityChip.textContent = activity.status === 'done' ? 'Terminée' : activity.status === 'skipped' ? 'Passée' : activity.postponed ? 'Reportée' : 'Non terminée';
+    };
+    updateActivity(s); updates.push(updateActivity);
+    add(t, el('strong', '', nameOf(a)), activityChip);
     block.append(t);
     if (a.type === 'strength') {
       a.sets.forEach((set, i) => {
         const plan = a.planned?.sets?.[Math.min(plannedIndex(i, a.perSide), (a.planned.sets.length || 1) - 1)];
         const row = el('div', 'pm-hist-set' + (set.done ? '' : ' pm-undone'));
         const kg = numInput(set.kg, 'kg', 'Charge série ' + (i + 1)), reps = numInput(set.reps, 'reps', 'Répétitions série ' + (i + 1));
-        const apply = () => {
-          const k = parseNum(kg.value), r = parseNum(reps.value);
-          if (!Number.isFinite(k) || k < 0 || !Number.isInteger(r) || r < 1) { toast('Valeurs invalides.'); load(); return; }
-          if (k !== set.kg || r !== set.reps) fix((p, id) => correctSet(p, id, a.key, set.id, { kg: k, reps: r }), 'Corrigé ✓');
-        };
-        kg.addEventListener('change', apply); reps.addEventListener('change', apply);
+        const target = { profile: profile(), id: s.id, activity: a.key, set: set.id };
+        bindSetField(kg, 'kg', set, target); bindSetField(reps, 'reps', set, target);
         const toggle = btn(set.done ? '✓' : '○', 'pm-icon-btn', () => fix((p, id) => correctSet(p, id, a.key, set.id, { done: !set.done })));
         toggle.title = set.done ? 'Marquer comme non faite' : 'Marquer comme faite'; toggle.setAttribute('aria-label', toggle.title);
         const del = btn('×', 'pm-icon-btn', async () => {
@@ -161,7 +234,18 @@ function renderDetail() {
         row.append(mark, kg, el('span', 'pm-unit', 'kg ×'), reps, toggle, del);
         if (plan) row.title = 'Prévu : ' + fmtNum(plan.kg) + ' kg × ' + plan.reps;
         block.append(row);
-        if (plan && set.done && (set.reps < plan.reps || set.kg < plan.kg)) block.append(el('p', 'pm-gap pm-gap-hist', 'Prévu : ' + fmtNum(plan.kg) + ' kg × ' + plan.reps));
+        const gap = plan ? el('p', 'pm-gap pm-gap-hist', 'Prévu : ' + fmtNum(plan.kg) + ' kg × ' + plan.reps) : null;
+        if (gap) block.append(gap);
+        const updateRow = next => {
+          const saved = next.activities.find(x => x.key === a.key)?.sets.find(x => x.id === set.id);
+          if (!saved) return;
+          Object.assign(set, saved); // uniquement les données confirmées par IndexedDB, jamais les brouillons
+          row.classList.toggle('pm-undone', !saved.done);
+          toggle.textContent = saved.done ? '✓' : '○';
+          toggle.title = saved.done ? 'Marquer comme non faite' : 'Marquer comme faite'; toggle.setAttribute('aria-label', toggle.title);
+          if (gap) gap.hidden = !(saved.done && (saved.reps < plan.reps || saved.kg < plan.kg));
+        };
+        updateRow(s); updates.push(updateRow);
       });
       block.append(btn('+ Série', 'pm-secondary', () => fix((p, id) => correctAddSet(p, id, a.key, {}), 'Série ajoutée')));
     } else {
@@ -221,11 +305,13 @@ function renderDetail() {
       await load();
     } catch (error) { toast(error?.message || 'Suppression impossible.'); }
   }));
+  detailView = { profile: profile(), id: s.id, box, update: next => updates.forEach(update => update(next)) };
   return box;
 }
 
 function render() {
   if (!KNOWN.includes(profile())) return;
+  detailView = null; failedFields.clear();
   clear(page);
   page.dataset.view = S.mode; // lu par js/nav-history.js (bouton retour : détail → liste)
   page.append(header());
@@ -234,9 +320,15 @@ function render() {
 
 // Optimisation : un onglet masqué ne relit pas la base ; il se met à jour à l'ouverture (clic sur son onglet)
 const reload = () => { if (!page.hidden) load().catch(console.error); };
-document.addEventListener('pm:profile-changed', () => { S.mode = 'list'; S.detail = null; S.day = null; reload(); });
+document.addEventListener('pm:profile-changed', () => {
+  S.mode = 'list'; S.detail = null; S.day = null;
+  detailView = null; failedFields.clear(); reloadPending = false;
+  reload();
+});
 document.addEventListener('pm:workout-changed', e => { if (!root.classList.contains('pm-workout-active') || (e.detail && e.detail.final)) reload(); });
-document.addEventListener('pm:data-changed', reload);
+document.addEventListener('pm:data-changed', e => {
+  if (e.detail?.source !== DATA_SOURCE || S.mode !== 'detail') reload();
+});
 window.addEventListener('focus', reload);
 document.addEventListener('click', e => { if (e.target.closest?.('[data-go="historique"]')) load().catch(console.error); });
 void dialog; void getResumableWorkout;

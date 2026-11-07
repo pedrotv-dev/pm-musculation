@@ -1,0 +1,35 @@
+(node:48556) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+320×568
+  ✓ C1 · historique : chaque réglage cardio a son libellé collé à son champ, sans chevauchement ni débordement (320 px)
+  ✓ C2 · ouverture d'une machine : charge, répétitions, − / + et « Valider » visibles sans défiler (320 px)
+  ✓ C2 · le − / + fonctionne toujours et le brouillon est conservé (320 px)
+  ✓ C2 · après validation : série enregistrée, chrono ouvert, série suivante visible sans défiler (320 px)
+  ✓ C2 · dernière série validée : « Machine terminée », chrono et liste des séries intacts (320 px)
+  ✓ C2 · machine suivante : son cadre « Série en cours » est visible sans défiler (320 px)
+  ✓ C2 · retour sur la séance depuis la liste des machines : cadre remis en vue (320 px)
+  ✓ aucune erreur JavaScript ni débordement horizontal (320 px)
+
+375×667
+  ✓ C1 · historique : chaque réglage cardio a son libellé collé à son champ, sans chevauchement ni débordement (375 px)
+  ✓ C2 · ouverture d'une machine : charge, répétitions, − / + et « Valider » visibles sans défiler (375 px)
+  ✓ C2 · le − / + fonctionne toujours et le brouillon est conservé (375 px)
+  ✓ C2 · après validation : série enregistrée, chrono ouvert, série suivante visible sans défiler (375 px)
+  ✓ C2 · dernière série validée : « Machine terminée », chrono et liste des séries intacts (375 px)
+  ✓ C2 · machine suivante : son cadre « Série en cours » est visible sans défiler (375 px)
+  ✓ C2 · retour sur la séance depuis la liste des machines : cadre remis en vue (375 px)
+  ✓ aucune erreur JavaScript ni débordement horizontal (375 px)
+
+390×844
+  ✓ C1 · historique : chaque réglage cardio a son libellé collé à son champ, sans chevauchement ni débordement (390 px)
+  ✓ C2 · ouverture d'une machine : charge, répétitions, − / + et « Valider » visibles sans défiler (390 px)
+  ✓ C2 · le − / + fonctionne toujours et le brouillon est conservé (390 px)
+  ✓ C2 · après validation : série enregistrée, chrono ouvert, série suivante visible sans défiler (390 px)
+  ✓ C2 · dernière série validée : « Machine terminée », chrono et liste des séries intacts (390 px)
+  ✓ C2 · machine suivante : son cadre « Série en cours » est visible sans défiler (390 px)
+  ✓ C2 · retour sur la séance depuis la liste des machines : cadre remis en vue (390 px)
+  ✓ aucune erreur JavaScript ni débordement horizontal (390 px)
+
+24 réussi(s), 0 échec(s)
