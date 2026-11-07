@@ -1,0 +1,239 @@
+(node:58484) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ production : AUCUN changement des noms de stockage (base, clé du profil, caches) (8.3199ms)
+✔ aperçu : le même code, servi sous /preview/, prend d'autres noms (base, profil, caches) (356.9503ms)
+✔ garde-fous : une branche qui touche à l'isolation n'est PAS publiée (3592.2496ms)
+✔ assemblage : la production est une copie fidèle de main ; l'aperçu n'y touche pas ; la production ne touche pas à l'aperçu (5458.9902ms)
+✔ assemblage : jamais de site vide — source incomplète refusée sans rien supprimer ; aperçu impossible sans production (3038.6813ms)
+✔ service worker de production : ne supprime que ses anciens caches « pm-musculation- », jamais ceux de l'aperçu (5.7495ms)
+✔ service worker d'aperçu : ne supprime que ses anciens caches « pmprev- », jamais ceux de la production (2.7845ms)
+✔ service worker de production : ne répond jamais aux requêtes de l'aperçu (ni lecture, ni mise en cache) (3.3115ms)
+(node:58492) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ sauvegarde complete, par profil, puis restauration en remplacement (912.9039ms)
+✔ restauration par fusion : sans doublon ni ecrasement des donnees presentes (654.4745ms)
+✔ garde-fous : mauvais profil, fichier invalide, version inconnue, demo (357.1533ms)
+✔ donnees de l'autre profil lues en memoire pour le bilan, export CSV, poids (449.0598ms)
+✔ rappel de sauvegarde : règles, mémorisation par profil, conservée dans la sauvegarde (288.1544ms)
+(node:58576) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ chaque fichier cité dans les consignes existe (hors motifs avec * ou <N>) (15.9658ms)
+✔ tous les événements pm:fx documentés sont réellement émis, et ceux émis sont documentés (2.3528ms)
+✔ le jeu décrit à ChatGPT correspond au code : XP, titres, nombre de succès, réglages (0.6935ms)
+✔ ton professionnel et budget de 3 secondes : présents dans le contrat et rappelés dans chaque mission (0.5062ms)
+✔ chaque mission rappelle le protocole et son périmètre de fichiers (0.5577ms)
+✔ mélodie de fin de repos : le contrat annoncé (8 bits non signés, 8 kHz, ≤ 1,5 s, début et fin au silence) est respecté (17.1369ms)
+✔ fichiers à remplir par ChatGPT : déjà branchés (index.html, sw.js) et inoffensifs tant qu'ils sont vides (5.4144ms)
+(node:58612) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ environ 30 seances sur 6 semaines consecutives, jours coherents (3.4421ms)
+✔ statuts : terminees, partielles et une interrompue (la plus recente) (4.8078ms)
+✔ machines : toutes issues de data/machines.json, noms exacts (0.8664ms)
+✔ series : valeurs realistes et coherentes avec l'objectif (3.9932ms)
+✔ structure compatible avec le moteur : ordre, cles, statuts, resume (1.2575ms)
+✔ cas varies : machines reportees, series ajoutees/retirees, pauses (1.0716ms)
+✔ progression : charges croissantes semaine apres semaine, jusqu'au programme courant (3.8895ms)
+✔ poids corporel : deux mesures par semaine, evolution lente et plausible (1.0625ms)
+✔ records personnels : charge max par machine, coherents avec les seances (5.392ms)
+✔ statistiques coherentes avec les seances (0.9472ms)
+✔ deterministe, fige, serialisable, ré-ancrable (32.3353ms)
+✔ aucun acces au stockage : pas d'import de storage.js ni d'IndexedDB (0.9602ms)
+✔ moteur : getWorkoutSummary identique au resume des fixtures (0.7657ms)
+✔ moteur : prochaine activite et machines reportees (0.6007ms)
+✔ moteur : la seance interrompue se reprend et se termine (208.9883ms)
+✔ closeInterrupted : historique entierement termine, rien d'autre ne change (7.6074ms)
+(node:58588) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ niveaux : paliers croissants, niveau 1 à 0 XP, titres et étapes de la mascotte (2.7743ms)
+✔ XP d'une séance : séries, cardio (plafonné), fin de séance ; partielle moins bien mais jamais punie (2.3078ms)
+✔ records : seulement sur une machine déjà pratiquée, une fois par machine et par séance, pas pour l'assistance (0.8038ms)
+✔ série de semaines : consécutives, se casse après une semaine vide, reste vivante en début de semaine (0.8014ms)
+✔ succès : débloqués une seule fois, avec la date de la séance qui les a donnés (0.8066ms)
+✔ classements personnels : meilleures semaines, séances les plus lourdes, machines qui progressent (0.5269ms)
+✔ récompense d'une séance : XP, passage de niveau, nouveaux succès, records (0.9108ms)
+✔ la démo (30 séances fictives) donne un niveau, des succès et des classements cohérents (16.7875ms)
+✔ début de la progression : le 9 novembre 2026 pour Pierre et pour Manon, pas pour la démo (0.2525ms)
+✔ avant le début : niveau 1, 0 XP, aucun succès, aucune série de semaines — historique intact (2.0893ms)
+✔ à partir du 9 novembre : XP et succès normaux ; un record doit battre TOUT l'historique (1.4085ms)
+✔ stable : même résultat à chaque recalcul, après « restauration » (copie JSON) et quel que soit l'ordre des séances (0.9534ms)
+(node:55740) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ sprite ASCENT : les 18 icônes déclarées existent, en currentColor, sans script (2.6295ms)
+✔ index.html : icônes du sprite, précachées ; icon() refuse un nom inconnu (1.75ms)
+(node:58708) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ mondayOf : lundi local (3.6822ms)
+✔ statut : activation automatique le lundi prevu (0.3105ms)
+✔ import valide : profil actif uniquement, ordre conserve (4.7123ms)
+✔ JSON colle avec BOM et espaces accepte (0.308ms)
+✔ machines inconnues signalees (0.7181ms)
+✔ erreur dans l'autre profil : simple avertissement (1.1596ms)
+✔ rejets : JSON et structure (0.8254ms)
+✔ rejets : dates (0.4607ms)
+✔ rejets : donnees de musculation (1.217ms)
+✔ rejets : jours et activites (1.0493ms)
+✔ tous les problemes sont listes ensemble (0.3368ms)
+✔ importProgram refuse avant tout acces au stockage si invalide (0.4314ms)
+✔ 1. machines inconnues : apercu sans erreur, import definitif bloque (20.3612ms)
+✔ 1. remplacement par un ID du catalogue puis import definitif (62.6422ms)
+✔ 1. remplacements invalides refuses (0.9463ms)
+✔ 1. replaceMachine sur programme enregistre : cible dans le catalogue (73.253ms)
+✔ 2. nouvelle importation remplace la semaine, seances intactes (156.4863ms)
+✔ 2. l'autre profil n'est jamais ecrit (79.4536ms)
+✔ 3. identifiants de jours : 7 jours valides, accents/majuscules refuses (0.8138ms)
+✔ 3. ordre des jours et des activites conserve exactement (0.3984ms)
+(node:55600) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ la version du service worker suit js/version.js (1.6993ms)
+✔ tout fichier précaché existe, et tout fichier de code est précaché (60.8855ms)
+✔ le service worker ne touche pas aux données et gère les mises à jour (0.6076ms)
+✔ manifeste : chemins relatifs, icônes aux bonnes dimensions (2.7228ms)
+✔ index.html : manifeste, icône iPhone, enregistrement du service worker, aucun chemin absolu (18.9023ms)
+✔ imports relatifs : tous les fichiers existent (61.6427ms)
+✔ photos des machines : index fidèle, ids du catalogue, fond transparent, légères, précachées (9.8157ms)
+✔ sécurité : aucun script ni style en ligne, politique CSP stricte, app.js chargé en premier (1.0338ms)
+✔ publication : la VERSION correspond à l'empreinte des fichiers (sinon lancer node tools/release.mjs) (32.3711ms)
+✔ publication automatique : release --if-needed ne change rien quand la VERSION est à jour, et republie quand un fichier a changé (1552.6286ms)
+(node:52860) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ le fichier est à jour (sinon : node tools/make-reference.mjs) (38.3209ms)
+✔ importable tel quel (clés d'aide ignorées) et réduit aux 3 clés, pour Pierre et pour Manon, sans machine inconnue (4.1324ms)
+✔ catalogue du fichier = data/machines.json (ids, noms, types, groupes) (0.4376ms)
+✔ l'exemple respecte les règles annoncées : échauffement d'abord, cardio à la fin, ids et noms du catalogue, même ordre commun (0.7334ms)
+✔ les règles annoncées à ChatGPT correspondent au validateur (limites et refus) (4.9328ms)
+✔ exemple de bilan : texte réel du générateur, lisible, avec les repères annoncés (0.4415ms)
+(node:56292) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ reglages par profil : defauts, persistance, validation, mode off (294.3264ms)
+✔ modes : automatique demarre, manuel propose, desactive ne fait rien (762.2616ms)
+✔ temps restant calcule avec l'horloge reelle, progression et barre flottante (217.6968ms)
+✔ pause et reprise : le temps restant est fige puis repart de l'heure actuelle (731.8956ms)
+✔ expiration : fin detectee, alerte unique, rouverture tardive, disparition (798.5596ms)
+✔ fermeture / reouverture pendant le repos : recalcul avec l'horloge reelle, sans derive (626.0994ms)
+✔ reglage +/- secondes : en cours, en pause, bornes, fin immediate (889.968ms)
+✔ arret manuel et fermeture du message (434.6428ms)
+✔ changement de machine : arrete le chrono, pas la meme machine (1104.7217ms)
+✔ changement de profil : etats et reglages totalement separes (526.8071ms)
+✔ profil demo : memoire uniquement, aucune ecriture, aucun lien avec Pierre ni Manon (155.8689ms)
+✔ ne bloque jamais la seance : aucune fonction ne rejette (296.7073ms)
+✔ etat stocke corrompu : ignore sans erreur (513.0205ms)
+✔ fonctions pures : computeRestView et formatRest (0.5013ms)
+✔ compatibilite : pas de modification du frontend, pas d'API recente, un seul stockage (1.2659ms)
+(node:54200) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ catalogue : Rotary Hip par côté, deux Hip Abduction distinctes, Escalier, ancienne fiche conservée (4.0509ms)
+✔ règles par côté : 2 séries prévues par côté = 4 séries (gauche, droite, gauche, droite) (0.4511ms)
+✔ séance : Rotary Hip planifié 2 → 4 séries avec côtés ; volume, ajout de série, autres machines inchangées (382.7984ms)
+✔ option perSide du programme : validée, copiée dans la séance, refusée si pas booléenne ; ajout ponctuel par côté (157.4526ms)
+✔ correction d'historique d'une machine par côté : la série ajoutée alterne (278.4821ms)
+✔ validateur : réglages de cardio facultatifs (incline, speed, level), bornes et types (1.0699ms)
+✔ cardio : réglages enregistrés dans la séance, effaçables, corrigeables ensuite, texte lisible (371.2037ms)
+✔ bilan et CSV : côté de chaque série, « par côté », réglages de cardio (394.7919ms)
+✔ comparaisons idiotes : déterministes, grammaticales, adaptées au volume (6.4511ms)
+✔ son système de fin de repos : fichier WAV valide, silence puis trois bips (9.2003ms)
+✔ ancien programme avec « hip-abduction » : l'import propose de choisir l'une des deux nouvelles machines (1.5395ms)
+✔ réglages par machine : Vélo assis et Escalier = niveau, tapis = inclinaison + vitesse, les autres = les trois ; l'exemple ChatGPT les respecte (1.7974ms)
+✔ mascotte : le stade demandé d'abord, sinon le dernier stade existant, sinon le personnage de repli (2.8861ms)
+✔ boutons − / + de la charge : charges connues de la machine, puis plus petit écart (0.8047ms)
+(node:55404) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ remplacement de machine fonctionne sans Object.hasOwn (Safari ancien) (5.5495ms)
+(node:54256) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ semaines : lundi et addition de jours (1.5523ms)
+✔ totaux coherents avec les seances (1.2271ms)
+✔ frequence par semaine : 6 semaines, 5 seances par semaine (3.4276ms)
+✔ progression par machine : charge croissante, records, cardio, sauts (3.851ms)
+✔ bilan : texte lisible pour un profil, comparaisons et alertes (19.7149ms)
+✔ bilan commun Pierre + Manon, semaine sans données et ressentis (14.8722ms)
+✔ « Ta progression » (30 jours) : séances, volume, évolution moyenne de la force par machine (2.5943ms)
+(node:55884) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ médailles : chaque succès a son pictogramme, sa règle CSS et son entrée de précache (13.3448ms)
+✔ guide de Korv : branché dans Profil, précache de l'image, grades issus du moteur (1.4063ms)
+(node:23912) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ réglages d'usage : défauts, modification, isolation par profil, validation (260.0434ms)
+✔ persistance dans la base (saveSetting), incluse dans la sauvegarde, valeur corrompue ignorée (156.596ms)
+✔ profil démo : en mémoire seulement, aucune écriture (0.7477ms)
+(node:50428) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ demande le verrou une seule fois, puis le libère (1.004ms)
+✔ plusieurs demandes simultanées (rendus successifs de l'écran) : une seule requête au navigateur (17.4364ms)
+✔ libéré par le système (page masquée) : redemandé au retour au premier plan (45.3846ms)
+✔ refus du navigateur, API absente, annulation en cours de demande : jamais d'erreur (31.7199ms)
+(node:58904) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ P1-1 : deux series validees en meme temps depuis deux onglets ne s'ecrasent pas (383.8542ms)
+✔ P1-1 : une seance terminee ne redevient jamais active (fin / reprise / pause / serie concurrentes) (1772.5561ms)
+✔ P1-2 : demarrages concurrents depuis plusieurs onglets -> une seule seance ouverte (234.3081ms)
+✔ P1-2 : un seul profil bloque, pas l'autre ; un nouveau demarrage reste possible apres la fin (296.7503ms)
+✔ annulation concurrente d'une seance : aucune serie validee n'est perdue (485.9037ms)
+✔ duree en direct : calculee avec une heure de reference, sans aucune ecriture (435.4357ms)
+✔ donnees existantes conservees : seance ecrite par l'ancien code modifiable, schema inchange (377.036ms)
+(node:58912) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ scenario initial : seance du jour deja commencee, a reprendre (38.4843ms)
+✔ programme actif de la semaine et historique de 6 semaines (11.0645ms)
+✔ simuler toute la seance : series, report, repos, fin, puis une nouvelle seance (20.0196ms)
+✔ isolation : la demo n'ecrit rien et n'interfere pas avec Pierre ni Manon (296.3479ms)
+✔ reinitialisation : retour au scenario de depart (15.3107ms)
+✔ jour de la seance en cours : jour courant en semaine, vendredi le week-end (51.9745ms)
+✔ atomicite en memoire : appuis simultanes sans perte, un seul demarrage (11.062ms)
+✔ les objets retournes sont des copies : modifier le resultat ne change pas la demo (7.0957ms)
+✔ amorcage automatique au premier usage (sans reset), toujours en memoire (12.8442ms)
+(node:58628) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ ajout / retrait / deplacement d'une machine sans toucher au programme (631.1378ms)
+✔ derniere machine memorisee, ressenti et remarques (meme apres la fin) (512.1401ms)
+✔ reprise apres fermeture : temps d'interruption exclu ou compte (467.2203ms)
+✔ corrections d'une seance terminee : valeurs, statut recalcule, date et duree conservees (830.2676ms)
+✔ suppression definitive d'une seance, sans toucher aux autres profils (579.5995ms)
+✔ corrections rapides de champs distincts et de deux séries : patches fusionnés sans perte (482.229ms)
+✔ échec de correction : transaction annulée, valeur précédente intacte, reprise possible (391.5831ms)
+(node:58848) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./")); register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ demarrage : copie independante du programme, ordre exact (201.9364ms)
+✔ demarrage : jour explicite, erreurs, une seule seance non terminee (282.8347ms)
+✔ serie : enregistrement, validation et sauvegarde apres chaque modification (216.6455ms)
+✔ serie : modifier, ajouter, retirer, annuler la validation (419.6413ms)
+✔ serie : valeurs invalides refusees sans rien ecrire (452.7804ms)
+✔ activite terminee automatiquement quand toutes les series sont validees (455.2384ms)
+✔ report : machine occupee envoyee a la fin, puis reprise avant la fin (390.4725ms)
+✔ report : refuse si deja commence, non-machine ou derniere activite (485.7828ms)
+✔ fin : complete exige tout fait, reportees signalees, partielle toujours possible (373.5422ms)
+✔ fin : seance complete et saut -> partielle uniquement (920.1291ms)
+✔ reprise : seance interrompue retrouvee, pause comptee hors duree (463.4213ms)
+✔ Pierre et Manon restent separes (437.6015ms)
+✔ profil demo : fonctionne en memoire, aucune ecriture en base, aucun lien avec Pierre ni Manon (155.3679ms)
+✔ appuis rapides simultanees : aucune serie perdue (279.7655ms)
+✔ compatibilite Safari ancien : sans Object.hasOwn ni structuredClone (247.1182ms)
+✔ resume pur et erreurs typees (140.7388ms)
+ℹ tests 171
+ℹ suites 0
+ℹ pass 171
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12733.8693

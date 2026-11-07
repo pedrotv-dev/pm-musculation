@@ -1,0 +1,17 @@
+(node:58968) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓ kg sauvegardé sans remplacer le champ répétitions actif ni son brouillon
+  ✓ éditions rapides sur deux séries : tous les champs conservés
+  ✓ corrections successives du même champ : la dernière valeur gagne
+  ✓ un patch de charge ne réécrit pas les répétitions corrigées ailleurs
+  ✓ échec IndexedDB : brouillon gardé, autres corrections possibles, même valeur réessayable
+  ✓ rafraîchissement externe différé pendant une saisie, sans perdre le focus
+  ✓ autres corrections : validation, ajout/retrait, cardio et remarques
+  ✓ retour à la liste pendant une correction : résumé actualisé après commit
+  ✓ changement de profil avec une écriture en attente : cible Pierre conservée
+  ✓ rechargement et sauvegarde/restauration : corrections, dates et durée conservées
+BROWSER_ERRORS []
+  ✓ aucune erreur JavaScript inattendue
+
+11 réussi(s), 0 échec(s)

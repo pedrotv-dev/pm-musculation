@@ -1,0 +1,21 @@
+(node:60580) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../integration-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+Parcours données
+  ✓ réparation : une base vide préexistante est complétée sans erreur
+  ✓ une séance enregistrée (partielle)
+  ✓ rappel de sauvegarde sur l’accueil, puis sauvegarde en un geste
+  ✓ progrès : les statistiques évoluent
+  ✓ télécharger la sauvegarde du profil
+  ✓ exporter les résultats en CSV
+  ✓ effacer les données du profil (double confirmation)
+  ✓ restaurer en remplacement
+  ✓ restaurer par fusion : aucun doublon
+  ✓ bilan texte de la semaine
+  ✓ réglages du chronomètre propres au profil
+  ✓ Manon : espace séparé, bilan commun avec le fichier de Pierre (en mémoire)
+  ✓ rechargement : les données persistent
+  ✓ deux onglets : une seule séance ouverte pour un profil
+  ✓ aucune erreur JavaScript
+
+15 réussi(s), 0 échec(s)

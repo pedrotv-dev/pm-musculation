@@ -6,13 +6,13 @@ Vérification initiale du 7 novembre 2026 : main `73915266a7569dd2fb6a693811260e
 
 Pendant la mission, une autre opération a fusionné #57 à **22:29:37 Europe/Paris** : main est devenu `48b2e531d026ad9f133444c10c1a1978237d4dbf`. Cette mission n'a ni fusionné ni fermé cette PR. La branche d'intégration a ensuite intégré ce main ; cette dernière fusion locale n'a changé aucun fichier. #58 reste ouverte, sans fusion ni fermeture par cette mission. Aucune fusion automatique activée.
 
-Seuls conflits : lignes VERSION de `sw.js` et `js/version.js`. Reprises depuis main, puis recalculées par `tools/release.mjs` sur les sources combinées. Première empreinte combinée : `f48d5698`. Après le complément CSS ci-dessous : **`2026.11.07-6dd6431a`**. Nouvelle exécution après rattachement au main actuel : même résultat. Aucune empreinte des PR choisie comme version finale.
+Seuls conflits : lignes VERSION de `sw.js` et `js/version.js`. Reprises depuis main, puis recalculées par `tools/release.mjs` sur les sources combinées. Les premiers recalculs Windows (`f48d5698`, puis `6dd6431a`) étaient faussés par les fins de ligne CRLF de 132 fichiers inchangés du clonage initial. La première CI Linux a correctement refusé cette VERSION : 169/171, les deux contrôles d'empreinte échouaient ([exécution initiale](https://github.com/pedrotv-dev/pm-musculation/actions/runs/42417434503)). Après restauration des octets exacts des blobs Git et nouvelle exécution de `node tools/release.mjs` via l'adaptateur de chemins, la version finale est **`2026.11.07-cfe30d2b`**. Aucun contournement du test d'empreinte, aucune empreinte des PR choisie comme version finale.
 
 Complément découvert par l'exécution réelle : Chrome Windows à 375 px mesure 58 px pour « 102,5 », contre 56 px disponibles dans la grille sur une ligne. Le premier `v1-m1-mobile-flow` donnait 23/24. La grille d'historique de Claude sur deux lignes est étendue jusqu'à 389 px, sans modification à 390 px. Les autres corrections CSS et tout `history-ui.js` de #58 sont conservés. Aucun conflit métier supplémentaire.
 
 ## Résultats réellement exécutés
 
-Windows, Node 24.22.1, Playwright installé hors dépôt ; profils et IndexedDB de test vierges. Chaque compte ci-dessous est celui de la suite entière, pas un compte multiplié artificiellement par largeur.
+Windows, Node 24.22.1, Playwright installé hors dépôt ; profils et IndexedDB de test vierges. Chaque compte ci-dessous est celui de la suite entière, pas un compte multiplié artificiellement par largeur. Les journaux `canonical-*` et `node-tests-canonical.log` concernent la relance après restauration des octets Git et correction de VERSION ; les autres gardent la trace des exécutions précédentes. Les captures antérieures restent représentatives : aucune logique ni disposition n'a changé lors de la correction des fins de ligne et de VERSION.
 
 | Parcours | Moteur et dimensions | Résultat |
 | --- | --- | --- |
