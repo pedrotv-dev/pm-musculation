@@ -8,7 +8,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const EXCLUDE = new Set(['.git', '.github', 'node_modules', 'tests', 'docs', 'tools', 'preview']);
+// L'aperçu ne contient QUE ce dont l'application a besoin (pas de documents, d'outils, de tests ni de maquettes : 25 Mo de moins).
+const INCLUDE = new Set(['index.html', 'manifest.webmanifest', 'storage.js', 'sw.js', 'css', 'js', 'data', 'assets']);
 
 export class PreviewError extends Error {}
 
@@ -44,13 +45,13 @@ export function checkPreviewSource(src, trusted) {
   }
 }
 
-function copyTree(from, to) {
+function copyTree(from, to, top = true) {
   fs.mkdirSync(to, { recursive: true });
   for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
-    if (EXCLUDE.has(entry.name)) continue;
+    if (top && !INCLUDE.has(entry.name)) continue;
     const a = path.join(from, entry.name), b = path.join(to, entry.name);
     if (entry.isSymbolicLink()) continue; // jamais de lien symbolique dans le site
-    if (entry.isDirectory()) copyTree(a, b); else fs.copyFileSync(a, b);
+    if (entry.isDirectory()) copyTree(a, b, false); else fs.copyFileSync(a, b);
   }
 }
 
