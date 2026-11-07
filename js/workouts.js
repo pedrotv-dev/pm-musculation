@@ -117,9 +117,16 @@ function makeDemoStore() {
   const programs = new Map();
   const sessions = new Map();
   const record = data => ({ profileId: DEMO, id: data.id, status: data.status, data: clone(data), updatedAt: data.updatedAt });
+  // Identité de l'état : `generation` change à chaque stockage (donc à chaque réinitialisation de la demo) et
+  // `revision` augmente à CHAQUE écriture de séance. Deux états différents n'ont jamais le même couple, même si
+  // leurs updatedAt sont identiques (plusieurs écritures dans la même milliseconde).
+  let revision = 0;
+  const generation = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
   return {
     programs,
     sessions,
+    generation,
+    get revision() { return revision; },
     get: id => (sessions.has(id) ? clone(sessions.get(id)) : null),
     list: () => [...sessions.values()].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).map(record),
     unfinished() { return this.list().filter(r => isOpenStatus(r.status)); },
@@ -131,6 +138,7 @@ function makeDemoStore() {
         throw new WorkoutError('Séance invalide.', 'INVALID_ARGUMENT');
       }
       sessions.set(id, clone(next));
+      revision++;
       return next;
     },
     create(session) {
@@ -138,11 +146,13 @@ function makeDemoStore() {
       if (open) throw Object.assign(new Error('Une seance est deja en cours pour ce profil.'), { code: 'SESSION_IN_PROGRESS', sessionId: open.id });
       if (sessions.has(session.id)) throw new Error('Identifiant de seance deja utilise.');
       sessions.set(session.id, clone(session));
+      revision++;
       return session;
     },
     removeIf(id, check) {
       check(sessions.has(id) ? clone(sessions.get(id)) : null);
       sessions.delete(id);
+      revision++;
     }
   };
 }
@@ -851,29 +861,38 @@ export const MAX_SETS_PER_ACTIVITY = MAX_SETS;
  */
 export async function demoWorkspace() {
   const st = await demoReady();
+  // copie ET capture de l'identité de l'état dans la même étape synchrone : la base décrit exactement cette copie
   const scratch = makeDemoStore();
   st.programs.forEach((v, k) => scratch.programs.set(k, clone(v)));
   st.sessions.forEach((v, k) => scratch.sessions.set(k, clone(v)));
+  scratch.base = Object.freeze({ generation: st.generation, revision: st.revision });
   return scratch;
 }
 
 /**
- * Applique EN UNE SEULE ÉCRITURE une séance demo préparée dans demoWorkspace(). Refus (rien n'est écrit) si la
- * séance demo a changé entre-temps (`expectedUpdatedAt` différent : une modification concurrente n'est jamais
- * écrasée) ou si une séance est apparue alors qu'on en créait une (`expectedUpdatedAt` = null). Demo uniquement.
+ * Applique EN UNE SEULE ÉCRITURE une séance demo préparée dans demoWorkspace(). Demo uniquement.
+ * `base` = scratch.base (génération + révision du stockage au moment de la copie). Refus (CONFLICT, rien n'est écrit)
+ * si le stockage demo a été réinitialisé (autre génération) ou modifié d'une façon quelconque depuis (autre
+ * révision) : une modification concurrente n'est jamais écrasée, même avec un updatedAt identique.
+ * `authorize` (synchrone) est appelé APRÈS toute attente, puis le contrôle d'identité et l'écriture suivent sans
+ * aucune attente : s'il lève une erreur (profil changé), rien n'est écrit.
  */
-export async function commitDemoSession(prepared, expectedUpdatedAt) {
+export async function commitDemoSession(prepared, base, { authorize } = {}) {
   if (!isObj(prepared) || prepared.profileId !== DEMO || !isOpenStatus(prepared.status)) {
     throw new WorkoutError('Séance de simulation invalide.', 'INVALID_ARGUMENT');
   }
+  if (!isObj(base) || typeof base.generation !== 'string' || !Number.isInteger(base.revision)) {
+    throw new WorkoutError('Copie de travail inconnue.', 'INVALID_ARGUMENT');
+  }
   const st = await demoReady();
-  if (expectedUpdatedAt === null) { st.create(clone(prepared)); return clone(prepared); }
-  return st.update(prepared.id, current => {
-    if (!current || current.updatedAt !== expectedUpdatedAt || !isOpenStatus(current.status)) {
-      throw new WorkoutError('La séance Démo a changé pendant la préparation : rien n’a été appliqué.', 'CONFLICT');
-    }
-    return clone(prepared);
-  });
+  // ---- à partir d'ici, aucune attente : autorisation, contrôle et écriture forment une seule étape
+  if (authorize) authorize();
+  if (st.generation !== base.generation || st.revision !== base.revision) {
+    throw new WorkoutError('La démo a changé pendant la préparation (modification ou réinitialisation) : rien n’a été appliqué.', 'CONFLICT');
+  }
+  if (st.sessions.has(prepared.id)) st.update(prepared.id, () => clone(prepared));
+  else st.create(clone(prepared));
+  return clone(prepared);
 }
 
 /**

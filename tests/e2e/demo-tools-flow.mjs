@@ -290,6 +290,20 @@ for (const [w, h] of SIZES) {
     assert.equal(await exportOf('manon'), realBefore.manon, 'Manon modifiée');
   });
 
+  await step(`A · profil changé juste après l’application : « appliquée », aucun récapitulatif ouvert sur Pierre (${w} px)`, async () => {
+    await openTools();
+    const r = await page.evaluate(async () => {
+      const t = await import('./js/demo-tools.js');
+      const res = await t.prepareDemoSession({ complete: true }, { afterCommit: () => { document.documentElement.dataset.pmProfile = 'pierre'; } });
+      await new Promise(f => setTimeout(f, 400));
+      const out = { applied: res.applied, opened: res.opened, workoutVisible: !document.getElementById('pm-workout-screen').hidden };
+      document.documentElement.dataset.pmProfile = 'demo';
+      return out;
+    });
+    assert.deepEqual(r, { applied: true, opened: false, workoutVisible: false });
+    assert.equal(await page.locator('.pm-modal:has-text("Simulation non lancée")').count(), 0);
+  });
+
   await step(`« Réinitialiser la démo » : retour à l’état de départ (niveau, séances) (${w} px)`, async () => {
     await openTools();
     await page.click('[data-page="profil"] button:has-text("Réinitialiser la démo")');

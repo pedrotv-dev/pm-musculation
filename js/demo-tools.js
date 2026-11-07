@@ -10,7 +10,9 @@
  * avec les fonctions RÉELLES de js/workouts.js et donc leurs limites (MAX 20 séries par activité). L'état de départ
  * est contrôlé, la faisabilité vérifiée, puis le vrai calcul (gamification.rewardFor) doit confirmer le résultat
  * demandé. Alors seulement la séance est appliquée EN UNE ÉCRITURE (workouts.commitDemoSession), et seulement si la
- * séance Démo n'a pas changé entre-temps. Tout refus ou toute interruption laisse la séance Démo intacte.
+ * démo n'a ni été modifiée (révision) ni réinitialisée (génération) depuis la copie, et si le profil est toujours
+ * Démo au moment même de l'écriture. Tout refus ou toute interruption avant l'écriture laisse la démo intacte ;
+ * après une écriture réussie, le résultat est annoncé comme appliqué, même si le profil a changé ensuite.
  * Une seule simulation à la fois. Aucune XP n'est stockée : « Valider ma séance » recalcule tout.
  * Le profil Démo est en mémoire uniquement : rien n'atteint IndexedDB, Pierre ou Manon.
  *
@@ -88,11 +90,13 @@ export const isSimulationRunning = () => running;
  * Prépare la séance Démo puis ouvre le vrai récapitulatif. Tout-ou-rien : en cas de refus, d'erreur ou
  * d'interruption, la séance Démo réelle n'est pas touchée.
  * @param {{complete:boolean, record?:boolean, levelUp?:boolean, feeling5?:boolean}} o
- * @param {{onStep?:Function, open?:boolean}} [hooks] onStep : appelé après chaque étape (tests d'interruption) ;
- *   open:false : ne pas ouvrir le récapitulatif (tests).
- * @returns {Promise<{session:object, reward:object}>} séance appliquée et récompense prévue par le vrai calcul
+ * @param {{onStep?:Function, beforeCommit?:Function, afterCommit?:Function, open?:boolean}} [hooks] points d'observation
+ *   pour les tests (interruptions, changement de profil autour de l'application) ; open:false : pas de récapitulatif.
+ * @returns {Promise<{applied:true, session:object, reward:object, opened:boolean}>} séance RÉELLEMENT appliquée ;
+ *   `opened` : récapitulatif ouvert (faux si le profil n'est plus Démo après l'application).
+ * Une erreur (NotDemo, SimulationRefused, CONFLICT…) n'est levée QUE si rien n'a été appliqué.
  */
-export async function prepareDemoSession(o, { onStep, open = true } = {}) {
+export async function prepareDemoSession(o, { onStep, beforeCommit, afterCommit, open = true } = {}) {
   guard();
   if (running) refuse('Une simulation est déjà en cours de préparation.');
   running = true;
@@ -104,16 +108,15 @@ export async function prepareDemoSession(o, { onStep, open = true } = {}) {
 
     // 1. séance de départ (copie) et contrôle de son état
     const openRec = scratch.unfinished()[0];
-    let s, expected;
+    let s;
     if (openRec) {
-      s = openRec.data; expected = s.updatedAt;
+      s = openRec.data;
       if (s.status === 'paused') refuse('La séance Démo est en pause : reprends-la depuis l’accueil, puis relance la simulation.');
     } else {
       const program = [...scratch.programs.values()][0];
       const day = program && program.days.find(d => (d.activities || []).some(a => a.type === 'strength'));
       if (!day) refuse('Le programme Démo n’a pas de séance de musculation.');
       s = await tick(() => startWorkout(DEMO, { dayId: day.id, weekStart: program.weekStart, store: scratch }));
-      expected = null;
     }
     const pending = s.activities.filter(a => a.status === 'pending');
     const skipped = s.activities.filter(a => a.status === 'skipped');
@@ -194,12 +197,18 @@ export async function prepareDemoSession(o, { onStep, open = true } = {}) {
     }
     if (s.activities.some(a => a.sets && a.sets.length > MAX)) refuse('Limite de ' + MAX + ' séries dépassée.');
 
-    // 4. application en une seule écriture, si la séance Démo n'a pas changé entre-temps
+    // 4. application en une seule écriture. Le profil est revérifié PAR LE MOTEUR, après toute attente et sans attente
+    //    avant l'écriture (authorize), avec le contrôle génération + révision de la démo : sinon rien n'est écrit.
     guard();
-    const applied = await commitDemoSession(s, expected);
-    guard();
-    if (open) document.dispatchEvent(new CustomEvent('pm:resume-workout', { detail: { view: 'recap' } }));
-    return { session: applied, reward };
+    if (beforeCommit) beforeCommit();
+    const applied = await commitDemoSession(s, scratch.base, { authorize: guard });
+    // ---- l'application a RÉELLEMENT eu lieu : à partir d'ici, plus aucune erreur ne peut être annoncée
+    if (afterCommit) { try { afterCommit(); } catch (_) { /* observation de test */ } }
+    let opened = false;
+    if (open && isDemoActive()) { // jamais de récapitulatif Démo sur Pierre ou Manon
+      try { document.dispatchEvent(new CustomEvent('pm:resume-workout', { detail: { view: 'recap' } })); opened = true; } catch (_) { opened = false; }
+    }
+    return { applied: true, session: applied, reward, opened };
   } finally { running = false; }
 }
 const nameOf = a => a.name || a.machineId || 'activité';
@@ -306,8 +315,10 @@ export function demoToolsSection() {
   const run = btn('Préparer la séance fictive', 'pm-validate pm-demo-run', safe(async () => {
     if (run.disabled) return;
     run.disabled = true; run.setAttribute('aria-busy', 'true');
-    try { await prepareDemoSession({ complete: how.select.value === 'complete', record: record.input.checked, levelUp: up.input.checked, feeling5: feel.input.checked }); }
-    finally { run.disabled = false; run.removeAttribute('aria-busy'); }
+    try {
+      const r = await prepareDemoSession({ complete: how.select.value === 'complete', record: record.input.checked, levelUp: up.input.checked, feeling5: feel.input.checked });
+      if (!r.opened) toast('Simulation appliquée à la séance Démo. Récapitulatif non ouvert (profil changé) : reviens sur Démo et reprends la séance pour la valider.', { duration: 6000 });
+    } finally { run.disabled = false; run.removeAttribute('aria-busy'); }
   }));
   b.append(how.wrap, record.wrap, up.wrap, feel.wrap, run);
   b.append(el('p', 'pm-muted pm-demo-note', 'Pour revenir à l’état de départ : « Réinitialiser la démo » ci-dessous.'));
