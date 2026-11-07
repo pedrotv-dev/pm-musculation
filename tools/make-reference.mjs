@@ -13,8 +13,8 @@ export const REFERENCE_PATH = 'docs/reference-programme-chatgpt.json';
 // --- exemple de programme : [machine, partagée ?, Pierre, Manon]  (null = machine propre à l'autre personne)
 // Pierre / Manon : { rest, sets: [[kg, reps], ...] }
 const rep = (n, kg, reps) => Array.from({ length: n }, () => [kg, reps]);
-const warm = (name, pierre, manon) => ({ type: 'warmup', name, p: pierre, m: manon });
-const cardio = (name, pierre, manon) => ({ type: 'cardio', name, p: pierre, m: manon });
+const warm = (name, pierre, manon, extra) => ({ type: 'warmup', name, p: pierre, m: manon, extra });
+const cardio = (name, pierre, manon, extra) => ({ type: 'cardio', name, p: pierre, m: manon, extra });
 const lift = (machineId, shared, p, m) => ({ type: 'strength', machineId, shared, p, m });
 const P = (rest, sets) => ({ rest, sets });
 
@@ -25,8 +25,8 @@ const DAYS = [
     lift('leg-extension', true, P(90, rep(3, 45, 12)), P(60, rep(3, 25, 15))),
     lift('seated-leg-curl', true, P(90, rep(3, 40, 12)), P(60, rep(3, 25, 15))),
     lift('calf-press', true, P(60, rep(3, 60, 15)), P(60, rep(3, 40, 15))),
-    lift('hip-abduction', false, null, P(60, rep(3, 30, 15))), // machine propre à Manon
-    cardio('Tapis de course', 10, 15)
+    lift('hip-abduction-open-close', false, null, P(60, rep(3, 30, 15))), // machine propre à Manon
+    cardio('Tapis de course', 10, 15, { incline: 3, speed: 6 })
   ] },
   { id: 'mardi', name: 'Poussée', acts: [
     warm('Rameur', 6, 6),
@@ -35,7 +35,7 @@ const DAYS = [
     lift('triceps-extension', true, P(75, rep(3, 30, 12)), P(60, rep(3, 20, 12))),
     lift('seated-dip', true, P(75, rep(3, 40, 10)), P(60, rep(3, 25, 10))),
     lift('rear-delt-pec-fly', false, P(60, rep(3, 25, 15)), null), // machine propre à Pierre
-    cardio('Vélo elliptique', 10, 15)
+    cardio('Vélo elliptique', 10, 15, { level: 8 })
   ] },
   { id: 'mercredi', name: 'Dos & biceps', acts: [
     warm('Rameur', 6, 6),
@@ -47,7 +47,7 @@ const DAYS = [
     cardio('Vélo assis', 15, 20)
   ] },
   { id: 'jeudi', name: 'Full body', acts: [
-    warm('Vélo assis', 8, 8),
+    warm('Vélo assis', 8, 8, { level: 3 }),
     lift('leg-press', true, P(120, rep(2, 70, 12)), P(90, rep(2, 40, 12))),
     lift('converging-chest-press', true, P(90, rep(2, 35, 10)), P(75, rep(2, 20, 12))),
     lift('diverging-lat-pulldown', true, P(90, rep(2, 45, 12)), P(75, rep(2, 25, 12))),
@@ -58,11 +58,12 @@ const DAYS = [
   { id: 'vendredi', name: 'Épaules, jambes & abdos', acts: [
     warm('Rameur', 6, 6),
     lift('converging-shoulder-press', true, P(90, rep(3, 30, 10)), P(90, rep(3, 15, 12))),
-    lift('hip-abduction', false, P(60, rep(3, 45, 15)), P(60, rep(3, 30, 15))),
-    lift('rotary-hip', false, P(60, rep(3, 30, 12)), P(60, rep(3, 20, 12))),
+    lift('hip-abduction-open-close', false, P(60, rep(3, 45, 15)), P(60, rep(3, 30, 15))),
+    lift('hip-abduction-close-open', false, P(60, rep(3, 45, 15)), P(60, rep(3, 30, 15))),
+    lift('rotary-hip', false, P(60, rep(2, 30, 12)), P(60, rep(2, 20, 12))), // 2 séries PAR CÔTÉ = 4 séries dans l'application
     lift('abdominal', true, P(60, rep(3, 45, 15)), P(60, rep(3, 30, 15))),
     lift('rotary-torso', false, P(60, rep(3, 40, 12)), P(60, rep(3, 25, 12))),
-    cardio('Vélo elliptique', 12, 15)
+    cardio('Escalier', 8, 10, { level: 6 })
   ] }
 ];
 
@@ -75,7 +76,7 @@ function buildProfile(key) {
         if (a.type === 'strength') {
           return { type: 'strength', machineId: a.machineId, shared: a.shared, restSeconds: a[key].rest, sets: a[key].sets.map(([kg, reps]) => ({ kg, reps })) };
         }
-        return { type: a.type, name: a.name, durationMinutes: a[key] };
+        return { type: a.type, name: a.name, durationMinutes: a[key], ...(a.extra || {}) };
       })
     }))
   };
@@ -116,7 +117,8 @@ export function buildReference() {
         'programs contient les clés "pierre" et "manon" dans le MÊME fichier ; chaque téléphone n\'importe que le programme de son propriétaire.',
         'Chaque profil contient "days" : au plus 7 jours, en général 5 (lundi à vendredi). L\'identifiant d\'un jour est EXACTEMENT l\'un de : lundi, mardi, mercredi, jeudi, vendredi, samedi, dimanche (minuscules, sans accent), une seule fois chacun. "name" est un titre court de séance (ex. « Jambes & mollets »).',
         '"activities" est une liste ORDONNÉE, jamais vide : l\'application suit exactement cet ordre. Habituellement : un échauffement au début, les machines de musculation, du cardio en fin de séance ou en complément.',
-        'Type "warmup" ou "cardio" : { "type": "warmup" | "cardio", "name": "<nom de machine cardio>", "durationMinutes": <nombre> }. Le name doit être EXACTEMENT un nom du catalogue de kind "cardio" (Vélo assis, Tapis de course, Vélo elliptique, Rameur) : il sert à afficher la bonne photo.',
+        'Type "warmup" ou "cardio" : { "type": "warmup" | "cardio", "name": "<nom de machine cardio>", "durationMinutes": <nombre> }. Le name doit être EXACTEMENT un nom du catalogue de kind "cardio" (Vélo assis, Tapis de course, Vélo elliptique, Rameur, Escalier) : il sert à afficher la bonne photo.',
+        'Réglages de cardio FACULTATIFS (échauffement ou cardio) : "incline" (pente en %, 0 à 40, ex. 3), "speed" (vitesse : km/h sur le tapis, ex. 6.5 ; sur les autres appareils, la valeur affichée par la machine) et "level" (niveau / résistance, entier de 0 à 100). Ajoute-les quand c\'est utile (ex. tapis : incline + speed ; vélo, elliptique, escalier : level) : l\'application les affiche pendant la séance et les remet dans le bilan.',
         'Type "strength" : { "type": "strength", "machineId": "<id>", "shared": true|false, "restSeconds": <entier>, "sets": [ { "kg": <nombre>, "reps": <entier> }, ... ] }.',
         'machineId : UNIQUEMENT un « id » du catalogue de kind "strength" (ex. "leg-press"), jamais le nom affiché (« Leg Press » est refusé) et jamais un identifiant inventé. Machines guidées Basic-Fit uniquement : pas de barre, d\'haltères ni de poulie libre.',
         'sets : une entrée par série, avec la charge prévue (kg) et les répétitions prévues (reps) ; les séries d\'une même machine peuvent différer (montée en charge, séries lourdes puis légères…).',
@@ -124,7 +126,8 @@ export function buildReference() {
         '"shared" : true si l\'autre personne utilise aussi cette machine pendant cette séance (elles se la partagent), false sinon. L\'écran affiche « machine commune ».',
         'Coordination : pour un même jour, garde le même ordre de machines pour Pierre et Manon quand c\'est possible, en individualisant charges, répétitions, nombre de séries, repos et cardio. Tu peux ajouter des machines propres à un seul des deux (voir l\'exemple : hip-abduction le lundi pour Manon, rear-delt-pec-fly le mardi pour Pierre).',
         'Dip / Chin Assist : la charge « kg » est l\'ASSISTANCE (contrepoids qui aide), pas le poids soulevé.',
-        'Hip Abduction possède deux positions (ouverte / fermée) mais le format ne permet pas de la préciser : ne cherche pas à l\'indiquer.',
+        'Hip Abduction : la salle a DEUX machines distinctes — "hip-abduction-open-close" (mouvement ouvert → fermé) et "hip-abduction-close-open" (fermé → ouvert). Choisis l\'une, l\'autre ou les deux. N\'utilise jamais l\'ancien id "hip-abduction".',
+        'Rotary Hip (rotary-hip) : UNE SÉRIE = UN CÔTÉ. Dans "sets", compte les séries PAR CÔTÉ : 2 séries prévues = 4 séries réalisées dans l\'application (gauche, droite, gauche, droite). "kg" est la charge de la machine pour chaque côté. Tu peux écrire "perSide": true ou false sur une activité de musculation pour forcer ou annuler cette règle ; par défaut seul Rotary Hip fonctionne par côté.',
         'Vérifie avant de répondre : jours valides et uniques, ids de machines tous présents dans le catalogue, weekStart = un lundi, nombres au format JSON.'
       ],
       limites_techniques: {
@@ -135,6 +138,9 @@ export function buildReference() {
         reps: 'entier de 1 à 1000',
         restSeconds: 'entier de 0 à 3600',
         durationMinutes: 'nombre strictement positif',
+        incline: 'facultatif : nombre de 0 à 40 (%)',
+        speed: 'facultatif : nombre de 0 à 60',
+        level: 'facultatif : entier de 0 à 100',
         taille_du_fichier: '1 Mo maximum'
       },
       contexte: {
@@ -150,7 +156,7 @@ export function buildReference() {
     programs: { pierre: buildProfile('p'), manon: buildProfile('m') },
     _catalogue_machines: {
       note: 'machineId = « id » pour les machines "strength". Les appareils "cardio" s\'écrivent avec leur « name » exact dans une activité warmup ou cardio.',
-      machines: catalog.map(m => { const o = { id: m.id, name: m.name, kind: m.kind, muscleGroup: m.muscleGroup }; if (m.variants) o.variantes_non_gerees = m.variants; return o; })
+      machines: catalog.filter(m => !m.deprecated).map(m => { const o = { id: m.id, name: m.name, kind: m.kind, muscleGroup: m.muscleGroup }; if (m.perSide) o.une_serie_par_cote = true; return o; })
     },
     _exemple_de_bilan: {
       note: 'Extrait du bilan texte que l\'utilisateur te colle chaque semaine (ici avec des DONNÉES FICTIVES). Repères : « ⚠ objectif non atteint » = répétitions ou charge inférieures au prévu ; « PARTIELLE » = séance non terminée ; « RECORD » = nouvelle charge maximale ; [reportée…], [ajoutée], [incomplète] = écarts avec le programme ; les ressentis vont de 1 (très dur) à 5 (très bien).',

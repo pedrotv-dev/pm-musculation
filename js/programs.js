@@ -17,14 +17,17 @@
  *       { "type": "warmup",   "name": "Rameur", "durationSeconds": 300 },
  *       { "type": "strength", "machineId": "chest-press", "shared": false,
  *         "sets": [ { "kg": 40, "reps": 10 }, { "kg": 45, "reps": 8 } ], "restSeconds": 90 },
- *       { "type": "cardio",   "name": "Velo", "durationMinutes": 15 }
+ *       { "type": "cardio",   "name": "Tapis de course", "durationMinutes": 15, "incline": 3, "speed": 6.5, "level": 2 }
  *     ] } ] },
  *     "manon": { ... }
  *   }
  * }
+ * Cardio / echauffement : incline (%), speed, level facultatifs (js/cardio.js).
+ * Musculation : perSide facultatif (une serie = un cote ; defaut selon la machine, js/machine-rules.js).
  */
 
 import { saveProgram, getProgram, listPrograms } from '../storage.js';
+import { CARDIO_METRICS, metricError } from './cardio.js';
 
 const PROGRAM_SCHEMA_VERSION = 1;
 
@@ -121,7 +124,15 @@ function checkActivity(a, where, errors, machines) {
   for (const f of ['durationSeconds', 'durationMinutes']) {
     if (a[f] !== undefined && !isPos(a[f])) errors.push(`${where} : ${f} doit etre un nombre positif.`);
   }
-  if (a.type !== 'strength') return;
+  if (a.type !== 'strength') {
+    for (const m of CARDIO_METRICS) {
+      const err = metricError(m, a[m.key]);
+      if (a[m.key] !== undefined && a[m.key] !== null && err) errors.push(`${where} : ${m.key} : ${err}`);
+      else if (a[m.key] === null) errors.push(`${where} : ${m.key} doit etre un nombre (ou absent).`);
+    }
+    return;
+  }
+  if (a.perSide !== undefined && typeof a.perSide !== 'boolean') errors.push(`${where} : perSide doit etre true ou false.`);
 
   if (!isStr(a.machineId) || !MACHINE_ID.test(a.machineId)) {
     errors.push(`${where} : machineId absent ou invalide.`);

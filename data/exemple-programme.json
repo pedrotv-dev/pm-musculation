@@ -435,7 +435,7 @@
             },
             {
               "type": "strength",
-              "machineId": "hip-abduction",
+              "machineId": "hip-abduction-open-close",
               "shared": false,
               "sets": [
                 {
@@ -955,7 +955,7 @@
             },
             {
               "type": "strength",
-              "machineId": "hip-abduction",
+              "machineId": "hip-abduction-open-close",
               "shared": false,
               "sets": [
                 {

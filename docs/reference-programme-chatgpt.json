@@ -17,7 +17,8 @@
       "programs contient les clés \"pierre\" et \"manon\" dans le MÊME fichier ; chaque téléphone n'importe que le programme de son propriétaire.",
       "Chaque profil contient \"days\" : au plus 7 jours, en général 5 (lundi à vendredi). L'identifiant d'un jour est EXACTEMENT l'un de : lundi, mardi, mercredi, jeudi, vendredi, samedi, dimanche (minuscules, sans accent), une seule fois chacun. \"name\" est un titre court de séance (ex. « Jambes & mollets »).",
       "\"activities\" est une liste ORDONNÉE, jamais vide : l'application suit exactement cet ordre. Habituellement : un échauffement au début, les machines de musculation, du cardio en fin de séance ou en complément.",
-      "Type \"warmup\" ou \"cardio\" : { \"type\": \"warmup\" | \"cardio\", \"name\": \"<nom de machine cardio>\", \"durationMinutes\": <nombre> }. Le name doit être EXACTEMENT un nom du catalogue de kind \"cardio\" (Vélo assis, Tapis de course, Vélo elliptique, Rameur) : il sert à afficher la bonne photo.",
+      "Type \"warmup\" ou \"cardio\" : { \"type\": \"warmup\" | \"cardio\", \"name\": \"<nom de machine cardio>\", \"durationMinutes\": <nombre> }. Le name doit être EXACTEMENT un nom du catalogue de kind \"cardio\" (Vélo assis, Tapis de course, Vélo elliptique, Rameur, Escalier) : il sert à afficher la bonne photo.",
+      "Réglages de cardio FACULTATIFS (échauffement ou cardio) : \"incline\" (pente en %, 0 à 40, ex. 3), \"speed\" (vitesse : km/h sur le tapis, ex. 6.5 ; sur les autres appareils, la valeur affichée par la machine) et \"level\" (niveau / résistance, entier de 0 à 100). Ajoute-les quand c'est utile (ex. tapis : incline + speed ; vélo, elliptique, escalier : level) : l'application les affiche pendant la séance et les remet dans le bilan.",
       "Type \"strength\" : { \"type\": \"strength\", \"machineId\": \"<id>\", \"shared\": true|false, \"restSeconds\": <entier>, \"sets\": [ { \"kg\": <nombre>, \"reps\": <entier> }, ... ] }.",
       "machineId : UNIQUEMENT un « id » du catalogue de kind \"strength\" (ex. \"leg-press\"), jamais le nom affiché (« Leg Press » est refusé) et jamais un identifiant inventé. Machines guidées Basic-Fit uniquement : pas de barre, d'haltères ni de poulie libre.",
       "sets : une entrée par série, avec la charge prévue (kg) et les répétitions prévues (reps) ; les séries d'une même machine peuvent différer (montée en charge, séries lourdes puis légères…).",
@@ -25,7 +26,8 @@
       "\"shared\" : true si l'autre personne utilise aussi cette machine pendant cette séance (elles se la partagent), false sinon. L'écran affiche « machine commune ».",
       "Coordination : pour un même jour, garde le même ordre de machines pour Pierre et Manon quand c'est possible, en individualisant charges, répétitions, nombre de séries, repos et cardio. Tu peux ajouter des machines propres à un seul des deux (voir l'exemple : hip-abduction le lundi pour Manon, rear-delt-pec-fly le mardi pour Pierre).",
       "Dip / Chin Assist : la charge « kg » est l'ASSISTANCE (contrepoids qui aide), pas le poids soulevé.",
-      "Hip Abduction possède deux positions (ouverte / fermée) mais le format ne permet pas de la préciser : ne cherche pas à l'indiquer.",
+      "Hip Abduction : la salle a DEUX machines distinctes — \"hip-abduction-open-close\" (mouvement ouvert → fermé) et \"hip-abduction-close-open\" (fermé → ouvert). Choisis l'une, l'autre ou les deux. N'utilise jamais l'ancien id \"hip-abduction\".",
+      "Rotary Hip (rotary-hip) : UNE SÉRIE = UN CÔTÉ. Dans \"sets\", compte les séries PAR CÔTÉ : 2 séries prévues = 4 séries réalisées dans l'application (gauche, droite, gauche, droite). \"kg\" est la charge de la machine pour chaque côté. Tu peux écrire \"perSide\": true ou false sur une activité de musculation pour forcer ou annuler cette règle ; par défaut seul Rotary Hip fonctionne par côté.",
       "Vérifie avant de répondre : jours valides et uniques, ids de machines tous présents dans le catalogue, weekStart = un lundi, nombres au format JSON."
     ],
     "limites_techniques": {
@@ -36,6 +38,9 @@
       "reps": "entier de 1 à 1000",
       "restSeconds": "entier de 0 à 3600",
       "durationMinutes": "nombre strictement positif",
+      "incline": "facultatif : nombre de 0 à 40 (%)",
+      "speed": "facultatif : nombre de 0 à 60",
+      "level": "facultatif : entier de 0 à 100",
       "taille_du_fichier": "1 Mo maximum"
     },
     "contexte": {
@@ -151,7 +156,9 @@
             {
               "type": "cardio",
               "name": "Tapis de course",
-              "durationMinutes": 10
+              "durationMinutes": 10,
+              "incline": 3,
+              "speed": 6
             }
           ]
         },
@@ -271,7 +278,8 @@
             {
               "type": "cardio",
               "name": "Vélo elliptique",
-              "durationMinutes": 10
+              "durationMinutes": 10,
+              "level": 8
             }
           ]
         },
@@ -398,7 +406,8 @@
             {
               "type": "warmup",
               "name": "Vélo assis",
-              "durationMinutes": 8
+              "durationMinutes": 8,
+              "level": 3
             },
             {
               "type": "strength",
@@ -518,7 +527,27 @@
             },
             {
               "type": "strength",
-              "machineId": "hip-abduction",
+              "machineId": "hip-abduction-open-close",
+              "shared": false,
+              "restSeconds": 60,
+              "sets": [
+                {
+                  "kg": 45,
+                  "reps": 15
+                },
+                {
+                  "kg": 45,
+                  "reps": 15
+                },
+                {
+                  "kg": 45,
+                  "reps": 15
+                }
+              ]
+            },
+            {
+              "type": "strength",
+              "machineId": "hip-abduction-close-open",
               "shared": false,
               "restSeconds": 60,
               "sets": [
@@ -542,10 +571,6 @@
               "shared": false,
               "restSeconds": 60,
               "sets": [
-                {
-                  "kg": 30,
-                  "reps": 12
-                },
                 {
                   "kg": 30,
                   "reps": 12
@@ -598,8 +623,9 @@
             },
             {
               "type": "cardio",
-              "name": "Vélo elliptique",
-              "durationMinutes": 12
+              "name": "Escalier",
+              "durationMinutes": 8,
+              "level": 6
             }
           ]
         }
@@ -698,7 +724,7 @@
             },
             {
               "type": "strength",
-              "machineId": "hip-abduction",
+              "machineId": "hip-abduction-open-close",
               "shared": false,
               "restSeconds": 60,
               "sets": [
@@ -719,7 +745,9 @@
             {
               "type": "cardio",
               "name": "Tapis de course",
-              "durationMinutes": 15
+              "durationMinutes": 15,
+              "incline": 3,
+              "speed": 6
             }
           ]
         },
@@ -815,7 +843,8 @@
             {
               "type": "cardio",
               "name": "Vélo elliptique",
-              "durationMinutes": 15
+              "durationMinutes": 15,
+              "level": 8
             }
           ]
         },
@@ -938,7 +967,8 @@
             {
               "type": "warmup",
               "name": "Vélo assis",
-              "durationMinutes": 8
+              "durationMinutes": 8,
+              "level": 3
             },
             {
               "type": "strength",
@@ -1058,7 +1088,27 @@
             },
             {
               "type": "strength",
-              "machineId": "hip-abduction",
+              "machineId": "hip-abduction-open-close",
+              "shared": false,
+              "restSeconds": 60,
+              "sets": [
+                {
+                  "kg": 30,
+                  "reps": 15
+                },
+                {
+                  "kg": 30,
+                  "reps": 15
+                },
+                {
+                  "kg": 30,
+                  "reps": 15
+                }
+              ]
+            },
+            {
+              "type": "strength",
+              "machineId": "hip-abduction-close-open",
               "shared": false,
               "restSeconds": 60,
               "sets": [
@@ -1082,10 +1132,6 @@
               "shared": false,
               "restSeconds": 60,
               "sets": [
-                {
-                  "kg": 20,
-                  "reps": 12
-                },
                 {
                   "kg": 20,
                   "reps": 12
@@ -1138,8 +1184,9 @@
             },
             {
               "type": "cardio",
-              "name": "Vélo elliptique",
-              "durationMinutes": 15
+              "name": "Escalier",
+              "durationMinutes": 10,
+              "level": 6
             }
           ]
         }
@@ -1258,20 +1305,23 @@
         "muscleGroup": "Haut du corps"
       },
       {
-        "id": "hip-abduction",
-        "name": "Hip Abduction (2 positions)",
+        "id": "hip-abduction-open-close",
+        "name": "Hip Abduction · ouvert → fermé",
         "kind": "strength",
-        "muscleGroup": "Jambes",
-        "variantes_non_gerees": [
-          "Position ouverte",
-          "Position fermée"
-        ]
+        "muscleGroup": "Jambes"
+      },
+      {
+        "id": "hip-abduction-close-open",
+        "name": "Hip Abduction · fermé → ouvert",
+        "kind": "strength",
+        "muscleGroup": "Jambes"
       },
       {
         "id": "rotary-hip",
         "name": "Rotary Hip",
         "kind": "strength",
-        "muscleGroup": "Jambes"
+        "muscleGroup": "Jambes",
+        "une_serie_par_cote": true
       },
       {
         "id": "calf-press",
@@ -1312,6 +1362,12 @@
       {
         "id": "rowing-machine",
         "name": "Rameur",
+        "kind": "cardio",
+        "muscleGroup": "Cardio"
+      },
+      {
+        "id": "stairs",
+        "name": "Escalier",
         "kind": "cardio",
         "muscleGroup": "Cardio"
       }

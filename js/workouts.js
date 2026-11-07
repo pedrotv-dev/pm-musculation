@@ -39,6 +39,8 @@ import {
   updateSession, createSessionIfNoneOpen, deleteSessionIf
 } from '../storage.js';
 import { mondayOf } from './programs.js';
+import { isPerSide, expandSides, nextSide } from './machine-rules.js';
+import { cleanMetrics } from './cardio.js';
 
 const WORKOUT_SCHEMA_VERSION = 1;
 
@@ -200,6 +202,10 @@ function findSet(a, setId) {
   return set;
 }
 
+function cleanMetricsOrThrow(src) {
+  try { return cleanMetrics(src); } catch (e) { throw new WorkoutError(e.message, 'INVALID_ARGUMENT'); }
+}
+
 function requireStrength(a) {
   if (a.type !== 'strength') throw new WorkoutError('Cette activité n\'a pas de séries.', 'INVALID_STATE');
 }
@@ -327,7 +333,9 @@ export function startWorkout(profileId, { dayId, weekStart, now = new Date(), st
         a.machineId = p.machineId;
         a.shared = p.shared;
         a.restSeconds = p.restSeconds;
-        a.sets = p.sets.map((t, j) => ({ id: `s${j + 1}`, kg: t.kg, reps: t.reps, done: false, doneAt: null }));
+        const per = isPerSide(p.machineId, p.perSide);
+        a.sets = buildSets(p.sets, per);
+        if (per) a.perSide = true; // seules les machines « par côté » portent l'indicateur
         a.nextSetId = a.sets.length + 1;
       }
       return a;
@@ -362,6 +370,15 @@ export function startWorkout(profileId, { dayId, weekStart, now = new Date(), st
       throw error;
     }
   })();
+}
+
+/** Séries de la séance depuis les séries prévues ; « par côté » : gauche puis droite pour chaque série prévue. */
+function buildSets(plannedSets, perSide) {
+  return (perSide ? expandSides(plannedSets) : plannedSets).map((t, j) => {
+    const set = { id: `s${j + 1}`, kg: t.kg, reps: t.reps, done: false, doneAt: null };
+    if (t.side) set.side = t.side;
+    return set;
+  });
 }
 
 /** Une seance par identifiant (null si absente ou en demo). */
@@ -446,13 +463,15 @@ export function addSet(profileId, sessionId, activityKey, { kg, reps } = {}, opt
     requireStrength(a);
     if (a.sets.length >= MAX_SETS) throw new WorkoutError(`Maximum ${MAX_SETS} séries.`, 'INVALID_SET');
     const last = a.sets.length ? a.sets[a.sets.length - 1] : a.planned.sets[0];
-    a.sets.push({
+    const set = {
       id: `s${a.nextSetId}`,
       kg: kg === undefined ? last.kg : checkKg(kg),
       reps: reps === undefined ? last.reps : checkReps(reps),
       done: false,
       doneAt: null
-    });
+    };
+    if (a.perSide) set.side = nextSide(last.side);
+    a.sets.push(set);
     a.nextSetId += 1;
     refresh(a);
   }, options);
@@ -478,7 +497,8 @@ export function completeActivity(profileId, sessionId, activityKey, { done = tru
     if (a.type === 'strength') throw new WorkoutError('Valider les séries de cette machine.', 'INVALID_STATE');
     if (actual !== undefined) {
       if (!isObj(actual)) throw new WorkoutError('Résultat invalide.', 'INVALID_ARGUMENT');
-      a.actual = clone(actual);
+      a.actual = { ...clone(actual), ...cleanMetricsOrThrow(actual) };
+      for (const k of ['incline', 'speed', 'level']) if (actual[k] === null) delete a.actual[k]; // champ vidé
     }
     a.status = done ? 'done' : 'pending';
     if (done && a.postponed) { a.postponed = false; a.wasPostponed = true; }
@@ -606,8 +626,12 @@ function newActivity(s, spec) {
     planned.shared = spec.shared === true;
     planned.restSeconds = Number.isInteger(spec.restSeconds) && spec.restSeconds >= 0 && spec.restSeconds <= 3600 ? spec.restSeconds : 90;
     a.machineId = spec.machineId; a.shared = planned.shared; a.restSeconds = planned.restSeconds;
-    a.sets = planned.sets.map((t, j) => ({ id: `s${j + 1}`, kg: t.kg, reps: t.reps, done: false, doneAt: null }));
+    const per = isPerSide(spec.machineId, spec.perSide);
+    a.sets = buildSets(planned.sets, per);
+    if (per) a.perSide = true;
     a.nextSetId = a.sets.length + 1;
+  } else if (spec.type !== 'strength') {
+    Object.assign(planned, cleanMetricsOrThrow(spec));
   }
   return a;
 }
@@ -710,11 +734,13 @@ export function correctAddSet(profileId, sessionId, activityKey, { kg, reps, don
     requireStrength(a);
     if (a.sets.length >= MAX_SETS) throw new WorkoutError(`Maximum ${MAX_SETS} séries.`, 'INVALID_SET');
     const last = a.sets.length ? a.sets[a.sets.length - 1] : a.planned.sets[0];
-    a.sets.push({
+    const set = {
       id: `s${a.nextSetId}`, kg: kg === undefined ? last.kg : checkKg(kg),
       reps: reps === undefined ? last.reps : checkReps(reps), done: done === true,
       doneAt: done === true ? (s.endedAt || isoOf(options && options.now)) : null
-    });
+    };
+    if (a.perSide) set.side = nextSide(last.side);
+    a.sets.push(set);
     a.nextSetId += 1;
     refresh(a); settleClosedStatus(s);
   }, { ...(options || {}), allowPaused: true, allowClosed: true, keepUpdatedAt: true });
@@ -741,6 +767,22 @@ export function correctActivityDuration(profileId, sessionId, activityKey, durat
     a.actual = { ...(a.actual || {}), durationMinutes };
     a.status = 'done';
     settleClosedStatus(s);
+  }, { ...(options || {}), allowPaused: true, allowClosed: true, keepUpdatedAt: true });
+}
+
+/** Corrige les réglages (inclinaison, vitesse, niveau) d'un échauffement / cardio ; une valeur `null` l'efface. */
+export function correctActivityMetrics(profileId, sessionId, activityKey, metrics = {}, options) {
+  return mutate(profileId, sessionId, s => {
+    const a = findActivity(s, activityKey);
+    if (a.type === 'strength') throw new WorkoutError('Cette activité n\'a pas de réglages cardio.', 'INVALID_STATE');
+    if (!isObj(metrics)) throw new WorkoutError('Réglages invalides.', 'INVALID_ARGUMENT');
+    const clean = cleanMetricsOrThrow(metrics);
+    const actual = { ...(a.actual || {}) };
+    for (const k of ['incline', 'speed', 'level']) {
+      if (metrics[k] === null) delete actual[k];
+      else if (k in clean) actual[k] = clean[k];
+    }
+    a.actual = actual;
   }, { ...(options || {}), allowPaused: true, allowClosed: true, keepUpdatedAt: true });
 }
 

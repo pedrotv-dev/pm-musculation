@@ -9,6 +9,8 @@ import {
 } from './rest-timer.js';
 import { el, btn } from './dom.js';
 import { isKnownProfile } from './profiles.js';
+import { syncRestAudio, stopRestAudio, restAudioCovers } from './rest-audio.js';
+import { peekUiSettings } from './ui-settings.js';
 
 const dom = document.createElement('aside');
 dom.id = 'pm-rest-ui';
@@ -73,11 +75,13 @@ function modeState() {
   return true;
 }
 function render(view = state.view) {
-  if (!modeState()) { dom.hidden = true; return; }
+  if (!modeState()) { dom.hidden = true; stopRestAudio(); return; }
   dom.hidden = false;
   const v = view || peekRestState(state.profile);
   if (!v) return;
   state.view = v;
+  // alerte « écran verrouillé » : son système (silence puis bips) calé sur la fin du repos
+  syncRestAudio(v, { enabled: peekUiSettings(state.profile).lockAlert !== false && v.alerts?.sound !== false });
   dom.dataset.state = v.status;
   const fb = v.floatingBar || {};
   const hasTimer = v.status === 'running' || v.status === 'paused' || v.status === 'finished';
@@ -169,7 +173,7 @@ async function alertIfFinished() {
     if (out.alert.vibrate && typeof navigator.vibrate === 'function') {
       try { navigator.vibrate([130, 80, 130]); } catch (_) { /* unsupported */ }
     }
-    if (out.alert.sound) {
+    if (out.alert.sound && !restAudioCovers(state.view?.endsAt)) { // sinon : déjà sonné par le son système
       try {
         const Context = window.AudioContext || window.webkitAudioContext;
         if (Context) {
@@ -210,6 +214,7 @@ document.addEventListener('pm:workout-close', () => {
   state.open = false; state.manualContext = null; state.sessionId = null; state.activityKey = null;
   render();
 });
+document.addEventListener('pm:settings-changed', () => { if (modeState()) render(); });
 document.addEventListener('pm:profile-changed', event => {
   if (event.detail.profile !== state.profile) {
     ++state.generation;

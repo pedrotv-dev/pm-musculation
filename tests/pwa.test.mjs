@@ -87,6 +87,7 @@ test('sécurité : aucun script ni style en ligne, politique CSP stricte, app.js
   assert.ok(!/\son\w+="/.test(html), 'gestionnaire d’événement en ligne');
   const csp = html.match(/Content-Security-Policy" content="([^"]+)"/)[1];
   assert.match(csp, /default-src 'self'/);
+  assert.match(csp, /media-src 'self' blob:/); // le son de fin de repos (js/rest-audio.js) est un blob généré par l'application
   assert.match(csp, /script-src 'self'(;|$)/);
   assert.match(csp, /style-src 'self'(;|$)/);
   assert.match(csp, /connect-src 'self'(;|$)/);

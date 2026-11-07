@@ -8,6 +8,8 @@ import { getProgram } from '../storage.js';
 import { getDemoProgram } from './workouts.js';
 import { el as node, add, clear as wipe, btn } from './dom.js';
 import { loadCatalog } from './catalog.js';
+import { isPerSide } from './machine-rules.js';
+import { metricsText } from './cardio.js';
 import { PROFILE_STORAGE_KEY, isKnownProfile, isRealProfile } from './profiles.js';
 
 const DAYS = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
@@ -34,10 +36,11 @@ function nameOf(a) {
 }
 function metaOf(a) {
   if (a.type === 'strength') {
-    return a.sets.length + ' séries · ' + a.restSeconds + ' s repos' + (a.shared ? ' · Machine commune' : '');
+    return a.sets.length + (isPerSide(a.machineId, a.perSide) ? ' séries par côté (' + a.sets.length * 2 + ' au total)' : ' séries') + ' · ' + a.restSeconds + ' s repos' + (a.shared ? ' · Machine commune' : '');
   }
   const minutes = a.durationMinutes ?? (a.durationSeconds == null ? null : Math.round(a.durationSeconds / 6) / 10);
-  return minutes == null ? (a.type === 'warmup' ? 'Échauffement' : 'Cardio') : minutes + ' min';
+  const details = metricsText(a, { speedUnit: a.name === 'Tapis de course' });
+  return (minutes == null ? (a.type === 'warmup' ? 'Échauffement' : 'Cardio') : minutes + ' min') + (details ? ' · ' + details : '');
 }
 function makeActivity(a, i) {
   const item = node('div', 'pm-activity');

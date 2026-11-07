@@ -22,7 +22,7 @@ export const DEMO_WEEKS = 6;
 
 const MACHINE_NAMES = Object.freeze({
   'leg-press': 'Leg Press', 'leg-extension': 'Leg Extension', 'seated-leg-curl': 'Seated Leg Curl',
-  'prone-leg-curl': 'Prone Leg Curl', 'calf-press': 'Calf Press', 'hip-abduction': 'Hip Abduction (2 positions)',
+  'prone-leg-curl': 'Prone Leg Curl', 'calf-press': 'Calf Press', 'hip-abduction-open-close': 'Hip Abduction · ouvert → fermé',
   'rotary-hip': 'Rotary Hip', 'chest-press': 'Chest Press', 'converging-chest-press': 'Converging Chest Press',
   'shoulder-press': 'Shoulder Press', 'converging-shoulder-press': 'Converging Shoulder Press',
   'triceps-extension': 'Triceps Extension', 'seated-dip': 'Seated Dip', 'lat-pulldown': 'Lat Pull',
@@ -77,7 +77,7 @@ const DAYS = [
   { id: 'vendredi', name: 'Épaules, jambes & abdos', activities: [
     warm('Rameur', 8),
     lift('converging-shoulder-press', 30, 10, 3, 90, 2.5, 3),
-    lift('hip-abduction', 45, 15, 3, 60, 2.5, 2, false),
+    lift('hip-abduction-open-close', 45, 15, 3, 60, 2.5, 2, false),
     lift('rotary-hip', 30, 12, 3, 60, 2.5, 2, false),
     lift('abdominal', 45, 15, 3, 60, 2.5, 3),
     lift('rotary-torso', 40, 12, 3, 60, 2.5, 2, false),

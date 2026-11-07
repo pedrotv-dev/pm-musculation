@@ -18,6 +18,9 @@ import { machineHistory, isClosed } from './stats.js';
 import { runBackup } from './backup.js';
 import { holdAwake } from './wakelock.js';
 import { getUiSettings, peekUiSettings } from './ui-settings.js';
+import { plannedIndex, SIDE_LABEL, SIDE_SHORT } from './machine-rules.js';
+import { funComparisons } from './fun-volume.js';
+import { CARDIO_METRICS, metricsText } from './cardio.js';
 
 const root = document.documentElement;
 const appPages = document.getElementById('app-pages');
@@ -163,12 +166,15 @@ function readSet(kgInput, repsInput) {
 
 function plannedFor(a, idx) {
   const p = a.planned?.sets;
-  return p && p.length ? p[Math.min(idx, p.length - 1)] : null;
+  return p && p.length ? p[Math.min(plannedIndex(idx, a.perSide), p.length - 1)] : null;
 }
+const sideName = set => (set.side ? SIDE_LABEL[set.side] : '');
+const setLabel = (a, idx) => 'série ' + (idx + 1) + (a.sets[idx]?.side ? ' · côté ' + sideName(a.sets[idx]).toLowerCase() : '');
 function renderSets(card, a) {
   const current = a.sets.find(s => !s.done)?.id;
   const done = a.sets.filter(s => s.done).length;
   card.append(el('h3', 'pm-sets-title', 'Séries · ' + done + '/' + a.sets.length));
+  if (a.perSide) card.append(el('p', 'pm-muted pm-side-note', '1 série = 1 côté : gauche, puis droite.'));
   const list = el('div', 'pm-sets');
   const rows = [];
   a.sets.forEach((set, idx) => {
@@ -176,6 +182,11 @@ function renderSets(card, a) {
     const kg = inputField('kg', set.kg, { kind: 'kg' });
     const reps = inputField('reps', set.reps, { kind: 'reps' });
     const marker = el('span', 'pm-set-mark', set.done ? '✓' : String(idx + 1));
+    if (set.side) {
+      const side = el('span', 'pm-set-side pm-side-' + set.side, SIDE_SHORT[set.side]);
+      side.title = 'Côté ' + sideName(set).toLowerCase(); side.setAttribute('aria-label', 'côté ' + sideName(set).toLowerCase());
+      marker.append(side);
+    }
     let timer = null;
     const save = async ({ final = false } = {}) => {
       clearTimeout(timer);
@@ -208,13 +219,13 @@ function renderSets(card, a) {
         await commit((p, id) => updateSet(p, id, a.key, set.id, { done: false }));
         emit('pm:workout-set-undone', { profile: S.profile, sessionId: S.session.id, activityKey: a.key });
       }));
-      tools.lastChild.title = 'Rouvrir cette série'; tools.lastChild.setAttribute('aria-label', 'Rouvrir la série ' + (idx + 1));
+      tools.lastChild.title = 'Rouvrir cette série'; tools.lastChild.setAttribute('aria-label', 'Rouvrir la ' + setLabel(a, idx));
     }
     const del = btn('×', 'pm-icon-btn', async () => {
       if (set.done && !(await confirmDialog('Retirer cette série déjà validée ?', { ok: 'Retirer', danger: true }))) return;
       await commit((p, id) => removeSet(p, id, a.key, set.id));
     });
-    del.setAttribute('aria-label', 'Retirer la série ' + (idx + 1)); del.title = 'Retirer cette série';
+    del.setAttribute('aria-label', 'Retirer la ' + setLabel(a, idx)); del.title = 'Retirer cette série';
     tools.append(del);
     row.append(tools);
     list.append(row);
@@ -224,7 +235,7 @@ function renderSets(card, a) {
   const next = rows.find(r => !r.set.done);
   if (next) {
     const idx = a.sets.indexOf(next.set);
-    const validate = btn('Valider la série ' + (idx + 1), 'pm-validate', async () => {
+    const validate = btn('Valider la ' + setLabel(a, idx), 'pm-validate', async () => {
       if (S.busy) return;
       const v = readSet(next.kg.input, next.reps.input);
       if (!v) { setStatus('Renseigne une charge et des répétitions valides.', 'error'); toast('Charge ou répétitions invalides.'); return; }
@@ -281,7 +292,8 @@ function renderMachine(a) {
     el('p', 'pm-muted', kindLabel(a) + (a.type === 'strength'
       ? (S.catalog.byId.get(a.machineId)?.muscleGroup ? ' · ' + S.catalog.byId.get(a.machineId).muscleGroup : '') +
         ' · repos ' + a.restSeconds + ' s' + (a.shared ? ' · machine commune' : '')
-      : (a.planned?.durationMinutes ? ' · prévu ' + a.planned.durationMinutes + ' min' : ''))));
+      : (a.planned?.durationMinutes ? ' · prévu ' + a.planned.durationMinutes + ' min' : '') +
+        (metricsText(a.planned, { speedUnit: a.name === 'Tapis de course' }) ? ' · ' + metricsText(a.planned, { speedUnit: a.name === 'Tapis de course' }) : ''))));
   head.append(titles);
   card.append(head);
 
@@ -295,13 +307,35 @@ function renderMachine(a) {
     renderSets(card, a);
   } else {
     const dur = inputField('minutes', a.actual?.durationMinutes ?? a.planned?.durationMinutes ?? 10, { kind: 'kg' });
-    dur.wrap.classList.add('pm-field-wide');
-    card.append(dur.wrap);
-    const confirmDone = btn(a.status === 'done' ? 'Fait ✓ — modifier la durée' : 'Fait ✓', 'pm-validate', () => {
+    const grid = el('div', 'pm-cardio-grid');
+    grid.append(dur.wrap);
+    const treadmill = a.name === 'Tapis de course';
+    const metricFields = CARDIO_METRICS.map(m => {
+      const v = a.actual?.[m.key] ?? a.planned?.[m.key];
+      const unit = m.key === 'speed' ? (treadmill ? m.unit : '') : m.unit;
+      const f = inputField(m.label + (unit ? ' (' + unit + ')' : ''), v ?? '', { kind: m.integer ? 'reps' : 'kg' });
+      if (v === undefined) f.input.value = '';
+      f.input.placeholder = '—';
+      grid.append(f.wrap);
+      return { m, input: f.input };
+    });
+    card.append(grid);
+    card.append(el('p', 'pm-muted pm-cardio-hint', 'Inclinaison, vitesse et niveau sont facultatifs : laisse vide ce que la machine n’a pas.'));
+    const confirmDone = btn(a.status === 'done' ? 'Fait ✓ — modifier' : 'Fait ✓', 'pm-validate', () => {
       const v = parseNum(dur.input.value);
       if (!Number.isFinite(v) || v < 0 || v > 300) { setStatus('Durée invalide (0 à 300 minutes).', 'error'); return; }
-      commit((p, id) => completeActivity(p, id, a.key, { done: true, actual: { durationMinutes: v } }), {
-        after: () => toast('Durée enregistrée : ' + fmtNum(v) + ' min')
+      const actual = { durationMinutes: v };
+      for (const { m, input } of metricFields) {
+        const raw = input.value.trim();
+        if (raw === '') { actual[m.key] = null; continue; }
+        const n = parseNum(raw);
+        if (!Number.isFinite(n) || n < 0 || n > m.max || (m.integer && !Number.isInteger(n))) {
+          setStatus(m.label + ' invalide (0 à ' + m.max + (m.integer ? ', entier' : '') + ').', 'error'); input.focus(); return;
+        }
+        actual[m.key] = n;
+      }
+      commit((p, id) => completeActivity(p, id, a.key, { done: true, actual }), {
+        after: () => toast('Enregistré : ' + fmtNum(v) + ' min' + (metricsText(actual) ? ' · ' + metricsText(actual, { speedUnit: treadmill }) : ''))
       });
     });
     card.append(confirmDone);
@@ -454,7 +488,8 @@ function renderRecap() {
         void idx;
       });
     } else if (a.status === 'done') {
-      block.append(el('p', 'pm-muted', 'Durée réelle : ' + fmtNum(a.actual?.durationMinutes ?? a.planned?.durationMinutes ?? 0) + ' min'));
+      const details = metricsText(a.actual, { speedUnit: a.name === 'Tapis de course' });
+      block.append(el('p', 'pm-muted', 'Durée réelle : ' + fmtNum(a.actual?.durationMinutes ?? a.planned?.durationMinutes ?? 0) + ' min' + (details ? ' · ' + details : '')));
     }
     if (a.status !== 'done') block.append(btn('Aller à cette activité', 'pm-icon-btn pm-text-btn', () => select(key)));
     box.append(block);
@@ -520,6 +555,17 @@ function renderDone(session) {
   add(box, el('div', 'pm-done-icon', '✓'),
     el('h2', '', session.status === 'completed' ? 'Séance terminée' : 'Séance partielle enregistrée'),
     el('p', 'pm-muted', sum.setsDone + ' séries · ' + fmtNum(sum.volumeKg) + ' kg de volume · ' + formatMinutes(sum.durationMinutes)));
+  const jokes = funComparisons(sum.volumeKg, session.id);
+  if (jokes.length) {
+    let shown = 0;
+    const fun = el('section', 'pm-fun');
+    fun.setAttribute('aria-label', 'Comparaison idiote du volume soulevé');
+    const text = el('p', 'pm-fun-text', jokes[0]);
+    text.setAttribute('aria-live', 'polite');
+    fun.append(el('p', 'pm-fun-kicker', fmtNum(sum.volumeKg) + ' kg de volume, ça donne quoi ?'), text);
+    if (jokes.length > 1) fun.append(btn('Une autre !', 'pm-secondary pm-fun-next', () => { shown = (shown + 1) % jokes.length; text.textContent = jokes[shown]; }));
+    box.append(fun);
+  }
   if (isRealProfile(S.profile)) {
     const note = el('p', 'pm-muted', 'Conseil : sauvegarde tes données de temps en temps (Fichiers, Drive, e-mail…).');
     const save = btn('Sauvegarder mes données', 'pm-secondary', async () => {
