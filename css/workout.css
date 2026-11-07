@@ -282,3 +282,14 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
   .pm-current-plan { margin-top:6px; }
   .pm-current-set .pm-validate { min-height:52px; margin-top:10px; }
 }
+
+/* V1-M1 · D1 — liste « Machines de la séance » : la piste de grille « 1fr » ne pouvait pas descendre sous la largeur
+   minimale d'une ligne (nom + 3 boutons = 291 px pour 258 px à 320 px) : la carte dépassait. Piste bornée à 0, et sur
+   petit écran le nom prend toute la ligne, les boutons ↑ ↓ Retirer passent dessous, alignés à droite. */
+.pm-list { grid-template-columns:minmax(0, 1fr); }
+.pm-list-item { min-width:0; }
+@media (max-width:374px) {
+  .pm-list-item { flex-wrap:wrap; row-gap:6px; }
+  .pm-list-main { flex:1 1 100%; }
+  .pm-list-tools { margin-left:auto; }
+}
