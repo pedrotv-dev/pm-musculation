@@ -9,5 +9,6 @@ Tout se fait **par petites étapes**, une PR chacune, avec un arrêt à chaque �
 | `01-design-et-animations.md` | mission 1 | style, animations, mascotte (12 stades), célébrations |
 | `02-sons.md` | mission 2 | jingles de récompense, mélodie de fin de repos |
 | `03-sfx.md` | mission 3 | bruitages d'interface |
+| `04-ressources-ascent.md` | mission 4 | décor montagne, Korv grand format, pictogrammes, hexagones et succès, expressions du guide |
 
 La direction artistique des **minuteurs** (barre de repos) est volontairement laissée de côté : à décider ensuite.
