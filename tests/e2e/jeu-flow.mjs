@@ -25,6 +25,9 @@ await step('démo : carte de niveau et mascotte sur l’accueil', async () => {
   assert.match(await dtext('.pm-level-card'), /Niveau \d+/);
   assert.ok(await demo.locator('.pm-level-card .pm-mascot svg').count() >= 1, 'mascotte de repli absente');
   assert.equal(await demo.getAttribute('.pm-level-card [role="progressbar"]', 'aria-label') !== null, true);
+  // un seul profil en haut : le profil actif, qui sert de bouton pour en changer
+  assert.match(await demo.locator('#switch-profile').innerText(), /^Démo/);
+  assert.equal(await demo.getAttribute('#switch-profile', 'aria-label'), 'Changer de profil (Démo)');
 });
 await step('démo : Progrès = succès, classements personnels, « comment gagner de l’XP »', async () => {
   await demo.click('.nav-btn[data-go="progres"]');
