@@ -50,6 +50,9 @@ test('ton professionnel et budget de 3 secondes : présents dans le contrat et r
   assert.match(c, /Ludique mais professionnel\. Jamais enfantin/);
   assert.match(c, /3 secondes au total, maximum/);
   assert.match(c, /Jamais bloquant/);
+  assert.match(c, /La mascotte a du caractère/);
+  assert.match(c, /Esprit mascotte Duolingo/);
+  assert.match(c, /traits adultes et stylisés/);
   for (const f of ['01-design-et-animations.md', '02-sons.md', '03-sfx.md']) assert.match(docs[f], /professionnel/, f);
   assert.match(docs['01-design-et-animations.md'], /3 secondes maximum/);
   assert.match(docs['02-sons.md'], /3 secondes au total/);

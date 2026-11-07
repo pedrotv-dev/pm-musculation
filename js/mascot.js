@@ -59,14 +59,14 @@ export function renderMascot({ mood = 'idle', stage = 0, size = 'md' } = {}) {
 }
 
 const LINES = Object.freeze({
-  new: ['Bienvenue. La première séance pose la base.', 'On commence quand tu veux.', 'Un premier pas, puis le suivant.'],
-  idle: ['Prêt quand tu l’es.', 'Une séance de plus, une base plus solide.', 'La régularité fait le travail.', 'Échauffement d’abord, le reste suit.'],
-  streak: ['Semaines enchaînées : la régularité paie.', 'Belle constance.', 'Tu tiens le rythme.'],
-  rest: ['Une semaine off ne compte pas : on repart tranquillement.', 'Reprendre, c’est déjà progresser.'],
-  done: ['Séance validée.', 'Bon travail. Pense à t’hydrater et à t’étirer.', 'Chaque série compte.'],
+  new: ['Salut ! Première séance ? On y va doucement, on y va bien.', 'Je suis là. Toi, tu soulèves ; moi, je supervise.', 'Tout commence par une première série.'],
+  idle: ['Prêt quand tu l’es. Moi, je suis déjà échauffé.', 'La fonte n’attend que toi.', 'Une séance de plus et tu te remercieras.', 'On fait ça proprement ?'],
+  streak: ['Encore une semaine validée. Tu deviens dangereux.', 'La régularité, c’est ton super-pouvoir.', 'Tu tiens la série : je ne m’en lasse pas.'],
+  rest: ['Petite pause ? Aucun jugement. Juste l’envie de te revoir.', 'On reprend tranquille, sans pression.'],
+  done: ['Séance validée. Propre.', 'Bien joué. Hydratation, étirements, fierté.', 'Chaque série compte. Celles-ci, tu les as faites.'],
   partial: ['Séance partielle enregistrée : tout ce que tu as fait compte.', 'Mieux vaut une séance partielle que pas de séance.'],
-  levelup: ['Niveau supérieur.', 'Nouveau palier atteint.'],
-  record: ['Nouveau record.', 'Record battu : la progression est là.']
+  levelup: ['Niveau supérieur. Je m’incline.', 'Nouveau palier. On ne se refait pas.'],
+  record: ['Record battu. La barre vient de monter.', 'Nouveau record. Qui t’arrête ?']
 });
 /** Une réplique de la mascotte pour un contexte (new, idle, streak, rest, done, partial, levelup, record) ; stable pour un `seed` donné. */
 export function mascotLine(context, seed = '') {

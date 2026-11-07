@@ -6,12 +6,12 @@ Pile : JavaScript natif (modules ES), CSS, IndexedDB, GitHub Pages, PWA hors lig
 Cibles : **Safari iPhone** (PWA installée) et **Chrome Android**. Interface **en français**. Écran étroit (390 px de large), usage au pouce, salle de sport.
 
 ## Ton et budget de temps (règle n° 1 : prime sur toutes les autres)
-- **Ludique mais professionnel. Jamais enfantin.** Références d'esprit : Strava, Whoop, Apple Fitness, Oura, Linear — **pas** Duolingo, pas de dessin animé. Palette contenue (1 couleur d'accent + 1 couleur de célébration au plus), typographie sobre, formes nettes, humour **discret** (un trait d'esprit, pas de cris ni de point d'exclamation partout).
+- **Ludique mais professionnel. Jamais enfantin.** Références d'esprit pour l'**interface** : Strava, Whoop, Apple Fitness, Oura, Linear. Palette contenue (1 couleur d'accent + 1 couleur de célébration au plus), typographie sobre, formes nettes, humour **discret** (un trait d'esprit, pas de cris ni de point d'exclamation partout).
 - **Motivant** : on doit avoir envie de revenir pour le niveau suivant, de battre son record, de garder sa série. La récompense est **claire et précise** (chiffres, titre, progression), pas bruyante.
 - **Rapide : tout effet ludique (visuel + sonore, tout compris) dure 3 secondes au total, maximum.** Usage courant (série validée, machine terminée) : **moins de 0,5 s**. Fin de séance, record, succès : **≤ 1,5 s**. Passage de niveau (le plus fort du jeu) : **≤ 3 s**.
 - **Jamais bloquant** : on peut toujours appuyer, saisir, changer d'écran pendant l'effet ; aucune attente, aucun écran de félicitations plein écran à fermer ; un appui n'importe où coupe la célébration.
 - **Pas de boucle** : aucune animation infinie (sauf une barre de progression de chrono, hors périmètre). Pas de confettis multicolores : au besoin, de **fines particules d'une seule teinte**, **24 maximum**, uniquement pour un passage de niveau.
-- **La mascotte est un emblème, pas un jouet** : stylisée, géométrique ou graphique, silhouette élégante, expressions retenues. Elle apparaît **petite** (carte de niveau, récompense), jamais en plein écran, jamais en train de parler à l'écran en continu.
+- **La mascotte a du caractère** : c'est le seul endroit où l'on se permet plus de personnalité. **Esprit mascotte Duolingo** — un vrai personnage expressif, drôle, attachant, qu'on a envie de retrouver et qui réagit — **mais aux traits adultes et stylisés** : ni bébé, ni cartoon criard, ni peluche. Elle apparaît **petite** (carte de niveau, récompense), jamais en plein écran, jamais en train de parler en continu ; ses répliques restent **courtes, malicieuses, bienveillantes** (une phrase, un trait d'esprit). **Tu as carte blanche sur l'idée du personnage.**
 - Vocabulaire : le titre d'un niveau est un **grade** (Recrue, Initié, Assidu…), pas un surnom.
 
 ## Qui fait quoi
@@ -76,8 +76,8 @@ Après une séance, ils partent dans cet ordre : `session-done`, `xp`, `record`(
 ## Mascotte (contrat des images)
 - Dossier `assets/mascot/`. Noms : `stage-<N>.svg` ou `stage-<N>.png` (N de 0 à 11, une **évolution par grade**), et facultativement `stage-<N>-<humeur>.svg|png` avec les humeurs `idle`, `happy`, `cheer`, `sleepy`, `levelup`.
 - Chaque fichier créé est **listé dans `assets/mascot/index.json`** : `{ "available": ["stage-0.svg", "stage-0-cheer.svg", …] }`.
-- SVG : `viewBox="0 0 100 100"`, fond transparent, **pas de police externe**, pas de `<script>`, ≤ 6 Ko. Le personnage de repli intégré (une forme turquoise minimale) montre l'échelle et la place.
-- Le même emblème évolue : **mêmes yeux/même détail d'identité et même couleur** d'un stade à l'autre ; chaque stade est plus affirmé (détails, assurance), jamais plus « mignon ». Ton : **sobre et élégant**, jamais moqueur, jamais de morale sur le poids ou le corps.
+- SVG : `viewBox="0 0 100 100"`, fond transparent, **pas de police externe**, pas de `<script>`, ≤ 6 Ko. Le personnage de repli intégré (une forme turquoise minimale — un simple repère, pas une proposition de style) montre l'échelle et la place.
+- Le même personnage évolue : **mêmes yeux/même détail d'identité et même couleur** d'un stade à l'autre ; chaque stade est plus affirmé (carrure, accessoire, assurance), jamais plus « mignon ». Expressif et malicieux, **jamais moqueur**, jamais de morale sur le poids ou le corps.
 
 ## Vérifier sans exécuter
 Avant de livrer : (1) chaque fichier cité existe ; (2) aucune ressource externe ; (3) aucun style en ligne ; (4) chaque effet est coupé par `prefers-reduced-motion` ; (5) rien d'autre que les fichiers de ta mission n'est modifié (`git diff --stat`). Écris-le dans la PR sous forme de cases à cocher.

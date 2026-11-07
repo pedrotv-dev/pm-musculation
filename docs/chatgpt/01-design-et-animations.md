@@ -2,7 +2,7 @@
 
 **Avant tout : lis `docs/chatgpt/00-contrat-technique.md` et respecte son protocole** (étapes courtes, une PR par étape, 5 lignes de plan, tu t'arrêtes à chaque étape et tu attends « OK »).
 
-**Objectif** : une application **moderne, professionnelle et motivante** — légèrement ludique, **jamais enfantine** (esprit Strava / Whoop / Apple Fitness, pas Duolingo) — avec un emblème-mascotte qui évolue et des animations **brèves** (**3 secondes maximum pour tout effet, 0,5 s pour les actions courantes**), sans jamais gêner la saisie en salle (mains moites, une main, pouce). **Relis la section « Ton et budget de temps » du contrat : elle prime sur le reste.**
+**Objectif** : une application **moderne, professionnelle et motivante** — légèrement ludique, **jamais enfantine** (interface dans l'esprit Strava / Whoop / Apple Fitness) — avec une **mascotte à vrai caractère** (esprit Duolingo, mais adulte) qui évolue et des animations **brèves** (**3 secondes maximum pour tout effet, 0,5 s pour les actions courantes**), sans jamais gêner la saisie en salle (mains moites, une main, pouce). **Relis la section « Ton et budget de temps » du contrat : elle prime sur le reste.**
 **Hors périmètre** : la barre du **chronomètre de repos** (sa direction artistique sera décidée plus tard, ne la restyle pas) et **les sons** (missions 2 et 3).
 **Tes fichiers** : `css/*.css`, `js/effets.js`, `assets/mascot/*` (voir le contrat). Le reste est en lecture seule.
 
@@ -11,7 +11,7 @@ Chaque étape donne : *Lis* (6 fichiers max) · *Fais* · *C'est fini quand* · 
 ---
 ### Étape 0 — Direction artistique (aucun code)
 - *Lis* : `docs/prompt-design-chatgpt.md` (sections Identité et Écrans), `css/app.css` (ligne `:root`), `js/jeu-ui.js`.
-- *Fais* : propose **3 directions** (6 lignes chacune) : nom · 5 couleurs (hex) · formes (rayons, ombres) · ton de la mascotte (**un emblème sobre et élégant**, pas un personnage de dessin animé : animal stylisé, forme géométrique, insigne… ; elle évolue en 12 stades, de « Recrue » à « Légende ») · une phrase d'ambiance. Les 3 directions doivent toutes rester **professionnelles** ; elles diffèrent par la couleur et la forme, pas par le niveau de fantaisie.
+- *Fais* : propose **3 directions** (6 lignes chacune) : nom · 5 couleurs (hex) · formes (rayons, ombres) · ton de la mascotte (**un vrai personnage expressif et attachant, esprit mascotte Duolingo, mais aux traits adultes et stylisés — ni bébé, ni peluche, ni cartoon criard** ; à toi d'imaginer : animal, créature, objet vivant… ; propose **3 personnages très différents** ; elle évolue en 12 stades, de « Recrue » à « Légende »). Ajoute pour chacune **3 répliques d'exemple** (courtes, malicieuses, bienveillantes) dans le ton du personnage · une phrase d'ambiance. L'**interface** reste professionnelle dans les 3 directions ; seule la mascotte porte la personnalité. Les directions diffèrent par la couleur, la forme et le personnage.
 - *C'est fini quand* : les 3 directions sont dans ta réponse. *Stop* : j'en choisis une.
 
 ### Étape 1 — Variables de style
