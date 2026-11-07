@@ -72,6 +72,7 @@ node tests/e2e/offline-flow.mjs  # hors ligne (service worker)
 node tests/e2e/update-flow.mjs   # mise à jour de l'application sans perte
 node tests/e2e/nav-flow.mjs      # bouton retour du téléphone + écran allumé pendant une séance
 node tests/e2e/retours-flow.mjs  # séries par côté, réglages cardio, son de fin de repos, comparaisons idiotes
+node tests/e2e/css-update-flow.mjs # un nouveau CSS arrive sur le téléphone (mise à jour, hors ligne) ; sans nouvelle VERSION, non
 node tests/e2e/isolation-flow.mjs # production + aperçu sur la même origine : données, service workers et caches séparés
 node tests/e2e/jeu-flow.mjs      # niveaux, succès, classements personnels, mascotte, événements d'effets
 node tests/e2e/audit-faults.mjs  # stockage plein / refusé
@@ -80,6 +81,8 @@ node tests/e2e/audit-a11y.mjs    # accessibilité WCAG 2 A/AA (axe-core, install
 ```
 
 ## Publier une mise à jour (sans perte de données)
+
+Si une modification arrive sans nouvelle VERSION (PR fusionnée telle quelle), le workflow `release.yml` la publie automatiquement sur `main` ; il ne change rien quand la VERSION est déjà à jour. `node tests/e2e/css-update-flow.mjs` prouve qu'un nouveau CSS arrive sur un téléphone (et qu'il n'arrive PAS sans nouvelle VERSION).
 
 Le service worker ne touche jamais à IndexedDB. Le code est servi **depuis le cache** (démarrage instantané, même hors ligne) dans un cache **propre à chaque version** : jamais de mélange entre deux versions.
 
@@ -95,7 +98,7 @@ Le service worker ne touche jamais à IndexedDB. Le code est servi **depuis le c
 ## Documentation
 
 - `docs/reference-programme-chatgpt.json` : **fichier de référence à envoyer à ChatGPT** pour préparer le programme hebdomadaire (format, règles, catalogue des machines, exemple Pierre + Manon, exemple de bilan). Régénéré par `node tools/make-reference.mjs` (test de cohérence inclus).
-- `docs/apercu.md` : **prévisualiser une PR sur le téléphone avant de la fusionner** (production et aperçu isolés), procédure et mise en route.
+- `docs/apercu.md` : aperçu avant fusion (production et aperçu isolés) — **désactivé**, conservé au cas où ; procédure de réactivation.
 - `docs/chatgpt/` : **les 3 missions confiées à ChatGPT** (style et animations, sons, bruitages) + le contrat technique commun (fichiers autorisés, événements `pm:fx`, mascotte, protocole par petites étapes). Un test vérifie que ces consignes restent fidèles au code.
 - `docs/prompt-design-chatgpt.md` : prompt complet pour confier l'habillage visuel à ChatGPT.
 - `docs/sauvegarde-persistante.md` : sauvegarde des données à 0 € (état actuel et options).

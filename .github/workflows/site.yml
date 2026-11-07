@@ -6,11 +6,10 @@ name: Site (production + aperçu)
 # - PR fermée                -> /preview/ est retiré si c'était cette PR
 # - lancement manuel         -> avec une branche : aperçu de cette branche ; sans : resynchronise la production
 # Règles de sécurité : voir docs/apercu.md. Les scripts (tools/*.mjs) sont toujours ceux de main une fois ce fichier fusionné.
+# DÉSACTIVÉ PAR DÉFAUT (l'aperçu avant fusion n'est pas utilisé) : seul le lancement manuel reste possible.
+# Pour le réactiver : remettre les déclencheurs `push` (main) et `pull_request` (opened, synchronize, reopened, ready_for_review, closed)
+# sous `on:`, puis régler Settings > Pages sur la branche gh-pages (voir docs/apercu.md).
 on:
-  push:
-    branches: [main]
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, closed]
   workflow_dispatch:
     inputs:
       ref:

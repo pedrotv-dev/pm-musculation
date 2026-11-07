@@ -10,4 +10,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # Les PR de ChatGPT ne peuvent pas lancer `node tools/release.mjs` : la VERSION est publiée à l'intégration (et, à défaut, par
+      # release.yml après la fusion). On la simule ici pour que les autres tests décident seuls du rouge ou du vert de ces PR.
+      # Sur main et sur les autres branches, le test de VERSION reste STRICT.
+      - name: Version simulée (branches chatgpt/ seulement)
+        if: startsWith(github.head_ref, 'chatgpt/')
+        run: node tools/release.mjs
       - run: node --test
