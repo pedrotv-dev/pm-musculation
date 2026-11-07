@@ -241,6 +241,9 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-workout-screen .pm-dots .pm-dot-done::before {
   background:var(--ascent-sage, #b9f08a);
 }
+/* intégration : garde les couleurs des activités passées et reportées */
+.pm-workout-screen .pm-dots .pm-dot-skipped::before { background:var(--warn); }
+.pm-workout-screen .pm-dots .pm-dot-postponed::before { background:var(--text-postponed); }
 .pm-workout-screen .pm-dots .pm-dot-current {
   outline:2px solid var(--turq); outline-offset:-3px;
 }
