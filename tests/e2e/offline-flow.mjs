@@ -66,6 +66,7 @@ await step('hors ligne : fermer l’onglet, rouvrir, retrouver les 3 séries', a
   await p2.click(screen + ' .pm-validate:has-text("Valider ma séance")');
   await p2.click('.pm-modal .pm-primary');
   await p2.waitForSelector(screen + ' .pm-done-icon');
+  await p2.locator('.pm-levelup-overlay .pm-primary').click({ timeout: 1500 }).catch(() => {}); // plein écran « Niveau supérieur » éventuel
   await p2.click(screen + ' button:has-text("Voir l’historique")');
   await p2.waitForSelector('.pm-history-card');
   assert.match(await p2.locator('[data-page="historique"]').innerText(), /Partielle/);

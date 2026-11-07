@@ -74,6 +74,7 @@ await step('valider les séries, chrono de repos, reporter, pause, terminer', as
   await page.click(screen + ' .pm-validate:has-text("Valider ma séance")');
   await page.click('.pm-modal .pm-primary');
   await page.waitForSelector(screen + ' .pm-done-icon');
+  await page.locator('.pm-levelup-overlay .pm-primary').click({ timeout: 1500 }).catch(() => {}); // plein écran « Niveau supérieur » éventuel
   await page.click(screen + ' button:has-text("Voir l’historique")');
   await page.waitForSelector('.pm-history-card');
   assert.equal(await page.locator('.pm-history-card').count(), 31);

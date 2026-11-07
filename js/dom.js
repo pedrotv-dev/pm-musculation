@@ -69,10 +69,10 @@ function root() {
  * Boite de dialogue. `choices` : [{ label, value, kind: 'primary'|'danger'|'' }]. Retourne la valeur choisie,
  * ou `null` (Echap, clic a l'exterieur, ou choix « cancel »). `content` : noeud facultatif insere sous le message.
  */
-export function dialog({ title, message, choices, content }) {
+export function dialog({ title, message, choices, content, className }) {
   return new Promise(resolve => {
     const previous = document.activeElement; // le focus y retournera a la fermeture
-    const overlay = el('div', 'pm-modal-overlay');
+    const overlay = el('div', 'pm-modal-overlay' + (className ? ' ' + className : ''));
     const box = el('div', 'pm-modal');
     box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
     if (title) { box.setAttribute('aria-label', title); box.append(el('h3', 'pm-modal-title', title)); }

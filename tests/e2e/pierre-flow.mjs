@@ -116,6 +116,7 @@ await step('terminer en partielle depuis le récapitulatif', async () => {
   await page.click(screen + ' .pm-validate:has-text("Valider ma séance")');
   await page.click('.pm-modal .pm-primary');
   await page.waitForSelector(screen + ' .pm-done-icon');
+  await page.locator('.pm-levelup-overlay .pm-primary').click({ timeout: 1500 }).catch(() => {}); // plein écran « Niveau supérieur » éventuel
   await page.click(screen + ' button:has-text("Voir l’historique")');
 });
 await step('retrouver la séance dans l’historique et corriger une série', async () => {

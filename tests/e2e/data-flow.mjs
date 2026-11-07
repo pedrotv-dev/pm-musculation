@@ -35,7 +35,8 @@ async function shortSession(p) {
   await p.click(screen + ' .pm-validate:has-text("Valider ma séance")');
   await p.click('.pm-modal .pm-primary');
   await p.waitForSelector(screen + ' .pm-done-icon');
-  await p.click(screen + ' button:has-text("Retour à l’accueil")');
+  await p.locator('.pm-levelup-overlay .pm-primary').click({ timeout: 1500 }).catch(() => {}); // plein écran « Niveau supérieur » éventuel
+  await p.click(screen + ' button:has-text("Continuer")');
   await p.waitForSelector('.pm-home-card');
 }
 
