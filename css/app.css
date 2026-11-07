@@ -279,3 +279,7 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
   [data-page="progres"] .pm-weight-form { grid-template-columns:1fr 1fr; }
   [data-page="progres"] .pm-weight-form button { grid-column:1/-1; }
 }
+/* intégration PR #54 : la carte de niveau garde son fond ASCENT (PR #53) sur Progression */
+[data-page="progres"] > .panel.pm-level-card {
+  background:linear-gradient(140deg,rgba(20,230,199,.06),transparent 63%),var(--surface);
+}
