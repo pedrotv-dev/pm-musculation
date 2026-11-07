@@ -82,6 +82,7 @@ Le service worker ne touche jamais à IndexedDB. Le code est servi **depuis le c
 
 ## Documentation
 
+- `docs/reference-programme-chatgpt.json` : **fichier de référence à envoyer à ChatGPT** pour préparer le programme hebdomadaire (format, règles, catalogue des machines, exemple Pierre + Manon, exemple de bilan). Régénéré par `node tools/make-reference.mjs` (test de cohérence inclus).
 - `docs/prompt-design-chatgpt.md` : prompt complet pour confier l'habillage visuel à ChatGPT.
 - `docs/sauvegarde-persistante.md` : sauvegarde des données à 0 € (état actuel et options).
 - `docs/screens/` : captures des écrans.
