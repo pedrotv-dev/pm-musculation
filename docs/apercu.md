@@ -1,3 +1,5 @@
+> **Statut : désactivé.** L'aperçu avant fusion n'est pas utilisé : les PR sont vérifiées puis fusionnées directement dans l'application, avec une sauvegarde (`backup/…`) avant chaque fusion. Le workflow `.github/workflows/site.yml` ne démarre plus que manuellement. L'**isolation des données** de `js/env.js` reste en place (sans effet en production : noms de stockage inchangés) pour pouvoir réactiver l'aperçu un jour. Pour le réactiver : voir l'en-tête de `site.yml` et la section « Mise en route » ci-dessous.
+
 # Aperçu avant fusion (prévisualisation d'une PR)
 
 **But** : voir sur son téléphone ce que ChatGPT (ou moi) a modifié **avant** de fusionner dans `main`, sans toucher à la vraie application ni à ses données.

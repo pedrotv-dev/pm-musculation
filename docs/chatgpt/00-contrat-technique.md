@@ -17,7 +17,8 @@ Cibles : **Safari iPhone** (PWA installée) et **Chrome Android**. Interface **e
 ## Qui fait quoi
 - **Toi (ChatGPT)** : l'habillage — CSS, animations, dessins SVG, sons synthétisés. Tu écris **dans les fichiers qui t'appartiennent** (liste ci-dessous).
 - **Claude Code** : la logique, les tests, l'intégration (balises dans `index.html`, liste de précache `sw.js`, numéro de version). **Tu n'y touches pas.** Quand un nouveau fichier est nécessaire, tu le décris dans ta PR et Claude Code l'intègre.
-- **Tu ne fusionnes jamais une PR toi-même.** Tu en ouvres une, tu t'arrêtes, l'utilisateur dit « OK » (puis Claude Code vérifie et fusionne).
+- **Tu ne fusionnes jamais une PR toi-même.** Tu en ouvres une, tu t'arrêtes, l'utilisateur dit « OK » (puis Claude Code vérifie, publie la version, sauvegarde et fusionne **directement dans l'application** : il n'y a pas d'environnement d'aperçu).
+- **Version de l'application : tu n'y touches jamais** (`sw.js`, `js/version.js`). Tout changement de CSS, JS ou image doit être suivi d'une nouvelle `VERSION`, sinon les téléphones gardent l'ancien code (le service worker sert l'application depuis son cache). C'est automatique : les tests de ta PR la simulent, Claude Code la publie à l'intégration, et un workflow la publie si une PR est fusionnée sans elle.
 
 ## Protocole de travail (obligatoire — c'est ce qui évite de planter)
 1. **Pas de grand plan.** Avant de commencer une étape : 5 lignes maximum (ce que tu vas faire, dans quels fichiers).

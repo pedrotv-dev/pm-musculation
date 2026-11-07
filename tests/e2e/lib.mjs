@@ -10,7 +10,7 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
   '.png': 'image/png', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
 
 export function serve(base = '/pm-musculation/') {
-  const state = { swVersion: null, hits: [] }; // simule une nouvelle publication : sw.js servi avec une autre VERSION
+  const state = { swVersion: null, hits: [], overrides: {} }; // simule une nouvelle publication : sw.js servi avec une autre VERSION
   const server = http.createServer((req, res) => {
     let url = decodeURIComponent(req.url.split('?')[0]);
     state.hits.push(url);
@@ -20,11 +20,13 @@ export function serve(base = '/pm-musculation/') {
     if (file.endsWith(path.sep) || (fs.existsSync(file) && fs.statSync(file).isDirectory())) file = path.join(file, 'index.html');
     if (!file.startsWith(ROOT) || !fs.existsSync(file)) { res.writeHead(404); res.end('not found'); return; }
     res.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-cache' });
+    const rel = path.relative(ROOT, file).split(path.sep).join('/');
+    if (state.overrides[rel]) { res.end(state.overrides[rel](fs.readFileSync(file, 'utf8'))); return; } // simule un fichier modifié par une publication
     if (state.swVersion && file.endsWith(path.sep + 'sw.js')) { res.end(fs.readFileSync(file, 'utf8').replace(/const VERSION = '[^']*';/, `const VERSION = '${state.swVersion}';`)); return; }
     fs.createReadStream(file).pipe(res);
   });
   return new Promise(resolve => server.listen(0, '127.0.0.1', () =>
-    resolve({ server, url: `http://127.0.0.1:${server.address().port}${base}`, close: () => server.close(), setSwVersion: v => { state.swVersion = v; }, hits: state.hits })));
+    resolve({ server, url: `http://127.0.0.1:${server.address().port}${base}`, close: () => server.close(), setSwVersion: v => { state.swVersion = v; }, override: (file, fn) => { if (fn) state.overrides[file] = fn; else delete state.overrides[file]; }, hits: state.hits })));
 }
 export async function launch(opts = {}) {
   const globalRoot = execSync('npm root -g').toString().trim();

@@ -1,0 +1,53 @@
+name: Publication de la VERSION
+
+# Garantit que les téléphones reçoivent le nouveau code : le service worker sert l'application depuis son cache tant que `VERSION`
+# (sw.js + js/version.js) ne change pas. Si une PR (ChatGPT, etc.) est fusionnée sans nouvelle VERSION, ce workflow la publie.
+# Il ne fait RIEN si la VERSION correspond déjà aux fichiers (jamais de nouvelle version pour une simple date).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: pm-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Publier la VERSION si des fichiers ont changé sans elle
+        id: release
+        run: |
+          set -euo pipefail
+          node tools/release.mjs --if-needed | tee release.log
+          if git diff --quiet; then echo "changed=false" >> "$GITHUB_OUTPUT"; else echo "changed=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Tests avec la nouvelle VERSION
+        if: steps.release.outputs.changed == 'true'
+        run: node --test
+      - name: Enregistrer sur main et demander la mise en ligne
+        if: steps.release.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sw.js js/version.js
+          git commit -m "chore(release): $(grep -o "VERSION = '[^']*'" sw.js | head -1 | cut -d"'" -f2)"
+          for i in 1 2 3; do
+            if git push origin HEAD:main; then ok=1; break; fi
+            git pull --rebase origin main
+          done
+          test "${ok:-0}" = 1
+          # un envoi fait avec le jeton du workflow ne relance pas la construction de Pages tout seul : on la demande
+          curl -sS -o /dev/null -w "Pages build : HTTP %{http_code}\n" -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pages/builds" || true
