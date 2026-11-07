@@ -201,3 +201,18 @@ test('réglages par machine : Vélo assis et Escalier = niveau, tapis = inclinai
     for (const k of ['incline', 'speed', 'level']) if (k in a) assert.ok(allowed[a.name].includes(k), a.name + ' ' + k);
   }
 });
+
+test('mascotte : le stade demandé d\'abord, sinon le dernier stade existant, sinon le personnage de repli', async () => {
+  const { pickMascotFile } = await import('../js/mascot.js');
+  const only0 = new Set(['stage-0.png', 'stage-0-happy.png', 'stage-0-cheer.png', 'stage-0-levelup.png']);
+  assert.equal(pickMascotFile(only0, 0, 'idle'), 'stage-0.png');
+  assert.equal(pickMascotFile(only0, 0, 'happy'), 'stage-0-happy.png');
+  assert.equal(pickMascotFile(only0, 0, 'sleepy'), 'stage-0.png');              // pas d'image « sleepy » : image du stade
+  for (const stage of [1, 5, 11]) assert.equal(pickMascotFile(only0, stage, 'cheer'), 'stage-0-cheer.png'); // niveaux élevés : Korv stade 0, jamais le repli
+  const more = new Set([...only0, 'stage-2.png', 'stage-2-cheer.png']);
+  assert.equal(pickMascotFile(more, 3, 'idle'), 'stage-2.png');                  // l'évolution prime sur l'humeur d'un stade plus ancien
+  assert.equal(pickMascotFile(more, 3, 'cheer'), 'stage-2-cheer.png');
+  assert.equal(pickMascotFile(more, 1, 'cheer'), 'stage-0-cheer.png');
+  assert.equal(pickMascotFile(new Set(), 4, 'idle'), null);                      // rien : personnage de repli
+  assert.equal(pickMascotFile(new Set(['stage-1.svg']), 0, 'idle'), null);       // un stade SUPÉRIEUR n'est jamais utilisé en avance
+});

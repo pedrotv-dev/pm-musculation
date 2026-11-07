@@ -23,7 +23,10 @@ await step('démo : carte de niveau et mascotte sur l’accueil', async () => {
   await demo.click('[data-select-profile="demo"]');
   await demo.waitForSelector('.pm-level-card');
   assert.match(await dtext('.pm-level-card'), /Niveau \d+/);
-  assert.ok(await demo.locator('.pm-level-card .pm-mascot svg').count() >= 1, 'mascotte de repli absente');
+  // Korv (corbeau) : l'image remplace le personnage de repli ; au niveau de la démo (stade > 0) on reste sur le stade 0
+  await demo.waitForSelector('.pm-level-card .pm-mascot img', { timeout: 8000 });
+  assert.match(await demo.getAttribute('.pm-level-card .pm-mascot img', 'src'), /assets\/mascot\/stage-0(-[a-z]+)?\.png/);
+  assert.ok(await demo.evaluate(() => { const i = document.querySelector('.pm-level-card .pm-mascot img'); return i.complete && i.naturalWidth === 320; }), 'image de Korv non chargée');
   assert.equal(await demo.getAttribute('.pm-level-card [role="progressbar"]', 'aria-label') !== null, true);
   // un seul profil en haut : le profil actif, qui sert de bouton pour en changer
   assert.match(await demo.locator('#switch-profile').innerText(), /^Démo/);

@@ -92,5 +92,9 @@ test('fichiers à remplir par ChatGPT : déjà branchés (index.html, sw.js) et 
   for (const f of ['js/effets.js', 'js/sfx.js', 'js/sons.js']) assert.match(read(f), /pm:fx/);
   const mascot = JSON.parse(read('assets/mascot/index.json'));
   assert.ok(Array.isArray(mascot.available));
-  for (const f of mascot.available) assert.ok(fs.existsSync(path.join(ROOT, 'assets/mascot', f)), 'mascotte listée mais absente : ' + f);
+  for (const f of mascot.available) {
+    assert.ok(fs.existsSync(path.join(ROOT, 'assets/mascot', f)), 'mascotte listée mais absente : ' + f);
+    assert.ok(sw.includes(`'assets/mascot/${f}'`), 'mascotte listée mais non précachée (absente hors ligne) : ' + f);
+    assert.ok(fs.statSync(path.join(ROOT, 'assets/mascot', f)).size < 40 * 1024, 'mascotte trop lourde (> 40 Ko) : ' + f);
+  }
 });
