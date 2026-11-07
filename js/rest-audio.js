@@ -8,11 +8,21 @@
  * sans que l'application ait besoin d'être active. Le verrouillage affiche « Repos · PM Musculation » avec une barre
  * de progression qui sert de compte à rebours.
  *
- * Limites honnêtes : le son suit le volume « médias » du téléphone ; lire un son peut mettre en pause la musique
- * d'une autre application (réglage désactivable dans Profil) ; il faut avoir touché l'écran au moins une fois
+ * Limites honnêtes : le son suit le volume « médias » du téléphone ; il faut avoir touché l'écran au moins une fois
  * dans l'application (c'est le cas dès la première série validée).
+ *
+ * Musique de l'utilisateur (V1-UX2-01) : ce fichier est lu comme un morceau pendant TOUT le repos ; le téléphone lui
+ * donne donc la priorité audio et baisse (ou met en pause) la musique d'une autre application pendant chaque repos.
+ * Il ne sert pourtant que si l'écran peut se verrouiller. Donc :
+ *  - écran maintenu allumé (Wake Lock, js/wakelock.js) ET application au premier plan : aucun fichier n'est lu ;
+ *    la fin du repos est sonnée par l'application elle-même (bip court Web Audio de js/rest-ui.js, vibration) ;
+ *  - passage en arrière-plan pendant un repos : le fichier est relancé pour la durée restante (au mieux : le
+ *    navigateur peut refuser une lecture démarrée en arrière-plan ; l'alerte classique reste alors la seule) ;
+ *  - Safari (API Audio Session) : type « playback » seulement pendant ce fichier, « ambient » sinon (se mélange à la
+ *    musique au lieu de l'interrompre). Sans cette API, le navigateur garde son comportement par défaut.
  */
 import { melodySamples, MELODY_RATE, MELODY_MAX_SECONDS } from './rest-melody.js';
+import { isAwakeActive } from './wakelock.js';
 
 const RATE = MELODY_RATE;       // échantillons / s, 8 bits, mono : 8 Ko par seconde de repos
 export const MAX_AUDIO_SECONDS = 1200; // au-delà (repos de plus de 20 min), pas de fichier son : alerte classique seulement
@@ -45,7 +55,18 @@ export function buildRestWav(seconds) {
 
 // ------------------------------------------------------------------ lecture (navigateur seulement)
 
-const S = { audio: null, url: null, endsAt: 0, beepAtMs: 0, unlocked: false, enabled: true, failed: false };
+const S = { audio: null, url: null, endsAt: 0, beepAtMs: 0, unlocked: false, enabled: true, failed: false, view: null };
+
+/** Safari 16.4+ : type de session audio de la page. Sans effet ailleurs. */
+function sessionType(type) {
+  try { if (typeof navigator !== 'undefined' && navigator.audioSession && navigator.audioSession.type !== type) navigator.audioSession.type = type; }
+  catch (_) { /* API absente ou refusée */ }
+}
+/** Écran maintenu allumé et page visible : le fichier « silence + bips » n'apporte rien et baisserait la musique. */
+export function restAudioNeeded() {
+  const visible = typeof document === 'undefined' || !document.visibilityState || document.visibilityState === 'visible';
+  return !(visible && isAwakeActive());
+}
 const SILENT_CLIP = () => URL.createObjectURL(new Blob([buildRestWav(0.05)], { type: 'audio/wav' }));
 
 function release() {
@@ -53,13 +74,14 @@ function release() {
   if (S.url) { URL.revokeObjectURL(S.url); S.url = null; }
   S.endsAt = 0; S.beepAtMs = 0;
   setSession(null);
+  sessionType('ambient');
 }
 function element() {
   if (!S.audio && typeof Audio === 'function') {
     S.audio = new Audio();
     S.audio.preload = 'auto';
     S.audio.setAttribute('playsinline', '');
-    S.audio.addEventListener('ended', () => { if (S.url) { URL.revokeObjectURL(S.url); S.url = null; } setSession(null); });
+    S.audio.addEventListener('ended', () => { if (S.url) { URL.revokeObjectURL(S.url); S.url = null; } setSession(null); sessionType('ambient'); });
   }
   return S.audio;
 }
@@ -84,6 +106,7 @@ export function unlockRestAudio() {
   if (S.unlocked || typeof document === 'undefined') return;
   const a = element(); if (!a) return;
   S.unlocked = true;
+  sessionType('ambient'); // le clip silencieux d'amorçage ne doit pas interrompre la musique (Safari)
   try {
     const url = SILENT_CLIP();
     a.src = url; a.volume = 0;
@@ -105,8 +128,9 @@ if (typeof document !== 'undefined') {
  */
 export function syncRestAudio(view, { enabled = true } = {}) {
   if (typeof Audio !== 'function') return;
-  S.enabled = enabled;
+  S.enabled = enabled; S.view = view || null;
   const running = view && view.status === 'running' && enabled && view.endsAt;
+  if (running && !restAudioNeeded()) { if (S.endsAt) release(); return; } // écran allumé au premier plan : pas de flux
   if (!running) {
     if (!view || view.status !== 'finished' || !enabled) { if (S.endsAt) release(); }
     return;
@@ -120,6 +144,7 @@ export function syncRestAudio(view, { enabled = true } = {}) {
   try {
     S.url = URL.createObjectURL(new Blob([buildRestWav(seconds)], { type: 'audio/wav' }));
     S.endsAt = view.endsAt; S.beepAtMs = beepStartMs(seconds); S.failed = false;
+    sessionType('playback'); // nécessaire pour sonner écran verrouillé (Safari)
     a.src = S.url; a.volume = 1; a.currentTime = 0;
     const p = a.play();
     setSession(seconds);
@@ -134,3 +159,10 @@ export function restAudioCovers(endsAt) {
 }
 /** Coupe tout (fin de séance, changement de profil). */
 export function stopRestAudio() { if (S.endsAt || S.url) release(); }
+
+// Arrière-plan, retour au premier plan, prise ou perte du verrou d'écran : on réévalue le besoin du fichier son.
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+  const resync = () => { if (S.view) syncRestAudio(S.view, { enabled: S.enabled }); };
+  document.addEventListener('visibilitychange', resync);
+  document.addEventListener('pm:awake-change', resync);
+}
