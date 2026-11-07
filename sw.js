@@ -9,7 +9,7 @@
  * - Ne touche JAMAIS a IndexedDB ni a localStorage : une mise a jour du code ne supprime aucune donnee.
  * VERSION est recalculee par `node tools/release.mjs` (date + empreinte des fichiers) ; tests/pwa.test.mjs verifie qu'elle est a jour.
  */
-const VERSION = '2026.11.07-c9935c6e';
+const VERSION = '2026.11.07-6b4d280c';
 const CACHE = 'pm-musculation-' + VERSION;
 const PRECACHE = [
   './', 'index.html', 'manifest.webmanifest', 'storage.js',

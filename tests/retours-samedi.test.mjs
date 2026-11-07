@@ -185,11 +185,13 @@ test('ancien programme avec « hip-abduction » : l\'import propose de choisir l
   assert.equal(fixed.program.days[0].activities[0].machineId, 'hip-abduction-close-open');
 });
 
-test('réglages par machine : Vélo assis = niveau seulement, tapis = les trois ; l\'exemple ChatGPT les respecte', async () => {
+test('réglages par machine : Vélo assis et Escalier = niveau, tapis = inclinaison + vitesse, les autres = les trois ; l\'exemple ChatGPT les respecte', async () => {
   const { metricsFor } = await import('../js/cardio.js');
   const by = Object.fromEntries(catalog.map(m => [m.name, m]));
   assert.deepEqual(metricsFor(by['Vélo assis']).map(m => m.key), ['level']);
-  assert.deepEqual(metricsFor(by['Tapis de course']).map(m => m.key), ['incline', 'speed', 'level']);
+  assert.deepEqual(metricsFor(by['Tapis de course']).map(m => m.key), ['incline', 'speed']);
+  assert.deepEqual(metricsFor(by['Escalier']).map(m => m.key), ['level']);
+  assert.deepEqual(metricsFor(by['Rameur']).map(m => m.key), ['incline', 'speed', 'level']); // pas encore tranché : les trois
   assert.deepEqual(metricsFor(undefined).map(m => m.key), ['incline', 'speed', 'level']);
   const ref = JSON.parse(fs.readFileSync(new URL('../docs/reference-programme-chatgpt.json', import.meta.url), 'utf8'));
   const allowed = Object.fromEntries(ref._catalogue_machines.machines.filter(m => m.kind === 'cardio').map(m => [m.name, m.reglages_possibles]));

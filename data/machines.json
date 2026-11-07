@@ -158,7 +158,11 @@
       "id": "treadmill",
       "name": "Tapis de course",
       "kind": "cardio",
-      "muscleGroup": "Cardio"
+      "muscleGroup": "Cardio",
+      "metrics": [
+        "incline",
+        "speed"
+      ]
     },
     {
       "id": "recumbent-bike",
@@ -185,7 +189,10 @@
       "id": "stairs",
       "name": "Escalier",
       "kind": "cardio",
-      "muscleGroup": "Cardio"
+      "muscleGroup": "Cardio",
+      "metrics": [
+        "level"
+      ]
     }
   ]
 }
