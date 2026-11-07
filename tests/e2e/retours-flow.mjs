@@ -77,22 +77,22 @@ await step('Hip Abduction : deux machines distinctes dans l’écran', async () 
   assert.equal(await page.locator(screen + ' .pm-set-side').count(), 0); // pas de côté sur ces machines
   await page.click('#pm-validate-set'); await page.waitForSelector('.pm-machine-done');
 });
-await step('Escalier : champs inclinaison, vitesse, niveau (niveau prérempli depuis le programme)', async () => {
+await step('Escalier : durée et niveau seulement (niveau prérempli depuis le programme)', async () => {
   await page.click(screen + ' .pm-validate:has-text("Machine suivante")');
   assert.match(await text(screen + ' h2'), /Escalier/);
   const labels = await page.locator(screen + ' .pm-cardio-grid .pm-field-name').allInnerTexts();
-  assert.deepEqual(labels.map(l => l.replace(/ \(.*\)/, '')), ['minutes', 'inclinaison', 'vitesse', 'niveau']);
+  assert.deepEqual(labels.map(l => l.replace(/ \(.*\)/, '')), ['minutes', 'niveau']);
   const inputs = page.locator(screen + ' .pm-cardio-grid input');
-  assert.equal(await inputs.nth(3).inputValue(), '6');
-  assert.equal(await inputs.nth(1).inputValue(), '');
-  await inputs.nth(3).fill('7'); await inputs.nth(2).fill('45');
+  assert.equal(await inputs.nth(1).inputValue(), '6');
+  await inputs.nth(1).fill('7');
   await page.click(screen + ' .pm-validate:has-text("Fait")');
   await page.waitForSelector(screen + ' .pm-validate:has-text("modifier")');
 });
-await step('Tapis de course : valeurs saisies refusées si hors limites, puis enregistrées', async () => {
+await step('Tapis de course : durée, inclinaison et vitesse seulement ; valeurs saisies refusées si hors limites, puis enregistrées', async () => {
   await page.click(screen + ' .pm-validate:has-text("Machine suivante")');
   assert.match(await text(screen + ' h2'), /Tapis de course/);
   const inputs = page.locator(screen + ' .pm-cardio-grid input');
+  assert.deepEqual((await page.locator(screen + ' .pm-cardio-grid .pm-field-name').allInnerTexts()).map(l => l.replace(/ \(.*\)/, '')), ['minutes', 'inclinaison', 'vitesse']);
   assert.equal(await inputs.nth(1).inputValue(), '3'); assert.equal(await inputs.nth(2).inputValue(), '6');
   await inputs.nth(1).fill('99');
   await page.click(screen + ' .pm-validate:has-text("Fait")');
@@ -115,7 +115,7 @@ await step('récapitulatif puis fin : comparaison idiote affichée, bouton « Un
   await page.waitForSelector(screen + ' h2:has-text("Récapitulatif")');
   const recap = await text(screen);
   assert.match(recap, /Durée réelle : 12 min · inclinaison 4,5 % · vitesse 6,5 km\/h/);
-  assert.match(recap, /Durée réelle : 8 min · vitesse 45 · niveau 7/);
+  assert.match(recap, /Durée réelle : 8 min · niveau 7/);
   await page.click(screen + ' .pm-validate:has-text("Valider ma séance")');
   await page.waitForSelector(screen + ' .pm-done-icon');
   const first = await text(screen + ' .pm-fun-text');

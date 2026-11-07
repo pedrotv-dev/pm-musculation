@@ -1348,8 +1348,7 @@
         "muscleGroup": "Cardio",
         "reglages_possibles": [
           "incline",
-          "speed",
-          "level"
+          "speed"
         ]
       },
       {
@@ -1389,8 +1388,6 @@
         "kind": "cardio",
         "muscleGroup": "Cardio",
         "reglages_possibles": [
-          "incline",
-          "speed",
           "level"
         ]
       }
