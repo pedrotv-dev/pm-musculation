@@ -91,6 +91,25 @@ function usageSection(profile, ui) {
     row('Bouton retour du téléphone', 'Revient d’un niveau dans l’application (ferme un dialogue, retourne à la machine, à l’accueil…) au lieu de la quitter. À l’accueil, « retour » quitte normalement.', 'backButton'));
 }
 
+function effectsSection(profile, ui) {
+  const row = (label, hint, key) => {
+    const wrap = el('div', 'pm-profile-option');
+    const l = el('label', 'pm-check');
+    const c = document.createElement('input'); c.type = 'checkbox'; c.checked = ui[key];
+    c.addEventListener('change', async () => {
+      const r = await setUiSettings(profile, { [key]: c.checked });
+      if (r.error) { c.checked = !c.checked; toast(r.error); } else toast(c.checked ? 'Activé' : 'Désactivé', { duration: 1200 });
+    });
+    l.append(c, document.createTextNode(' ' + label));
+    wrap.append(l, el('p', 'pm-muted', hint));
+    return wrap;
+  };
+  return section('Ambiance', 'Animations et sons de l’application, propres à ce profil. Tout peut être coupé.',
+    row('Animations', 'Effets visuels (confettis, pulsations…). Elles se coupent aussi toutes seules si ton téléphone est réglé sur « réduire les animations ».', 'animations'),
+    row('Petits bruitages', 'Sons discrets quand tu valides une série, annules, termines une machine…', 'sfx'),
+    row('Jingles', 'Petites mélodies pour une séance terminée, un niveau gagné, un succès, un record.', 'jingles'));
+}
+
 function backupSection(profile) {
   if (!real(profile)) return section('Sauvegardes', 'Le mode démo n’a rien à sauvegarder : ses données sont fictives et restent en mémoire.');
   const status = el('p', 'pm-muted', S.notice);
@@ -254,7 +273,7 @@ async function render() {
   const head = section('', '');
   head.replaceChildren(el('h3', '', PEOPLE[profile].name), el('p', 'pm-muted', profile === 'demo' ? 'Mode démo — données fictives' : PEOPLE[profile].goal.replace(/^./, c => c.toUpperCase())),
     btn('Changer de profil', 'pm-secondary', () => document.getElementById('switch-profile')?.click()));
-  add(page, el('div', 'eyebrow', 'Mon espace'), el('h2', '', 'Profil'), head, chronoSection(profile, config), usageSection(profile, ui), backupSection(profile), bilan, localDataSection(profile), demoSection(profile));
+  add(page, el('div', 'eyebrow', 'Mon espace'), el('h2', '', 'Profil'), head, chronoSection(profile, config), usageSection(profile, ui), effectsSection(profile, ui), backupSection(profile), bilan, localDataSection(profile), demoSection(profile));
   page.append(section('À propos', null, el('p', 'pm-muted', 'PM Musculation · version ' + APP_VERSION + ' · fonctionne hors connexion après installation.')));
   const update = btn('Rechercher une mise à jour', 'pm-secondary', async () => {
     try {

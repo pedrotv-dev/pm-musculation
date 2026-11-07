@@ -11,7 +11,7 @@ import {
   addActivity, removeActivity, moveActivity, setCursor, setWorkoutFeedback, getNextActivity, getWorkoutSummary,
   getWorkoutDuration, getPostponedActivities
 } from './workouts.js';
-import { el, btn, clear, add, dialog, confirmDialog, toast, formatClock, formatMinutes, fmtNum, parseNum } from './dom.js';
+import { el, btn, clear, add, dialog, confirmDialog, toast, formatClock, formatMinutes, fmtNum, parseNum, localISODate } from './dom.js';
 import { loadCatalog, machineImage } from './catalog.js';
 import { ALL_PROFILES as KNOWN, isRealProfile } from './profiles.js';
 import { machineHistory, isClosed } from './stats.js';
@@ -20,6 +20,9 @@ import { holdAwake } from './wakelock.js';
 import { getUiSettings, peekUiSettings } from './ui-settings.js';
 import { plannedIndex, SIDE_LABEL, SIDE_SHORT } from './machine-rules.js';
 import { funComparisons } from './fun-volume.js';
+import { rewardFor } from './gamification.js';
+import { rewardCard } from './jeu-ui.js';
+import { fx } from './fx.js';
 import { metricsFor, metricsText } from './cardio.js';
 
 const root = document.documentElement;
@@ -217,7 +220,7 @@ function renderSets(card, a) {
       tools.append(btn('↺', 'pm-icon-btn', async () => {
         await flushAll();
         await commit((p, id) => updateSet(p, id, a.key, set.id, { done: false }));
-        emit('pm:workout-set-undone', { profile: S.profile, sessionId: S.session.id, activityKey: a.key });
+        fx('set-undone'); emit('pm:workout-set-undone', { profile: S.profile, sessionId: S.session.id, activityKey: a.key });
       }));
       tools.lastChild.title = 'Rouvrir cette série'; tools.lastChild.setAttribute('aria-label', 'Rouvrir la ' + setLabel(a, idx));
     }
@@ -243,10 +246,14 @@ function renderSets(card, a) {
       try {
         await flushAll();
         const session = await commit((p, id) => logSet(p, id, a.key, next.set.id, v), {
-          after: () => emit('pm:workout-set-validated', {
-            profile: S.profile, sessionId: S.session.id, activityKey: a.key, machineId: a.machineId,
-            setId: next.set.id, restSeconds: a.restSeconds
-          })
+          after: () => {
+            fx('set-validated', { machineId: a.machineId });
+            if (a.sets.every(x => x.done || x.id === next.set.id)) fx('activity-done', { kind: 'strength', machineId: a.machineId });
+            emit('pm:workout-set-validated', {
+              profile: S.profile, sessionId: S.session.id, activityKey: a.key, machineId: a.machineId,
+              setId: next.set.id, restSeconds: a.restSeconds
+            });
+          }
         });
         if (session) offerUndo(a, next.set.id);
       } finally { S.busy = false; }
@@ -268,7 +275,7 @@ function offerUndo(a, setId) {
     onAction: async () => {
       if (!valid(S.profile, rev) || S.session?.id !== id) return;
       await commit((p, sid) => updateSet(p, sid, a.key, setId, { done: false }));
-      emit('pm:workout-set-undone', { profile: S.profile, sessionId: id, activityKey: a.key });
+      fx('set-undone'); emit('pm:workout-set-undone', { profile: S.profile, sessionId: id, activityKey: a.key });
     }
   });
 }
@@ -336,7 +343,10 @@ function renderMachine(a) {
         actual[m.key] = n;
       }
       commit((p, id) => completeActivity(p, id, a.key, { done: true, actual }), {
-        after: () => toast('Enregistré : ' + fmtNum(v) + ' min' + (metricsText(actual) ? ' · ' + metricsText(actual, { speedUnit: treadmill }) : ''))
+        after: () => {
+          fx('activity-done', { kind: 'cardio' });
+          toast('Enregistré : ' + fmtNum(v) + ' min' + (metricsText(actual) ? ' · ' + metricsText(actual, { speedUnit: treadmill }) : ''));
+        }
       });
     });
     card.append(confirmDone);
@@ -556,6 +566,9 @@ function renderDone(session) {
   add(box, el('div', 'pm-done-icon', '✓'),
     el('h2', '', session.status === 'completed' ? 'Séance terminée' : 'Séance partielle enregistrée'),
     el('p', 'pm-muted', sum.setsDone + ' séries · ' + fmtNum(sum.volumeKg) + ' kg de volume · ' + formatMinutes(sum.durationMinutes)));
+  let reward = null;
+  try { reward = rewardFor([...S.history, session], session.id, { today: localISODate() }); } catch (e) { console.error('PM jeu :', e); }
+  if (reward) box.append(rewardCard(reward, id => S.catalog.byId.get(id)?.name || id));
   const jokes = funComparisons(sum.volumeKg, session.id);
   if (jokes.length) {
     let shown = 0;
@@ -581,6 +594,14 @@ function renderDone(session) {
   box.append(btn('Retour à l’accueil', 'pm-secondary', () => closeWorkout({ goTo: 'accueil' })));
   panel.append(box);
   window.scrollTo(0, 0);
+  // effets : un seul point d'entrée (js/fx.js) pour les sons et animations
+  fx('session-done', { complete: session.status === 'completed', xp: reward ? reward.xp : 0 });
+  if (reward) {
+    fx('xp', { amount: reward.xp });
+    reward.records.forEach(r => fx('record', { machineId: r.machineId, kg: r.kg }));
+    reward.newBadges.forEach(b => fx('badge', { id: b.id, name: b.name }));
+    if (reward.leveledUp) fx('level-up', { level: reward.levelAfter, title: reward.after.title, stage: reward.after.stage });
+  }
 }
 
 // ---------------------------------------------------------------- rendu principal

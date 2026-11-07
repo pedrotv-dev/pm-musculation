@@ -9,15 +9,15 @@
  * - Ne touche JAMAIS a IndexedDB ni a localStorage : une mise a jour du code ne supprime aucune donnee.
  * VERSION est recalculee par `node tools/release.mjs` (date + empreinte des fichiers) ; tests/pwa.test.mjs verifie qu'elle est a jour.
  */
-const VERSION = '2026.11.07-6b4d280c';
+const VERSION = '2026.11.07-ad6eff74';
 const CACHE = 'pm-musculation-' + VERSION;
 const PRECACHE = [
   './', 'index.html', 'manifest.webmanifest', 'storage.js',
-  'css/app.css', 'css/base.css', 'css/programs.css', 'css/rest.css', 'css/workout.css',
-  'js/app.js', 'js/backup.js', 'js/bilan.js', 'js/cardio.js', 'js/catalog.js', 'js/charts.js', 'js/demo-fixtures.js', 'js/dom.js', 'js/fun-volume.js', 'js/history-ui.js',
-  'js/home-ui.js', 'js/machine-rules.js', 'js/nav-history.js', 'js/profiles.js', 'js/profile-ui.js', 'js/program-ui.js', 'js/programs.js', 'js/progress-ui.js', 'js/rest-audio.js', 'js/rest-timer.js', 'js/rest-ui.js',
+  'css/app.css', 'css/base.css', 'css/effets.css', 'css/jeu.css', 'css/programs.css', 'css/rest.css', 'css/workout.css',
+  'js/app.js', 'js/backup.js', 'js/bilan.js', 'js/cardio.js', 'js/catalog.js', 'js/charts.js', 'js/demo-fixtures.js', 'js/dom.js', 'js/effets.js', 'js/fun-volume.js', 'js/fx.js', 'js/gamification.js', 'js/jeu-ui.js', 'js/history-ui.js',
+  'js/home-ui.js', 'js/machine-rules.js', 'js/mascot.js', 'js/nav-history.js', 'js/profiles.js', 'js/profile-ui.js', 'js/program-ui.js', 'js/programs.js', 'js/progress-ui.js', 'js/rest-audio.js', 'js/rest-melody.js', 'js/rest-timer.js', 'js/rest-ui.js', 'js/sfx.js', 'js/sons.js',
   'js/stats.js', 'js/ui-settings.js', 'js/version.js', 'js/wakelock.js', 'js/weights.js', 'js/workout-ui.js', 'js/workouts.js',
-  'data/machines.json', 'data/exemple-programme.json', 'assets/machines/index.json',
+  'data/machines.json', 'data/exemple-programme.json', 'assets/machines/index.json', 'assets/mascot/index.json',
   'assets/machines/back-extension.png', 'assets/machines/rotary-torso.png', 'assets/machines/shoulder-press.png', 'assets/machines/converging-chest-press.png',
   'assets/machines/converging-shoulder-press.png', 'assets/machines/leg-extension.png', 'assets/machines/chest-press.png', 'assets/machines/seated-leg-curl.png',
   'assets/machines/rear-delt-pec-fly.png', 'assets/machines/leg-press.png', 'assets/machines/arm-curl.png', 'assets/machines/diverging-lat-pulldown.png',

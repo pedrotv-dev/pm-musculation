@@ -6,7 +6,7 @@
 import { saveSetting, getSetting } from '../storage.js';
 
 const KEY = 'ui.settings';
-export const UI_DEFAULTS = Object.freeze({ keepAwake: true, backButton: true, lockAlert: true });
+export const UI_DEFAULTS = Object.freeze({ keepAwake: true, backButton: true, lockAlert: true, animations: true, sfx: true, jingles: true });
 const REAL = ['pierre', 'manon'];
 const cache = new Map();
 
@@ -18,7 +18,7 @@ function sanitize(raw) {
 /** Dernière valeur connue, sans accès à la base (défauts tant que rien n'est chargé). */
 export function peekUiSettings(profileId) { return { ...(cache.get(profileId) || UI_DEFAULTS) }; }
 
-/** @returns {Promise<{keepAwake:boolean, backButton:boolean, lockAlert:boolean}>} */
+/** @returns {Promise<{keepAwake, backButton, lockAlert, animations, sfx, jingles} (booléens)>} */
 export async function getUiSettings(profileId) {
   if (REAL.indexOf(profileId) === -1) return peekUiSettings(profileId);
   try { const s = sanitize(await getSetting(profileId, KEY, null)); cache.set(profileId, s); return { ...s }; }
