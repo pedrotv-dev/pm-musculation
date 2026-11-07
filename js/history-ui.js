@@ -174,7 +174,7 @@ function renderDetail() {
       });
       row.append(dur, el('span', 'pm-unit', 'min' + (a.planned?.durationMinutes ? ' (prévu ' + a.planned.durationMinutes + ')' : '')));
       block.append(row);
-      const mrow = el('div', 'pm-hist-set pm-hist-metrics');
+      const mrow = el('div', 'pm-hist-metrics'); // grille propre : libellé au-dessus de SON champ (audit V1, C1)
       for (const m of metricsFor((S.catalog.list || []).find(x => x.kind === 'cardio' && x.name === a.name))) {
         const cur = a.actual?.[m.key];
         const input = numInput(cur ?? 0, m.integer ? 'reps' : 'kg', m.label + ' — ' + nameOf(a));
@@ -186,7 +186,9 @@ function renderDetail() {
           if (n !== null && (!Number.isFinite(n) || n < 0 || n > m.max || (m.integer && !Number.isInteger(n)))) { toast(m.label + ' invalide.'); load(); return; }
           fix((p, id) => correctActivityMetrics(p, id, a.key, { [m.key]: n }), 'Corrigé ✓');
         });
-        mrow.append(input, el('span', 'pm-unit', m.label + (m.unit && (m.key !== 'speed' || a.name === 'Tapis de course') ? ' (' + m.unit + ')' : '')));
+        const field = el('label', 'pm-hist-metric');
+        field.append(el('span', 'pm-unit', m.label + (m.unit && (m.key !== 'speed' || a.name === 'Tapis de course') ? ' (' + m.unit + ')' : '')), input);
+        mrow.append(field);
       }
       block.append(mrow);
     }
