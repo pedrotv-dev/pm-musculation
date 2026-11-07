@@ -2,7 +2,7 @@
 
 **Avant tout : lis `docs/chatgpt/00-contrat-technique.md` et respecte son protocole** (étapes courtes, une PR par étape, 5 lignes de plan, tu t'arrêtes à chaque étape et tu attends « OK »).
 
-**Objectif** : une application **chaleureuse, ludique, rapide**, avec une mascotte qui évolue, des animations légères, sans jamais gêner la saisie en salle (mains moites, une main, pouce).
+**Objectif** : une application **moderne, professionnelle et motivante** — légèrement ludique, **jamais enfantine** (esprit Strava / Whoop / Apple Fitness, pas Duolingo) — avec un emblème-mascotte qui évolue et des animations **brèves** (**3 secondes maximum pour tout effet, 0,5 s pour les actions courantes**), sans jamais gêner la saisie en salle (mains moites, une main, pouce). **Relis la section « Ton et budget de temps » du contrat : elle prime sur le reste.**
 **Hors périmètre** : la barre du **chronomètre de repos** (sa direction artistique sera décidée plus tard, ne la restyle pas) et **les sons** (missions 2 et 3).
 **Tes fichiers** : `css/*.css`, `js/effets.js`, `assets/mascot/*` (voir le contrat). Le reste est en lecture seule.
 
@@ -11,7 +11,7 @@ Chaque étape donne : *Lis* (6 fichiers max) · *Fais* · *C'est fini quand* · 
 ---
 ### Étape 0 — Direction artistique (aucun code)
 - *Lis* : `docs/prompt-design-chatgpt.md` (sections Identité et Écrans), `css/app.css` (ligne `:root`), `js/jeu-ui.js`.
-- *Fais* : propose **3 directions** (6 lignes chacune) : nom · 5 couleurs (hex) · formes (rayons, ombres) · ton de la mascotte (qui est-elle ? un animal ? un objet ? Elle évolue en 12 stades du « Œuf de gym » à la « Légende de la machine ») · une phrase d'ambiance.
+- *Fais* : propose **3 directions** (6 lignes chacune) : nom · 5 couleurs (hex) · formes (rayons, ombres) · ton de la mascotte (**un emblème sobre et élégant**, pas un personnage de dessin animé : animal stylisé, forme géométrique, insigne… ; elle évolue en 12 stades, de « Recrue » à « Légende ») · une phrase d'ambiance. Les 3 directions doivent toutes rester **professionnelles** ; elles diffèrent par la couleur et la forme, pas par le niveau de fantaisie.
 - *C'est fini quand* : les 3 directions sont dans ta réponse. *Stop* : j'en choisis une.
 
 ### Étape 1 — Variables de style
@@ -26,7 +26,7 @@ Chaque étape donne : *Lis* (6 fichiers max) · *Fais* · *C'est fini quand* · 
 
 ### Étape 3 — Écran de séance
 - *Lis* : `css/workout.css`, `docs/prompt-design-chatgpt.md` (écran de séance), `js/workout-ui.js` (lecture seule, pour les noms de classes).
-- *Fais* : habille la carte machine, les rangées de séries (`.pm-set-row`, `.pm-set-current`, `.pm-set-done`, pastille `.pm-set-side` G/D), le gros bouton **« Valider la série »** (réaction à l'appui), la grille cardio (`.pm-cardio-grid`), les points de progression. **La série courante doit sauter aux yeux.**
+- *Fais* : habille la carte machine, les rangées de séries (`.pm-set-row`, `.pm-set-current`, `.pm-set-done`, pastille `.pm-set-side` G/D), le gros bouton **« Valider la série »** (réaction à l'appui), la grille cardio (`.pm-cardio-grid`), les points de progression. **La série courante doit sauter aux yeux.** Sobriété avant tout : l'écran de séance reste un outil de travail.
 - *C'est fini quand* : on voit d'un coup d'œil machine → série courante → bouton. *Stop* : PR n° 3.
 
 ### Étape 4 — Niveau, succès, classements, récompense
@@ -36,18 +36,18 @@ Chaque étape donne : *Lis* (6 fichiers max) · *Fais* · *C'est fini quand* · 
 
 ### Étape 5 — Mascotte, stade 0 (+ humeurs)
 - *Lis* : `docs/chatgpt/00-contrat-technique.md` (section Mascotte), `js/mascot.js`, `css/jeu.css`.
-- *Fais* : dessine **`stage-0.svg`** (le stade « Œuf de gym ») et ses humeurs `stage-0-happy.svg`, `-cheer.svg`, `-sleepy.svg`, `-levelup.svg` (4 à 5 fichiers). Liste-les dans `assets/mascot/index.json`. Le dessin doit rester lisible à 56 px.
+- *Fais* : dessine **`stage-0.svg`** (le stade « Recrue ») et ses humeurs `stage-0-happy.svg`, `-cheer.svg`, `-sleepy.svg`, `-levelup.svg` (4 à 5 fichiers). Liste-les dans `assets/mascot/index.json`. Le dessin doit rester lisible à 56 px.
 - *C'est fini quand* : chaque SVG ≤ 6 Ko, fond transparent, `viewBox="0 0 100 100"`. *Stop* : PR n° 5 (**je valide le personnage avant la suite**).
 
 ### Étapes 6, 7, 8 — Mascotte, les 11 autres stades (3 PR)
 - Étape 6 : stades **1 à 3** · étape 7 : stades **4 à 7** · étape 8 : stades **8 à 11**. Pour chaque stade : `stage-<N>.svg` + au moins l'humeur `-cheer` (les autres humeurs retombent sur `stage-<N>.svg`).
-- Même personnage qui grandit/évolue (mêmes yeux, même couleur d'identité). Titres de référence : 1 Poussin de fonte · 2 Moineau musclé · 3 Coq de salle · 4 Taureau tranquille · 5 Ours de la fonte · 6 Gorille poli · 7 Rhinocéros zen · 8 Éléphant en or · 9 Dragon de salle · 10 Titan du samedi · 11 Légende de la machine.
+- Même personnage qui grandit/évolue (mêmes yeux, même couleur d'identité). Grades de référence : 1 Initié · 2 Assidu · 3 Régulier · 4 Confirmé · 5 Aguerri · 6 Expert · 7 Athlète · 8 Élite · 9 Maître · 10 Champion · 11 Légende.
 - *Stop* après chaque PR.
 
 ### Étape 9 — Effets animés
 - *Lis* : `js/effets.js`, `css/effets.css`, `js/fx.js`, contrat (tableau `pm:fx`).
 - *Fais* : dans `js/effets.js`, écoute `pm:fx` :
-  `set-validated` → petite pulsation du bouton / de la rangée · `activity-done` → coche qui « pop » · `session-done`, `record`, `badge`, `level-up` → **célébration** (confettis en éléments DOM animés par CSS, **40 éléments maximum, retirés au bout de 2 s**, jamais de canvas plein écran permanent).
+  `set-validated` → petite pulsation du bouton / de la rangée · `activity-done` → coche qui « pop » · `session-done`, `record`, `badge`, `level-up` → **célébration brève** : `session-done` / `record` / `badge` = lueur ou trait de lumière + pulsation du chiffre, **≤ 1,5 s** ; `level-up` = idem + éventuellement de fines particules d'**une seule teinte** (**24 maximum**, éléments DOM animés par CSS, retirés au bout de **2,5 s**), **≤ 3 s** au total. Aucun confetti multicolore, aucune boucle, aucun canvas plein écran, rien qui bloque un appui (un appui coupe l'effet).
   Ajoute les animations CSS dans `css/effets.css`. Respecte `animations` (réglage) et `prefers-reduced-motion` (le helper `motionAllowed()` existe déjà).
 - *C'est fini quand* : aucun effet ne bloque un appui ; tout s'arrête avec le réglage ; 60 images/s ressenties sur un téléphone moyen. *Stop* : PR n° 9.
 

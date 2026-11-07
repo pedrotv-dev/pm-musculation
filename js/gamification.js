@@ -18,10 +18,10 @@ export const xpAtLevel = level => 200 * (level - 1) + 50 * (level - 1) * (level 
 
 /** Paliers de titre : la mascotte évolue à chaque palier (`stage` = index dans ce tableau, de 0 à 11). */
 export const TITLES = Object.freeze([
-  { from: 1, name: 'Œuf de gym' }, { from: 2, name: 'Poussin de fonte' }, { from: 4, name: 'Moineau musclé' },
-  { from: 6, name: 'Coq de salle' }, { from: 8, name: 'Taureau tranquille' }, { from: 10, name: 'Ours de la fonte' },
-  { from: 13, name: 'Gorille poli' }, { from: 16, name: 'Rhinocéros zen' }, { from: 20, name: 'Éléphant en or' },
-  { from: 25, name: 'Dragon de salle' }, { from: 30, name: 'Titan du samedi' }, { from: 40, name: 'Légende de la machine' }
+  { from: 1, name: 'Recrue' }, { from: 2, name: 'Initié' }, { from: 4, name: 'Assidu' },
+  { from: 6, name: 'Régulier' }, { from: 8, name: 'Confirmé' }, { from: 10, name: 'Aguerri' },
+  { from: 13, name: 'Expert' }, { from: 16, name: 'Athlète' }, { from: 20, name: 'Élite' },
+  { from: 25, name: 'Maître' }, { from: 30, name: 'Champion' }, { from: 40, name: 'Légende' }
 ]);
 export function stageFor(level) { let s = 0; TITLES.forEach((t, i) => { if (level >= t.from) s = i; }); return s; }
 export const titleFor = level => TITLES[stageFor(level)].name;
@@ -42,19 +42,19 @@ export const BADGES = Object.freeze([
   { id: 'ten-sessions', name: 'Régulier', desc: '10 séances terminées', test: c => c.sessions >= 10 },
   { id: 'twentyfive-sessions', name: 'Pilier de salle', desc: '25 séances terminées', test: c => c.sessions >= 25 },
   { id: 'hundred-sets', name: 'Centurion', desc: '100 séries validées', test: c => c.sets >= 100 },
-  { id: 'five-hundred-sets', name: 'Métronome', desc: '500 séries validées', test: c => c.sets >= 500 },
-  { id: 'tonne', name: 'Une tonne !', desc: '1 000 kg de volume en une séance', test: c => c.session.volumeKg >= 1000 },
-  { id: 'elephant', name: 'Poids d’éléphant', desc: '5 500 kg de volume en une séance', test: c => c.session.volumeKg >= 5500 },
-  { id: 'cargo', name: 'Porte-conteneurs', desc: '100 000 kg soulevés en tout', test: c => c.volumeKg >= 100000 },
+  { id: 'five-hundred-sets', name: 'Constance', desc: '500 séries validées', test: c => c.sets >= 500 },
+  { id: 'tonne', name: 'Une tonne', desc: '1 000 kg de volume en une séance', test: c => c.session.volumeKg >= 1000 },
+  { id: 'elephant', name: '5,5 tonnes', desc: '5 500 kg de volume en une séance', test: c => c.session.volumeKg >= 5500 },
+  { id: 'cargo', name: '100 tonnes', desc: '100 000 kg soulevés en tout', test: c => c.volumeKg >= 100000 },
   { id: 'first-record', name: 'Record battu', desc: 'Battre ton record de charge sur une machine', test: c => c.records >= 1 },
   { id: 'five-records', name: 'Chasseur de records', desc: '5 records de charge battus', test: c => c.records >= 5 },
   { id: 'streak-2', name: 'Deux semaines de suite', desc: 'Au moins une séance par semaine, 2 semaines d’affilée', test: c => c.streak >= 2 },
   { id: 'streak-4', name: 'Un mois sans lâcher', desc: '4 semaines d’affilée avec au moins une séance', test: c => c.streak >= 4 },
-  { id: 'streak-8', name: 'Deux mois, wow', desc: '8 semaines d’affilée avec au moins une séance', test: c => c.streak >= 8 },
-  { id: 'cardio-60', name: 'Souffle', desc: '60 minutes de cardio au total', test: c => c.cardioMinutes >= 60 },
+  { id: 'streak-8', name: 'Deux mois d’affilée', desc: '8 semaines d’affilée avec au moins une séance', test: c => c.streak >= 8 },
+  { id: 'cardio-60', name: 'Endurance', desc: '60 minutes de cardio au total', test: c => c.cardioMinutes >= 60 },
   { id: 'cardio-300', name: 'Cœur d’athlète', desc: '300 minutes de cardio au total', test: c => c.cardioMinutes >= 300 },
-  { id: 'explorer', name: 'Touche-à-tout', desc: 'Essayer 10 machines différentes', test: c => c.machines >= 10 },
-  { id: 'good-feeling', name: 'Bien dans ses baskets', desc: 'Noter une séance 5 sur 5', test: c => c.session.feeling === 5 }
+  { id: 'explorer', name: 'Polyvalent', desc: 'Essayer 10 machines différentes', test: c => c.machines >= 10 },
+  { id: 'good-feeling', name: 'Séance au top', desc: 'Noter une séance 5 sur 5', test: c => c.session.feeling === 5 }
 ]);
 
 const NO_RECORD = new Set(['dip-chin-assist']); // charge = assistance : moins = mieux, on ne compte pas de « record »

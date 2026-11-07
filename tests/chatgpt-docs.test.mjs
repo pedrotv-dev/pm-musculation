@@ -42,7 +42,20 @@ test('le jeu décrit à ChatGPT correspond au code : XP, titres, nombre de succ�
   assert.ok(c.includes(`**${BADGES.length} succès**`));
   for (const k of ['animations', 'sfx', 'jingles']) { assert.ok(k in UI_DEFAULTS && UI_DEFAULTS[k] === true, k); assert.ok(c.includes('`' + k + '`'), k); }
   const g = docs['01-design-et-animations.md'];
-  TITLES.slice(1).forEach((t, i) => assert.ok(g.includes(`${i + 1} ${t.name}`), 'titre manquant dans la mission 1 : ' + t.name));
+  TITLES.slice(1).forEach((t, i) => assert.ok(g.includes(`${i + 1} ${t.name}`), 'grade manquant dans la mission 1 : ' + t.name));
+});
+
+test('ton professionnel et budget de 3 secondes : présents dans le contrat et rappelés dans chaque mission', () => {
+  const c = docs['00-contrat-technique.md'];
+  assert.match(c, /Ludique mais professionnel\. Jamais enfantin/);
+  assert.match(c, /3 secondes au total, maximum/);
+  assert.match(c, /Jamais bloquant/);
+  for (const f of ['01-design-et-animations.md', '02-sons.md', '03-sfx.md']) assert.match(docs[f], /professionnel/, f);
+  assert.match(docs['01-design-et-animations.md'], /3 secondes maximum/);
+  assert.match(docs['02-sons.md'], /3 secondes au total/);
+  assert.match(docs['03-sfx.md'], /150 ms maximum/);
+  // aucun grade ni succès « enfantin » dans le code
+  for (const w of ['Œuf', 'Poussin', 'Coq de salle', 'Dragon', 'Gorille', 'Rhinocéros']) assert.ok(!TITLES.some(t => t.name.includes(w)), w);
 });
 
 test('chaque mission rappelle le protocole et son périmètre de fichiers', () => {
