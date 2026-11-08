@@ -5,7 +5,7 @@
  */
 import { exportProfileData, restoreProfileData, saveSetting, getSetting } from '../storage.js';
 import { plannedIndex, SIDE_LABEL } from './machine-rules.js';
-import { isRealProfile, isKnownProfile, profileRecord, adoptProfile, forgetAdoptedProfile } from './profiles.js';
+import { isRealProfile, isKnownProfile, profileRecord, adoptRestoredProfile } from './profiles.js';
 import { isValidProfileId } from '../storage.js';
 
 export const BACKUP_FORMAT = 'pm-musculation-backup';
@@ -58,17 +58,14 @@ export async function restoreBackup(profileId, backup, mode) {
  * Restaure la sauvegarde d'un profil ABSENT de cet appareil (autre appareil, ou profil supprimé) sous SON identifiant :
  * inscription dans le registre (fiche jointe à la sauvegarde), puis restauration de ses données. Refusé si le profil
  * existe déjà ici (utiliser restoreBackup, qui exige le profil actif = profil du fichier) : aucun doublon, aucun
- * mélange. Si la restauration échoue, l'inscription est annulée.
+ * mélange. Inscription et données en une seule transaction : un échec ne laisse rien (ni fiche, ni donnée, ni annonce).
  * @returns {Promise<object>} la fiche du profil inscrit
  */
 export async function restoreBackupAsNewProfile(backup) {
   if (!backup || backup.format !== BACKUP_FORMAT) throw new Error('Ce fichier n’est pas une sauvegarde PM Musculation.');
   if (isKnownProfile(backup.profileId)) throw new Error('Ce profil existe déjà sur cet appareil : ouvre-le puis restaure sa sauvegarde depuis son espace.');
   const meta = { ...(backup.profile && typeof backup.profile === 'object' ? backup.profile : {}), id: backup.profileId };
-  const rec = await adoptProfile(meta);
-  try { await restoreProfileData(rec.id, backup, 'replace'); }
-  catch (error) { await forgetAdoptedProfile(rec.id).catch(() => {}); throw error; }
-  return rec;
+  return adoptRestoredProfile(meta, backup); // fiche + données en UNE transaction : tout ou rien
 }
 /** Efface TOUTES les donnees du profil (remplacement par une sauvegarde vide). */
 export async function clearProfileData(profileId) {

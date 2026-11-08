@@ -122,6 +122,40 @@ await step('suppression (API, confirmation explicite) : retour au choix du profi
   await page.waitForSelector('#screen-select:not([hidden])');
 });
 
+await step('restauration d’un profil absent : tout ou rien (échec pendant l’import → ni fiche, ni donnée, ni annonce) ; puis réussite', async () => {
+  const r = await page.evaluate(async () => {
+    const Bk = await import('./js/backup.js'); const S = await import('./storage.js');
+    const id = 'p-restau-atomique';
+    const events = [];
+    document.addEventListener('pm:profiles-changed', e => events.push(e.detail.reason + ':' + e.detail.id));
+    const registryBefore = JSON.stringify((await S.loadProfileRegistry()).profiles.map(p => p.id).sort());
+    const pierreBefore = JSON.stringify((await S.exportProfileData('pierre')).data);
+    const backup = { format: 'pm-musculation-backup', schemaVersion: 1, profileId: id, profile: { id, name: 'Restauré fictif', color: 'ambre' },
+      data: { programs: [], sessions: [], settings: [{ profileId: id, key: 'rest', value: 1 }],
+        weights: [{ profileId: id, id: 'w1', data: { id: 'w1', kg: 61 } }, { profileId: id, id: 'w2', data: { id: 'w2', kg: 62, impossible: () => 0 } }] } };
+    let failure = null;
+    try { await Bk.restoreBackupAsNewProfile(backup); } catch (e) { failure = e.name || e.message; }
+    const after = {
+      failure, events: [...events],
+      registry: JSON.stringify((await S.loadProfileRegistry()).profiles.map(p => p.id).sort()) === registryBefore,
+      rows: await S.countProfileRows([id]),
+      pierre: JSON.stringify((await S.exportProfileData('pierre')).data) === pierreBefore
+    };
+    delete backup.data.weights[1].data.impossible; // sauvegarde corrigée : la restauration réussit, une seule annonce
+    await Bk.restoreBackupAsNewProfile(backup);
+    after.retry = { rows: await S.countProfileRows([id]), events: [...events] };
+    await (await import('./js/profiles.js')).deleteProfile(id, { confirm: id });
+    return after;
+  });
+  assert.ok(r.failure, 'échec attendu');
+  assert.deepEqual(r.events, [], 'aucune annonce : ' + JSON.stringify(r.events));
+  assert.equal(r.registry, true, 'aucune fiche inscrite');
+  assert.equal(r.rows, 0, 'aucune donnée');
+  assert.equal(r.pierre, true);
+  assert.equal(r.retry.rows, 3);
+  assert.deepEqual(r.retry.events, ['created:p-restau-atomique']);
+});
+
 await step('démo : fonctionne comme avant, rien d’écrit en base, registre inchangé', async () => {
   const before = await page.evaluate(async () => JSON.stringify((await (await import('./storage.js')).loadProfileRegistry())));
   await page.click('[data-select-profile="demo"]'); await page.waitForSelector('.pm-home-card');

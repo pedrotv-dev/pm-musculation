@@ -434,6 +434,31 @@ export async function exportProfileData(profileId) {
   };
 }
 
+const KEY_FIELDS = { programs: 'weekStart', sessions: 'id', weights: 'id', settings: 'key' };
+/** Vérifie le contenu d'une sauvegarde d'UN profil (format, version, propriétaire de chaque ligne). Aucune écriture. */
+function checkBackup(profileId, backup) {
+  objectValue(backup, 'Sauvegarde');
+  if (backup.format !== 'pm-musculation-backup' ||
+      backup.schemaVersion !== DB_VERSION || backup.profileId !== profileId) {
+    throw new Error('Sauvegarde incompatible ou appartenant a un autre profil.');
+  }
+  objectValue(backup.data, 'Contenu de sauvegarde');
+  for (const name of STORES) {
+    const rows = backup.data[name];
+    if (!Array.isArray(rows)) throw new Error(`Section de sauvegarde invalide : ${name}.`);
+    for (const row of rows) {
+      objectValue(row, name);
+      if (row.profileId !== profileId || typeof row[KEY_FIELDS[name]] !== 'string' ||
+          !row[KEY_FIELDS[name]].trim()) {
+        throw new Error(`Donnee invalide ou mauvais profil dans ${name}.`);
+      }
+      if (name === 'programs' || name === 'sessions' || name === 'weights') {
+        objectValue(row.data, `Donnee ${name}`);
+      }
+    }
+  }
+}
+
 /**
  * Restauration atomique d'un profil :
  *  - 'replace' : supprime ses donnees actuelles puis restaure celles du fichier.
@@ -443,31 +468,11 @@ export async function exportProfileData(profileId) {
  */
 export async function restoreProfileData(profileId, backup, mode) {
   validProfile(profileId);
-  objectValue(backup, 'Sauvegarde');
-  if (backup.format !== 'pm-musculation-backup' ||
-      backup.schemaVersion !== DB_VERSION || backup.profileId !== profileId) {
-    throw new Error('Sauvegarde incompatible ou appartenant a un autre profil.');
-  }
+  checkBackup(profileId, backup);
   if (mode !== 'replace' && mode !== 'merge') {
     throw new Error('Choisir explicitement replace ou merge.');
   }
-  objectValue(backup.data, 'Contenu de sauvegarde');
-
-  const keyFields = { programs: 'weekStart', sessions: 'id', weights: 'id', settings: 'key' };
-  for (const name of STORES) {
-    const rows = backup.data[name];
-    if (!Array.isArray(rows)) throw new Error(`Section de sauvegarde invalide : ${name}.`);
-    for (const row of rows) {
-      objectValue(row, name);
-      if (row.profileId !== profileId || typeof row[keyFields[name]] !== 'string' ||
-          !row[keyFields[name]].trim()) {
-        throw new Error(`Donnee invalide ou mauvais profil dans ${name}.`);
-      }
-      if (name === 'programs' || name === 'sessions' || name === 'weights') {
-        objectValue(row.data, `Donnee ${name}`);
-      }
-    }
-  }
+  const keyFields = KEY_FIELDS;
 
   // Gardée comme toute écriture : un profil supprimé entre-temps n'est jamais « ressuscité » par une restauration.
   return guardedWrite(profileId, STORES, (tx, setResult, abortWith) => {
@@ -564,7 +569,13 @@ export async function loadProfileRegistry() {
  * @returns {{meta:object, profiles:object[], added:string[]}}
  */
 export async function migrateProfileRegistry(records, { now = new Date().toISOString(), registryVersion = 1 } = {}) {
-  for (const r of records) if (!isValidProfileId(r?.id)) throw new Error('Fiche de profil invalide.');
+  // Réservée aux profils HISTORIQUES : un profil supplémentaire ne s'inscrit que par addProfileRecord ou
+  // restoreAsNewProfile (époque tirée, jamais de fiche sans époque). Refus avant toute transaction.
+  if (!Array.isArray(records)) throw new Error('Fiches de profil invalides.');
+  for (const r of records) {
+    if (!isValidProfileId(r?.id)) throw new Error('Fiche de profil invalide.');
+    if (!LEGACY_PROFILE_IDS.includes(r.id)) throw new Error('La migration ne concerne que les profils historiques (Pierre et Manon).');
+  }
   const db = await openStorage();
   return new Promise((resolve, reject) => {
     let tx;
@@ -615,6 +626,56 @@ export function addProfileRecord(record) {
     return null;
   }).then(() => { retired.delete(record.id); knownProfiles.set(record.id, epoch); return { ...record }; },
     error => { throw error && /abort|annul/i.test(String(error.message || error)) ? new Error('Ce profil existe déjà.') : error; });
+}
+
+/**
+ * Restaure un profil ABSENT de cet appareil (sauvegarde d'un autre appareil, ou profil supprimé) : vérification de son
+ * absence, inscription de sa fiche avec une NOUVELLE époque et import de ses données, en UNE transaction sur les quatre
+ * magasins. Tout ou rien : un échec (fiche déjà présente, donnée refusée, interruption) annule l'ensemble, aucune fiche
+ * ni donnée ne reste. Les lignes résiduelles éventuelles de cet identifiant sont effacées avant l'import (jamais de
+ * mélange). Le profil n'est autorisé dans cet onglet qu'après la validation (commit) de la transaction.
+ */
+export async function restoreAsNewProfile(record, backup) {
+  if (!isValidProfileId(record?.id) || LEGACY_PROFILE_IDS.includes(record.id)) throw new Error('Identifiant de profil invalide.');
+  const id = record.id;
+  checkBackup(id, backup);
+  const epoch = newEpoch();
+  const db = await openStorage();
+  await new Promise((resolve, reject) => {
+    let tx;
+    try { tx = db.transaction(STORES, 'readwrite'); } catch (error) { reject(error); return; }
+    let failure = null;
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => { failure ||= tx.error; };
+    tx.onabort = () => reject(failure || tx.error || new Error('Restauration annulée.'));
+    const fail = error => { failure = error; try { tx.abort(); } catch (_) { reject(error); } };
+    const write = () => {
+      try { for (const name of STORES) for (const row of backup.data[name]) tx.objectStore(name).put(row); }
+      catch (error) { fail(error); }
+    };
+    try {
+      const reg = tx.objectStore('settings').get([REGISTRY, profileKey(id)]);
+      reg.onsuccess = () => {
+        try {
+          if (reg.result) { fail(new Error('Ce profil existe déjà.')); return; }
+          tx.objectStore('settings').put({ profileId: REGISTRY, key: profileKey(id), value: { ...record }, epoch });
+          let pending = STORES.length;
+          for (const name of STORES) {
+            const request = tx.objectStore(name).index('byProfile').openCursor(IDBKeyRange.only(id));
+            request.onsuccess = () => {
+              try {
+                const cursor = request.result;
+                if (cursor) { cursor.delete(); cursor.continue(); } else if (--pending === 0) write();
+              } catch (error) { fail(error); }
+            };
+          }
+        } catch (error) { fail(error); }
+      };
+    } catch (error) { fail(error); }
+  });
+  retired.delete(id);
+  knownProfiles.set(id, epoch);
+  return { ...record };
 }
 
 /**

@@ -22,6 +22,7 @@ Ce socle est entièrement local : aucun compte, aucun serveur, aucun cloud. Aucu
 
   Une installation neuve ou une utilisation de la démo seule n'écrivent donc rien, comme en V1.
 - La migration est **additive** : elle tient en une seule transaction, n'ajoute que les fiches manquantes, n'écrase jamais une fiche existante et ne touche aucune donnée d'entraînement. Elle est idempotente : la rejouer ne change rien.
+- La migration est **réservée à Pierre et Manon** : tout autre identifiant est refusé avant la transaction, sans aucune écriture. Un profil supplémentaire ne s'inscrit que par création ou restauration, toujours avec une époque.
 - **Interruption** : la transaction est annulée en bloc et la migration est rejouée au démarrage suivant. Si le registre est illisible, Pierre et Manon restent utilisables comme en V1 (`profilesError()`).
 - Aucune suppression de base n'est utilisée comme mécanisme de réparation.
 - Les identifiants `pierre` et `manon`, leurs couleurs et leurs textes sont inchangés, tout comme la clé `localStorage` du dernier profil.
@@ -53,7 +54,7 @@ Les changements sont annoncés par l'événement `document` → `pm:profiles-cha
 
 - `createBackupFile(id)` joint la fiche du profil (`backup.profile`). Les anciennes versions ignorent ce champ, et les anciennes sauvegardes restent lisibles.
 - `restoreBackup(id, backup, mode)` restaure dans un profil existant, comme avant.
-- `restoreBackupAsNewProfile(backup)` réinscrit sur cet appareil un profil absent, avec **son** identifiant, puis restaure ses données. Elle refuse un profil déjà présent, ce qui évite tout doublon et tout écrasement. En cas d'échec, l'inscription est annulée.
+- `restoreBackupAsNewProfile(backup)` réinscrit sur cet appareil un profil absent, avec **son** identifiant, et restaure ses données **en une seule transaction** sur les 4 magasins (`restoreAsNewProfile` dans `storage.js`). Elle vérifie l'absence du profil, inscrit la fiche avec une nouvelle époque, efface d'éventuelles lignes résiduelles puis importe. C'est tout ou rien : un échec ne laisse ni fiche, ni donnée, ni annonce. Le cache et l'annonce `created` n'interviennent qu'après la validation de la transaction. Elle refuse un profil déjà présent, ce qui évite tout doublon et tout écrasement.
 
 ## Plusieurs onglets
 
@@ -70,7 +71,7 @@ Les changements sont annoncés par l'événement `document` → `pm:profiles-cha
   - L'onglet revient au choix du profil.
   - Il n'adopte jamais en silence la nouvelle inscription, car ses opérations en file appartiennent à l'ancienne.
   - Seule une création ou une restauration faite dans l'onglet même réautorise l'identifiant.
-- **Restauration échouée.** Le nettoyage (`forgetAdoptedProfile`) ne supprime que l'inscription créée par cette restauration.
+- **Restauration échouée.** Il n'y a pas de nettoyage à faire : l'inscription et les données forment une seule transaction, annulée en bloc.
 - Pierre et Manon ne peuvent pas être supprimés : leurs écritures et la modification de leur fiche ne sont pas soumises à l'époque.
 
 ## Limites connues
@@ -80,3 +81,11 @@ Les changements sont annoncés par l'événement `document` → `pm:profiles-cha
 - Le retour au choix du profil après une suppression faite ailleurs n'affiche aucun message : aucun changement visuel n'a été ajouté.
 - Un fichier de programme se rattache à un profil par sa clé dans `programs`. Pour un profil créé, cette clé est son identifiant.
 - L'écran de choix est encore statique (Pierre, Manon, démo). Les profils créés ne s'ouvrent pour l'instant que par `selectProfile` ou parce qu'ils sont mémorisés comme dernier profil.
+
+## Écran de séance : cible des écritures
+
+- Chaque écriture de l'écran de séance vise une **cible immuable** : profil, séance, contexte et rendu. Elle est capturée quand le brouillon, le bouton ou la confirmation est créé.
+- Elle est vérifiée avant toute mutation, puis de nouveau quand la file d'écritures l'exécute. Un rappel tardif (temporisateur de brouillon, suite d'une confirmation ou de `flushAll()`) n'écrit donc jamais dans une autre séance ni dans un autre profil.
+- À la destruction d'un rendu, les temporisateurs sont annulés.
+  - Lors d'un nouveau rendu de la même séance, un brouillon en attente est enregistré tout de suite, vers sa propre cible.
+  - Lors d'un changement de séance ou de profil, il est abandonné.

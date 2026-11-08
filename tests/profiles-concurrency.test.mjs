@@ -138,7 +138,7 @@ test('fiche supprimée puis restaurée (nouvelle époque) : l’ancien onglet ne
   assert.equal(await exportOf(SA, r), data, 'données de la nouvelle inscription intactes');
 });
 
-test('restauration dans l’onglet même : réinscription autorisée ici ; échec de restauration nettoyé sans toucher une autre inscription', async () => {
+test('restauration dans l’onglet même : réinscription autorisée ici ; restauration atomique : un échec pendant l’import ne laisse ni fiche ni donnée', async () => {
   const B = await import('../js/backup.js');
   const t = (await PA.createProfile({ name: 'T fictif', color: 'sauge' })).id;
   await SA.saveWeight(t, { id: 'w1', kg: 64, date: '2026-11-01' });
@@ -148,16 +148,26 @@ test('restauration dans l’onglet même : réinscription autorisée ici ; éche
   assert.equal(rec.id, t);
   await SA.saveWeight(t, { id: 'w2', kg: 65, date: '2026-11-02' });
   assert.ok((await exportOf(SA, t)).includes('"kg":65'));
-  // échec de restauration (donnée invalide) : l'inscription provisoire est retirée, rien ne reste
+  // échec APRÈS l'inscription de la fiche, PENDANT l'import (donnée refusée par la base) : une seule transaction,
+  // donc ni fiche, ni donnée, ni profil autorisé ; les autres profils intacts
   const u = 'p-test-restauration';
+  const others = [['pierre', await exportOf(SA, 'pierre')], [keep, await exportOf(SA, keep)], [t, await exportOf(SA, t)]];
+  const registry = () => JSON.stringify([...idb.stores.settings.rows.values()].filter(v => v.profileId === '~registry'));
+  const registryBefore = registry();
   const bad = { format: 'pm-musculation-backup', schemaVersion: 1, profileId: u, profile: { id: u, name: 'U fictif', color: 'bleu' },
-    data: { programs: [], sessions: [], weights: [{ profileId: u, id: 'w1', data: { id: 'w1', kg: 1, bad: 10n } }], settings: [] } };
+    data: { programs: [], sessions: [], settings: [{ profileId: u, key: 'rest', value: 1 }],
+      weights: [{ profileId: u, id: 'w1', data: { id: 'w1', kg: 1 } }, { profileId: u, id: 'w2', data: { id: 'w2', kg: 2, bad: 10n } }] } };
   await assert.rejects(B.restoreBackupAsNewProfile(bad));
-  assert.equal(rowsOf(u), 0);
-  assert.equal([...idb.stores.settings.rows.values()].some(v => v.profileId === '~registry' && v.key === 'profile:' + u), false, 'fiche provisoire retirée');
-  assert.equal(PA.isKnownProfile(u), false);
-  // le profil T (autre inscription) n'a pas été touché par ce nettoyage
-  assert.ok((await exportOf(SA, t)).includes('"kg":65'));
+  assert.equal(rowsOf(u), 0, 'aucune donnée');
+  assert.equal(registry(), registryBefore, 'registre inchangé : aucune fiche');
+  assert.equal(PA.isKnownProfile(u), false, 'profil non autorisé');
+  assert.equal((await PA.listProfiles()).some(p => p.id === u), false);
+  for (const [id, before] of others) assert.equal(await exportOf(SA, id), before, id + ' intact');
+  // la même sauvegarde, corrigée, se restaure ensuite normalement : aucun reste ne bloque
+  bad.data.weights[1].data.bad = 'ok';
+  await B.restoreBackupAsNewProfile(bad);
+  assert.equal(rowsOf(u), 3);
+  assert.ok(PA.isKnownProfile(u));
 });
 
 test('profils historiques : modification de fiche toujours possible, suppression toujours refusée', async () => {

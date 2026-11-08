@@ -70,6 +70,14 @@ test('migration idempotente : rejouée, elle n’ajoute ni ne modifie rien', asy
   assert.equal(dataRows(), allBefore);
 });
 
+test('migration réservée aux profils historiques : un identifiant supplémentaire est refusé sans aucune écriture', async () => {
+  const before = JSON.stringify([...idb.stores.settings.rows.entries()]);
+  await assert.rejects(S.migrateProfileRegistry([{ id: 'p-intrus-1', name: 'Intrus', goal: '', color: 'ambre' }]), /historiques/);
+  await assert.rejects(S.migrateProfileRegistry([{ id: 'pierre', name: 'Pierre', goal: '', color: 'bleu' }, { id: 'p-intrus-2', name: 'Intrus', goal: '', color: 'ambre' }]), /historiques/);
+  assert.equal(JSON.stringify([...idb.stores.settings.rows.entries()]), before, 'aucune ligne écrite ni modifiée');
+  assert.equal(S.knownProfileIds().some(id => id.startsWith('p-intrus')), false);
+});
+
 test('12 · migration interrompue (écriture qui échoue en cours de transaction) : rien d’écrit, puis relance réussie', async () => {
   // registre vidé pour rejouer une première migration (les données restent)
   for (const [k, v] of [...idb.stores.settings.rows.entries()]) if (v.profileId === '~registry') idb.stores.settings.rows.delete(k);

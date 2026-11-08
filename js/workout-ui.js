@@ -38,7 +38,7 @@ panel.setAttribute('aria-label', 'Suivi de la séance');
 main.append(panel);
 
 const S = { profile: null, session: null, selected: null, view: 'activity', rev: 0, queue: Promise.resolve(),
-  catalog: { byId: new Map(), strength: [], list: [], images: new Set() }, history: [], finished: false, keepAwake: true, leaving: false, flushers: new Set(), clock: null, undo: null, busy: false };
+  catalog: { byId: new Map(), strength: [], list: [], images: new Set() }, history: [], finished: false, keepAwake: true, leaving: false, flushers: new Set(), disposers: new Set(), renderRev: 0, clock: null, undo: null, busy: false };
 const valid = (profile, rev) => S.profile === profile && root.dataset.pmProfile === profile && S.rev === rev;
 const act = (session, key) => session.activities.find(a => a.key === key);
 const nameOf = a => a.type === 'strength' ? (S.catalog.byId.get(a.machineId)?.name || a.machineId)
@@ -64,14 +64,37 @@ function report(error) {
 }
 const formFocused = () => panel.contains(document.activeElement) && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
 
-/** Applique un changement moteur. `silent` : ne reconstruit pas l'ecran (saisie en cours). */
-async function commit(call, { silent = false, after } = {}) {
-  const profile = S.profile, rev = S.rev, id = S.session?.id;
-  if (!id) return null;
+// ---------------------------------------------------------------- cible des écritures (V2-QA1)
+// Chaque écriture vise une cible IMMUABLE capturée quand l'élément d'écran (brouillon, bouton, confirmation) est créé :
+// profil, séance, contexte (S.rev : change à chaque ouverture / fermeture de séance et changement de profil) et rendu
+// (S.renderRev). Elle est vérifiée avant toute mutation ET quand la file d'écritures l'exécute : un rappel tardif
+// (temporisateur, suite d'une confirmation ou d'un flushAll) n'écrit jamais dans une autre séance ni un autre profil.
+const STALE = Symbol('cible périmée');
+/** Cible de l'écran affiché (null s'il n'y a pas de séance). */
+function targetNow() { return S.session ? Object.freeze({ profile: S.profile, id: S.session.id, rev: S.rev, render: S.renderRev }) : null; }
+/** La cible est-elle encore la séance affichée (même profil, même séance, même contexte) ? */
+const isLive = t => !!t && valid(t.profile, t.rev) && S.session?.id === t.id;
+/**
+ * Fin d'un rendu ou d'un contexte : désarme les brouillons (temporisateurs annulés). `flush` (nouveau rendu de la MÊME
+ * séance) : un brouillon en attente est enregistré tout de suite, vers SA cible ; sinon (changement de séance ou de
+ * profil) il est abandonné.
+ */
+function disposeView(flush) {
+  const list = [...S.disposers];
+  S.disposers.clear(); S.flushers.clear();
+  for (const d of list) { try { d(flush); } catch (e) { console.error('PM séance :', e); } }
+}
+
+/** Applique un changement moteur à la séance affichée (cible capturée maintenant). */
+function commit(call, options) { return commitTo(targetNow(), call, options); }
+/** Applique un changement moteur à la cible `t` capturée plus tôt. `silent` : ne reconstruit pas l'ecran (saisie en cours). */
+async function commitTo(t, call, { silent = false, after } = {}) {
+  if (!isLive(t)) return null; // avant toute mutation
+  const profile = t.profile, id = t.id;
   setStatus('Enregistrement…');
   try {
-    const next = await op(() => call(profile, id));
-    if (!valid(profile, rev) || S.session?.id !== id) return next;
+    const next = await op(() => (isLive(t) ? call(profile, id) : STALE)); // revérifiée quand la file l'atteint
+    if (next === STALE || !isLive(t)) return null;
     if (next && next.id === id) S.session = next;
     if (after) after(next);
     if (!silent) render(); // l'écran est reconstruit d'abord : sinon le message de sauvegarde serait effacé
@@ -79,7 +102,7 @@ async function commit(call, { silent = false, after } = {}) {
     emit('pm:workout-changed', { profile });
     return next;
   } catch (error) {
-    if (valid(profile, rev)) report(error);
+    if (isLive(t)) report(error);
     return null;
   }
 }
@@ -96,7 +119,7 @@ function leaveScreen() {
   if (root.dataset.pmProfile) { appPages.hidden = false; bottomNav.hidden = false; }
 }
 function closeWorkout({ goTo } = {}) {
-  S.flushers.clear();
+  disposeView(false);
   emit('pm:workout-close', {});
   S.session = null; S.selected = null; ++S.rev;
   leaveScreen();
@@ -110,6 +133,7 @@ function startPosition(session) {
 }
 function showWorkout(session) {
   if (!isKnownProfile(S.profile) || session.profileId !== S.profile || root.dataset.pmProfile !== S.profile) return;
+  disposeView(false); // brouillons d'une autre séance : abandonnés
   ++S.rev;
   S.session = session; S.view = 'activity'; S.selected = startPosition(session); S.finished = false;
   S.keepAwake = peekUiSettings(S.profile).keepAwake; // valeur connue tout de suite, puis relue depuis la base
@@ -223,6 +247,7 @@ function scheduleReveal(key) {
   setTimeout(() => { if (S.revealed === key) revealCurrentSet(); }, 320);
 }
 function renderSets(card, a) {
+  const T = targetNow(); // cible capturée au rendu : les rappels (même après une attente) visent CETTE séance
   const current = a.sets.find(s => !s.done);
   const curIdx = current ? a.sets.indexOf(current) : -1;
   const done = a.sets.filter(s => s.done).length;
@@ -235,20 +260,22 @@ function renderSets(card, a) {
     const head = el('div', 'pm-current-head');
     const tag = el('span', 'pm-current-tag', 'Série en cours');
     add(head, tag, el('span', 'pm-current-count', 'Série ' + (curIdx + 1) + ' / ' + a.sets.length + (current.side ? ' · côté ' + sideName(current).toLowerCase() : '')));
-    let timer = null;
+    let timer = null, disposed = false;
     const known = knownWeights(a);
     const kgF = stepper({ id: 'pm-current-kg', label: 'Charge (kg)', value: current.kg, kind: 'kg',
       onStep: (input, dir) => { input.value = fmtNum(stepWeight(parseNum(input.value), known, dir)); schedule(); } });
     const repsF = stepper({ id: 'pm-current-reps', label: 'Répétitions', value: current.reps, kind: 'reps',
       onStep: (input, dir) => { const r = parseNum(input.value); input.value = String(Math.max(1, (Number.isInteger(r) ? r : current.reps) + dir)); schedule(); } });
     const save = async ({ final = false } = {}) => {
-      clearTimeout(timer);
+      clearTimeout(timer); timer = null;
+      if (disposed) return; // rendu détruit : ce brouillon ne peut plus écrire
       const v = readSet(kgF.input, repsF.input);
       if (!v || (v.kg === current.kg && v.reps === current.reps)) return;
       current.kg = v.kg; current.reps = v.reps; // évite les doubles écritures
-      await commit((p, id) => updateSet(p, id, a.key, current.id, v), { silent: !final || formFocused() });
+      await commitTo(T, (p, id) => updateSet(p, id, a.key, current.id, v), { silent: !final || formFocused() });
     };
-    const schedule = () => { clearTimeout(timer); timer = setTimeout(() => save(), 350); };
+    const schedule = () => { if (disposed) return; clearTimeout(timer); timer = setTimeout(() => save(), 350); };
+    S.disposers.add(flush => { const pending = timer !== null; clearTimeout(timer); timer = null; if (flush && pending) save(); disposed = true; });
     for (const i of [kgF.input, repsF.input]) {
       i.addEventListener('input', schedule);
       i.addEventListener('blur', () => save());
@@ -270,7 +297,7 @@ function renderSets(card, a) {
       S.busy = true;
       try {
         await flushAll();
-        const session = await commit((p, id) => logSet(p, id, a.key, next.set.id, v), {
+        const session = await commitTo(T, (p, id) => logSet(p, id, a.key, next.set.id, v), {
           after: () => {
             fx('set-validated', { machineId: a.machineId });
             if (a.sets.every(x => x.done || x.id === next.set.id)) fx('activity-done', { kind: 'strength', machineId: a.machineId });
@@ -317,14 +344,14 @@ function renderSets(card, a) {
     if (set.done) {
       tools.append(btn('↺', 'pm-icon-btn', async () => {
         await flushAll();
-        await commit((p, id) => updateSet(p, id, a.key, set.id, { done: false }));
+        await commitTo(T, (p, id) => updateSet(p, id, a.key, set.id, { done: false }));
         fx('set-undone'); emit('pm:workout-set-undone', { profile: S.profile, sessionId: S.session.id, activityKey: a.key });
       }));
       tools.lastChild.title = 'Rouvrir cette série'; tools.lastChild.setAttribute('aria-label', 'Rouvrir la ' + setLabel(a, idx));
     }
     const del = btn('×', 'pm-icon-btn', async () => {
       if (set.done && !(await confirmDialog('Retirer cette série déjà validée ?', { ok: 'Retirer', danger: true }))) return;
-      await commit((p, id) => removeSet(p, id, a.key, set.id));
+      await commitTo(T, (p, id) => removeSet(p, id, a.key, set.id));
     });
     del.setAttribute('aria-label', 'Retirer la ' + setLabel(a, idx)); del.title = 'Retirer cette série';
     tools.append(del);
@@ -338,13 +365,14 @@ function renderSets(card, a) {
   }
 }
 function offerUndo(a, setId) {
+  const T = targetNow(); // cible capturée au rendu : les rappels (même après une attente) visent CETTE séance
   if (S.undo) S.undo.dismiss();
   const rev = S.rev, id = S.session.id;
   S.undo = toast('Série validée ✓', {
     actionLabel: 'Annuler', duration: 5000,
     onAction: async () => {
       if (!valid(S.profile, rev) || S.session?.id !== id) return;
-      await commit((p, sid) => updateSet(p, sid, a.key, setId, { done: false }));
+      await commitTo(T, (p, sid) => updateSet(p, sid, a.key, setId, { done: false }));
       fx('set-undone'); emit('pm:workout-set-undone', { profile: S.profile, sessionId: id, activityKey: a.key });
     }
   });
@@ -358,6 +386,7 @@ function neighbour(session, key, step) {
 }
 
 function renderMachine(a) {
+  const T = targetNow(); // cible capturée au rendu : les rappels (même après une attente) visent CETTE séance
   const card = el('article', 'pm-workout-card');
   const head = el('div', 'pm-machine-head');
   const imageId = a.type === 'strength' ? a.machineId : (S.catalog.list || []).find(m => m.kind === 'cardio' && m.name === a.name)?.id;
@@ -412,7 +441,7 @@ function renderMachine(a) {
         }
         actual[m.key] = n;
       }
-      commit((p, id) => completeActivity(p, id, a.key, { done: true, actual }), {
+      commitTo(T, (p, id) => completeActivity(p, id, a.key, { done: true, actual }), {
         after: () => {
           fx('activity-done', { kind: 'cardio' });
           toast('Enregistré : ' + fmtNum(v) + ' min' + (metricsText(actual) ? ' · ' + metricsText(actual, { speedUnit: treadmill }) : ''));
@@ -421,7 +450,7 @@ function renderMachine(a) {
     });
     card.append(confirmDone);
     if (a.status === 'done') card.append(btn('Annuler la validation', 'pm-secondary',
-      () => commit((p, id) => completeActivity(p, id, a.key, { done: false }))));
+      () => commitTo(T, (p, id) => completeActivity(p, id, a.key, { done: false }))));
   }
 
   const tools = el('div', 'pm-row-actions pm-quick-actions');
@@ -429,22 +458,22 @@ function renderMachine(a) {
     add(tools, withIcon(btn('Machine occupée', 'pm-secondary pm-quick', async () => {
       await flushAll();
       const successor = neighbour(S.session, a.key, 1);
-      const s = await commit((p, id) => postponeActivity(p, id, a.key));
+      const s = await commitTo(T, (p, id) => postponeActivity(p, id, a.key));
       if (s) { const n = (successor && act(s, successor)?.status === 'pending' && successor) || getNextActivity(s)?.key; if (n) select(n); }
     }), 'machine-occupee'));
   }
-  if (a.type === 'strength') add(tools, withIcon(btn('Ajouter une série', 'pm-secondary pm-quick', () => commit((p, id) => addSet(p, id, a.key))), 'plus'));
-  if (a.postponed) add(tools, btn('↶ Y revenir maintenant', 'pm-secondary', () => commit((p, id) => returnToPostponed(p, id, a.key))));
+  if (a.type === 'strength') add(tools, withIcon(btn('Ajouter une série', 'pm-secondary pm-quick', () => commitTo(T, (p, id) => addSet(p, id, a.key))), 'plus'));
+  if (a.postponed) add(tools, btn('↶ Y revenir maintenant', 'pm-secondary', () => commitTo(T, (p, id) => returnToPostponed(p, id, a.key))));
   if (a.status !== 'skipped' && a.status !== 'done') {
     add(tools, withIcon(btn('Passer', 'pm-warning pm-quick', async () => {
       if (!(await confirmDialog('Passer cette activité ? La séance ne pourra alors se terminer qu’en partielle.', { ok: 'Passer', danger: true }))) return;
       await flushAll();
       const successor = neighbour(S.session, a.key, 1);
-      const s = await commit((p, id) => skipActivity(p, id, a.key, true));
+      const s = await commitTo(T, (p, id) => skipActivity(p, id, a.key, true));
       if (s) { const n = (successor && act(s, successor)?.status === 'pending' && successor) || getNextActivity(s)?.key; if (n) select(n); }
     }), 'passer'));
   } else if (a.status === 'skipped') {
-    add(tools, btn('Annuler le saut', 'pm-secondary', () => commit((p, id) => skipActivity(p, id, a.key, false))));
+    add(tools, btn('Annuler le saut', 'pm-secondary', () => commitTo(T, (p, id) => skipActivity(p, id, a.key, false))));
   }
   card.append(tools);
 
@@ -469,6 +498,7 @@ async function showList() {
   S.view = 'list'; render(); window.scrollTo(0, 0);
 }
 function renderList() {
+  const T = targetNow(); // cible capturée au rendu : les rappels (même après une attente) visent CETTE séance
   const s = S.session;
   const box = el('article', 'pm-workout-card');
   box.append(el('h2', '', 'Machines de la séance'), el('p', 'pm-muted', 'Les changements ne concernent que cette séance, pas le programme de la semaine.'));
@@ -482,14 +512,14 @@ function renderList() {
       el('small', 'pm-muted', a.type === 'strength' ? a.sets.filter(x => x.done).length + '/' + a.sets.length + ' séries' : kindLabel(a)));
     info.addEventListener('click', () => select(key));
     const tools = el('div', 'pm-list-tools');
-    const up = btn('↑', 'pm-icon-btn', () => commit((p, id) => moveActivity(p, id, key, i - 1)));
-    const down = btn('↓', 'pm-icon-btn', () => commit((p, id) => moveActivity(p, id, key, i + 1)));
+    const up = btn('↑', 'pm-icon-btn', () => commitTo(T, (p, id) => moveActivity(p, id, key, i - 1)));
+    const down = btn('↓', 'pm-icon-btn', () => commitTo(T, (p, id) => moveActivity(p, id, key, i + 1)));
     up.disabled = i === 0; down.disabled = i === s.order.length - 1;
     up.setAttribute('aria-label', 'Monter'); down.setAttribute('aria-label', 'Descendre');
     const rm = btn('Retirer', 'pm-icon-btn pm-text-btn', async () => {
       if (a.status === 'done' || a.sets.some(x => x.done)) { toast('Cette machine contient des résultats : utilise « Passer ».'); return; }
       if (!(await confirmDialog('Retirer « ' + nameOf(a) + ' » de cette séance ?', { ok: 'Retirer', danger: true }))) return;
-      await commit((p, id) => removeActivity(p, id, key));
+      await commitTo(T, (p, id) => removeActivity(p, id, key));
       if (S.selected === key) S.selected = getNextActivity(S.session)?.key || S.session.order[0];
       render();
     });
@@ -503,6 +533,7 @@ function renderList() {
   return box;
 }
 async function addMachineDialog() {
+  const T = targetNow(); // cible capturée au rendu : les rappels (même après une attente) visent CETTE séance
   const content = el('div', 'pm-form');
   const sel = el('select', 'pm-select');
   sel.setAttribute('aria-label', 'Machine');
@@ -521,7 +552,7 @@ async function addMachineDialog() {
     toast('Valeurs invalides.'); return;
   }
   const spec = { type: 'strength', machineId: sel.value, shared: false, restSeconds: rs, sets: Array.from({ length: n }, () => ({ kg: k, reps: r })) };
-  await commit((p, id) => addActivity(p, id, spec));
+  await commitTo(T, (p, id) => addActivity(p, id, spec));
 }
 
 // ---------------------------------------------------------------- recapitulatif de fin
@@ -534,6 +565,7 @@ const FEELINGS = [['1', 'Très dur'], ['2', 'Dur'], ['3', 'Correct'], ['4', 'Bie
 
 /** Bloc « Ressenti » + « Remarques » de la fin de séance (mêmes saisies et enregistrements qu'avant). */
 function feedbackBlock(s) {
+  const T = targetNow(); // cible capturée au rendu : les rappels (même après une attente) visent CETTE séance
   const fb = el('section', 'pm-recap-feedback');
   fb.setAttribute('aria-label', 'Ressenti et remarques');
   fb.append(el('h2', 'pm-sets-title', 'Ressenti')); // h2 : premier titre de la carte, avant « Récapitulatif » (ordre des titres)
@@ -543,7 +575,7 @@ function feedbackBlock(s) {
     const b = btn(v + ' · ' + label, 'pm-feeling' + (String(feeling) === v ? ' pm-on' : ''), () => {
       feeling = Number(v) === feeling ? null : Number(v);
       feelings.querySelectorAll('.pm-feeling').forEach(x => x.classList.toggle('pm-on', x.dataset.v === String(feeling)));
-      commit((p, id) => setWorkoutFeedback(p, id, { feeling }), { silent: true });
+      commitTo(T, (p, id) => setWorkoutFeedback(p, id, { feeling }), { silent: true });
     });
     b.dataset.v = v; feelings.append(b);
   });
@@ -551,15 +583,18 @@ function feedbackBlock(s) {
   const note = el('textarea', 'pm-textarea-note');
   note.placeholder = 'Remarques, difficultés, douleurs…'; note.maxLength = 1000; note.value = s.feedback?.note || '';
   note.setAttribute('aria-label', 'Remarques sur la séance');
-  let t = null;
-  note.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => commit((p, id) => setWorkoutFeedback(p, id, { note: note.value }), { silent: true }), 500); });
-  note.addEventListener('blur', () => { clearTimeout(t); commit((p, id) => setWorkoutFeedback(p, id, { note: note.value }), { silent: true }); });
+  let t = null, disposed = false;
+  const saveNote = () => { clearTimeout(t); t = null; if (!disposed) commitTo(T, (p, id) => setWorkoutFeedback(p, id, { note: note.value }), { silent: true }); };
+  note.addEventListener('input', () => { if (disposed) return; clearTimeout(t); t = setTimeout(saveNote, 500); });
+  note.addEventListener('blur', saveNote);
+  S.disposers.add(flush => { const pending = t !== null; clearTimeout(t); t = null; if (flush && pending) saveNote(); disposed = true; });
   fb.append(el('h2', 'pm-sets-title', 'Remarques'), note);
 
   return fb;
 }
 
 function renderRecap() {
+  const T = targetNow(); // cible capturée au rendu : les rappels (même après une attente) visent CETTE séance
   const s = S.session;
   const sum = getWorkoutSummary(s, new Date());
   const box = el('article', 'pm-workout-card');
@@ -589,11 +624,11 @@ function renderRecap() {
           const v = readSet(kg.input, reps.input);
           if (!v || (v.kg === set.kg && v.reps === set.reps)) return;
           set.kg = v.kg; set.reps = v.reps;
-          commit((p, id) => updateSet(p, id, a.key, set.id, v), { silent: true });
+          commitTo(T, (p, id) => updateSet(p, id, a.key, set.id, v), { silent: true });
         };
         kg.input.addEventListener('change', save); reps.input.addEventListener('change', save);
         row.append(el('span', 'pm-set-mark', set.done ? '✓' : '○'), kg.wrap, reps.wrap);
-        if (!set.done) row.append(btn('Valider', 'pm-icon-btn pm-text-btn', () => commit((p, id) => logSet(p, id, a.key, set.id, readSet(kg.input, reps.input) || { kg: set.kg, reps: set.reps }))));
+        if (!set.done) row.append(btn('Valider', 'pm-icon-btn pm-text-btn', () => commitTo(T, (p, id) => logSet(p, id, a.key, set.id, readSet(kg.input, reps.input) || { kg: set.kg, reps: set.reps }))));
         block.append(row);
         void idx;
       });
@@ -613,33 +648,35 @@ function renderRecap() {
 async function finish(complete) {
   if (S.busy) return;
   S.busy = true;
-  const profile = S.profile, rev = S.rev, s = S.session;
+  const t = targetNow(), profile = S.profile, s = S.session;
   try {
     await flushAll();
     const notDone = s.activities.filter(a => a.status !== 'done');
     if (!complete && !(await confirmDialog(
       notDone.length + ' activité(s) ne sont pas terminées (' + notDone.map(nameOf).slice(0, 4).join(', ') +
       '). Terminer en séance PARTIELLE ? Tous les résultats déjà saisis sont conservés.', { title: 'Séance partielle', ok: 'Terminer en partielle' }))) return;
-    const result = await op(() => finishWorkout(profile, s.id, complete ? 'completed' : 'partial'));
-    if (!valid(profile, rev)) return;
+    if (!isLive(t)) return; // la séance affichée a changé pendant la confirmation : rien n'est terminé
+    const result = await op(() => (isLive(t) ? finishWorkout(profile, t.id, complete ? 'completed' : 'partial') : STALE));
+    if (result === STALE || !isLive(t)) return;
     S.session = result;
     emit('pm:workout-changed', { profile, final: true }); // séance terminée : les autres écrans doivent se mettre à jour
     renderDone(result);
   } catch (error) {
-    if (error?.code === 'INCOMPLETE') { await commitPartial(); }
-    else report(error);
+    if (error?.code === 'INCOMPLETE') { await commitPartial(t); }
+    else if (isLive(t)) report(error);
   } finally { S.busy = false; }
 }
-async function commitPartial() {
-  const profile = S.profile, rev = S.rev, id = S.session.id;
-  const result = await op(() => finishWorkout(profile, id, 'partial'));
-  if (valid(profile, rev)) { S.session = result; renderDone(result); emit('pm:workout-changed', { profile, final: true }); }
+async function commitPartial(t) {
+  if (!isLive(t)) return;
+  const result = await op(() => (isLive(t) ? finishWorkout(t.profile, t.id, 'partial') : STALE));
+  if (result !== STALE && isLive(t)) { S.session = result; renderDone(result); emit('pm:workout-changed', { profile: t.profile, final: true }); }
 }
 function renderDone(session) {
   clearInterval(S.clock); S.clock = null;
   if (S.undo) { S.undo.dismiss(); S.undo = null; } // la séance est validée : plus d'« Annuler » sur la dernière série
   S.finished = true; holdAwake(false);
   emit('pm:workout-close', {});
+  disposeView(false);
   clear(panel);
   const sum = session.summary || getWorkoutSummary(session);
   const box = el('article', 'pm-workout-card pm-done');
@@ -683,7 +720,9 @@ function render() {
   if (!S.session || panel.hidden) return;
   const s = S.session;
   applyAwake();
-  S.flushers.clear();
+  disposeView(true); // nouveau rendu de la même séance : brouillon en attente enregistré vers sa cible, puis désarmé
+  S.renderRev++;
+  const T = targetNow();
   clear(panel);
   if (S.selected && !act(s, S.selected)) S.selected = getNextActivity(s)?.key || s.order[0] || null;
 
@@ -718,7 +757,7 @@ function render() {
   if (s.status === 'paused') {
     const pause = el('article', 'pm-workout-card pm-done');
     add(pause, el('h2', '', 'Séance en pause'), el('p', 'pm-muted', 'Le temps de pause n’est pas compté dans la durée.'));
-    pause.append(btn('Reprendre la séance', 'pm-validate', () => commit((p, id) => resumeWorkout(p, id))));
+    pause.append(btn('Reprendre la séance', 'pm-validate', () => commitTo(T, (p, id) => resumeWorkout(p, id))));
     panel.append(pause);
   } else if (S.view === 'list') panel.append(renderList());
   else if (S.view === 'recap') panel.append(renderRecap());
@@ -729,13 +768,15 @@ function render() {
     if (postponed.length) panel.append(el('p', 'pm-postponed-note', '↷ ' + postponed.length + ' machine(s) reportée(s) : à faire avant la fin.'));
     const foot = el('div', 'pm-footer');
     add(foot, btn('Machines', 'pm-secondary', showList), btn('Pause', 'pm-secondary', async () => {
-      await flushAll(); commit((p, id) => pauseWorkout(p, id));
+      await flushAll(); commitTo(T, (p, id) => pauseWorkout(p, id));
     }), btn('Terminer', 'pm-secondary', showRecap));
     panel.append(foot);
     if (!s.activities.some(a => a.status !== 'pending') && S.profile !== 'demo') {
       panel.append(btn('Annuler cette séance (vide)', 'pm-link', async () => {
         if (!(await confirmDialog('Annuler cette séance ? Rien n’a été validé.', { ok: 'Annuler la séance', danger: true }))) return;
-        try { await op(() => discardWorkout(S.profile, s.id)); closeWorkout({ goTo: 'accueil' }); } catch (e) { report(e); }
+        if (!isLive(T)) return; // cible capturée au rendu : jamais S.profile relu après la confirmation
+        try { const r = await op(() => (isLive(T) ? discardWorkout(T.profile, T.id) : STALE)); if (r !== STALE && isLive(T)) closeWorkout({ goTo: 'accueil' }); }
+        catch (e) { if (isLive(T)) report(e); }
       }));
     }
   }
@@ -758,7 +799,7 @@ async function begin(detail) {
       if (error.code !== 'SESSION_IN_PROGRESS') throw error;
       const pick = await dialog({ title: 'Une séance est déjà en cours', message: 'Reprends-la ou termine-la avant d’en démarrer une autre.',
         choices: [{ label: 'Annuler', value: null }, { label: 'Reprendre la séance', value: 'resume', kind: 'primary' }] });
-      if (pick !== 'resume') return;
+      if (pick !== 'resume' || !valid(profile, rev)) return;
       S.busy = false;
       return resumeExisting();
     }
@@ -786,7 +827,7 @@ async function resumeExisting(detail = {}) {
             '. Ton entraînement a-t-il continué pendant ce temps ?',
           choices: [{ label: 'Annuler', value: null }, { label: 'Non, j’avais arrêté', value: 'gap' }, { label: 'Oui, j’ai continué', value: 'keep', kind: 'primary' }]
         });
-        if (!pick) return;
+        if (!pick || !valid(profile, rev)) return; // profil changé pendant la question : rien n'est écrit
         session = await resumeWorkout(profile, session.id, { excludeGap: pick === 'gap' });
       }
     }
@@ -807,7 +848,7 @@ async function stopPartial() {
   const ok = await confirmDialog(hasData
     ? 'Terminer cette séance comme PARTIELLE ? Les résultats déjà saisis sont conservés.'
     : 'Cette séance est vide. L’annuler ?', { title: 'Arrêter la séance', ok: hasData ? 'Terminer en partielle' : 'Annuler la séance', danger: !hasData });
-  if (!ok) return;
+  if (!ok || S.profile !== profile || root.dataset.pmProfile !== profile) return; // profil changé pendant la confirmation
   try {
     if (hasData) await finishWorkout(profile, session.id, 'partial');
     else if (profile === 'demo') await deleteWorkout(profile, session.id);
@@ -818,9 +859,10 @@ async function stopPartial() {
 
 function changeProfile(id) {
   emit('pm:workout-close', {});
+  disposeView(false); // brouillons de l'ancien profil : abandonnés, jamais écrits dans le nouveau
   ++S.rev;
   S.profile = isKnownProfile(id) ? id : null;
-  S.session = null; S.selected = null; S.busy = false; S.flushers.clear(); S.finished = false;
+  S.session = null; S.selected = null; S.busy = false; S.finished = false;
   leaveScreen();
 }
 // Bouton retour du téléphone (voir js/nav-history.js) : vue précédente, sinon confirmation de sortie (séance conservée)

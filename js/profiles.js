@@ -14,7 +14,7 @@
 import { ENV } from './env.js';
 import {
   LEGACY_PROFILE_IDS, isValidProfileId, knownProfileIds, loadProfileRegistry, migrateProfileRegistry, countProfileRows,
-  addProfileRecord, updateProfileRecord, deleteProfileAndData, onProfileGone
+  addProfileRecord, updateProfileRecord, deleteProfileAndData, onProfileGone, restoreAsNewProfile
 } from '../storage.js';
 
 export const DEMO_PROFILE_ID = 'demo';
@@ -274,28 +274,27 @@ export async function deleteProfile(id, { confirm } = {}) {
 export function profileRecord(id) { const r = cache.get(id); return r ? { ...r, extra: { ...(r.extra || {}) } } : null; }
 
 /**
- * Inscrit dans le registre un profil venu d'une sauvegarde (autre appareil, ou profil supprimé ici), avec SON
- * identifiant. Refus si l'identifiant est déjà connu, historique ou démo (jamais d'écrasement, jamais de doublon).
- * Utilisé par backup.restoreBackupAsNewProfile ; la restauration des données suit.
+ * Réinscrit sur cet appareil un profil venu d'une sauvegarde (autre appareil, ou profil supprimé ici), avec SON
+ * identifiant, ET restaure ses données : UNE transaction (storage.restoreAsNewProfile), tout ou rien. Refus si
+ * l'identifiant est déjà connu, historique ou démo (jamais d'écrasement, jamais de doublon). Le cache et l'annonce
+ * « created » n'interviennent qu'APRÈS la validation : un échec ne laisse ni fiche, ni donnée, ni annonce.
+ * Utilisé par backup.restoreBackupAsNewProfile.
  */
-export async function adoptProfile(meta = {}) {
+export async function adoptRestoredProfile(meta = {}, backup) {
   await ensureRegistry();
   const id = meta.id;
-  if (!isValidProfileId(id) || isLegacyProfile(id) || isKnownProfile(id)) throw new Error('Ce profil existe déjà sur cet appareil ou son identifiant est invalide.');
+  const refused = () => new Error('Ce profil existe déjà sur cet appareil ou son identifiant est invalide.');
+  if (!isValidProfileId(id) || isLegacyProfile(id) || isKnownProfile(id)) throw refused();
   const color = Object.prototype.hasOwnProperty.call(PROFILE_COLORS, meta.color) ? meta.color : 'turquoise';
   const fields = checkFields({ name: meta.name || id, goal: meta.goal ?? '', color });
   const now = new Date().toISOString();
   const rec = { id, ...fields, createdAt: typeof meta.createdAt === 'string' ? meta.createdAt : now, updatedAt: now, origin: 'restored', schemaVersion: 1,
     extra: meta.extra && typeof meta.extra === 'object' && !Array.isArray(meta.extra) ? JSON.parse(JSON.stringify(meta.extra)) : {} };
-  await addProfileRecord(rec);
+  try { await restoreAsNewProfile(rec, backup); }
+  catch (error) { throw /existe déjà/.test(String(error?.message)) ? refused() : error; }
   cache.set(id, rec);
   announce('created', id);
   return { ...rec };
-}
-/** Retire du cache un profil dont l'inscription a été annulée (restauration échouée). Interne à backup.js. */
-export async function forgetAdoptedProfile(id) {
-  if (isLegacyProfile(id)) return;
-  try { await deleteProfileAndData(id); } finally { cache.delete(id); announce('deleted', id); }
 }
 
 // ---------------------------------------------------------------- sélection (pour l'interface future)
