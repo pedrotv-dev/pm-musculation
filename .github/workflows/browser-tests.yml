@@ -1,0 +1,48 @@
+name: Tests navigateur V1
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-v1-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser:
+    name: Chromium / ${{ matrix.suite }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [core, mobile, audits]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Installer Chromium et ses bibliothèques système
+        run: npx playwright install --with-deps chromium
+      - name: Parcours V1 (sans retry)
+        run: node tests/e2e/run.mjs --suite "${{ matrix.suite }}"
+      - name: Répéter offline-flow sur des contextes neufs (chaque échec reste rouge)
+        if: ${{ !cancelled() && matrix.suite == 'core' }}
+        run: node tests/e2e/run.mjs --suite offline --repeat 3
+      - name: Conserver traces, captures, état des caches et journaux
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-v1-${{ matrix.suite }}-${{ github.run_attempt }}
+          path: artifacts/e2e/
+          retention-days: 7
+          if-no-files-found: warn
