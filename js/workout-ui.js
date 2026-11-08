@@ -14,7 +14,7 @@ import {
 import { el, btn, clear, add, dialog, confirmDialog, toast, formatClock, formatMinutes, fmtNum, parseNum, localISODate } from './dom.js';
 import { icon, withIcon } from './icons.js';
 import { loadCatalog, machineImage } from './catalog.js';
-import { ALL_PROFILES as KNOWN, isRealProfile, PROFILE_INFO } from './profiles.js';
+import { isKnownProfile, isRealProfile, getProfileInfo } from './profiles.js';
 import { machineHistory, isClosed } from './stats.js';
 import { runBackup } from './backup.js';
 import { holdAwake } from './wakelock.js';
@@ -109,7 +109,7 @@ function startPosition(session) {
   return getNextActivity(session)?.key || session.order[0] || null;
 }
 function showWorkout(session) {
-  if (!KNOWN.includes(S.profile) || session.profileId !== S.profile || root.dataset.pmProfile !== S.profile) return;
+  if (!isKnownProfile(S.profile) || session.profileId !== S.profile || root.dataset.pmProfile !== S.profile) return;
   ++S.rev;
   S.session = session; S.view = 'activity'; S.selected = startPosition(session); S.finished = false;
   S.keepAwake = peekUiSettings(S.profile).keepAwake; // valeur connue tout de suite, puis relue depuis la base
@@ -644,7 +644,7 @@ function renderDone(session) {
   const sum = session.summary || getWorkoutSummary(session);
   const box = el('article', 'pm-workout-card pm-done');
   const complete = session.status === 'completed';
-  box.append(doneHero({ complete, name: PROFILE_INFO[S.profile]?.name || '', setsDone: sum.setsDone, volumeKg: sum.volumeKg, durationMinutes: sum.durationMinutes }));
+  box.append(doneHero({ complete, name: getProfileInfo(S.profile)?.name || '', setsDone: sum.setsDone, volumeKg: sum.volumeKg, durationMinutes: sum.durationMinutes }));
   let reward = null;
   try { reward = rewardFor([...S.history, session], session.id, { today: localISODate(), startDate: progressionStartFor(S.profile) }); } catch (e) { console.error('PM jeu :', e); }
   if (reward) box.append(rewardCard(reward, id => S.catalog.byId.get(id)?.name || id));
@@ -747,7 +747,7 @@ function render() {
 // ---------------------------------------------------------------- demarrage / reprise
 
 async function begin(detail) {
-  if (S.busy || !KNOWN.includes(S.profile) || !detail || detail.profileId !== S.profile) return;
+  if (S.busy || !isKnownProfile(S.profile) || !detail || detail.profileId !== S.profile) return;
   const profile = S.profile, rev = S.rev;
   S.busy = true;
   try {
@@ -770,7 +770,7 @@ async function begin(detail) {
 const GAP_MS = 2 * 60 * 1000;
 /** `detail.view === 'recap'` (outils de test, profil Démo UNIQUEMENT) : ouvre directement le récapitulatif. */
 async function resumeExisting(detail = {}) {
-  if (S.busy || !KNOWN.includes(S.profile)) return;
+  if (S.busy || !isKnownProfile(S.profile)) return;
   const profile = S.profile, rev = S.rev;
   S.busy = true;
   try {
@@ -819,7 +819,7 @@ async function stopPartial() {
 function changeProfile(id) {
   emit('pm:workout-close', {});
   ++S.rev;
-  S.profile = KNOWN.includes(id) ? id : null;
+  S.profile = isKnownProfile(id) ? id : null;
   S.session = null; S.selected = null; S.busy = false; S.flushers.clear(); S.finished = false;
   leaveScreen();
 }

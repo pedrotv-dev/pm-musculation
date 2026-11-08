@@ -41,10 +41,10 @@ import {
 import { mondayOf } from './programs.js';
 import { isPerSide, expandSides, nextSide } from './machine-rules.js';
 import { cleanMetrics } from './cardio.js';
+import { isRealProfile } from './profiles.js';
 
 const WORKOUT_SCHEMA_VERSION = 1;
 
-const PROFILES = ['pierre', 'manon'];
 const DEMO = 'demo';
 const WEEKDAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 const MAX_SETS = 20;
@@ -80,10 +80,10 @@ function newId(profileId, now) {
   return `${profileId}-${now.getTime().toString(36)}-${rand}`;
 }
 
-/** Profil connu (pierre, manon ou demo). La demo vit en MEMOIRE : jamais ecrite dans IndexedDB. */
+/** Profil connu (vrai profil du registre, ou demo). La demo vit en MEMOIRE : jamais ecrite dans IndexedDB. */
 function writable(profileId) {
-  if (profileId !== DEMO && !PROFILES.includes(profileId)) {
-    throw new WorkoutError('Profil inconnu : sélectionner Pierre ou Manon.', 'UNKNOWN_PROFILE');
+  if (profileId !== DEMO && !isRealProfile(profileId)) { // historique ou registre des profils (V2-PROF1)
+    throw new WorkoutError('Profil inconnu : sélectionner un profil existant.', 'UNKNOWN_PROFILE');
   }
   return profileId;
 }

@@ -9,7 +9,7 @@ import { loadCatalog } from './catalog.js';
 import { computeProgress, progressionStartFor } from './gamification.js';
 import { levelCard, badgesPanel, rankingsPanel, howPanel } from './jeu-ui.js';
 import { icon } from './icons.js';
-import { ALL_PROFILES as KNOWN } from './profiles.js';
+import { isKnownProfile } from './profiles.js';
 import { el, btn, clear, add, fmtNum, parseNum, formatMinutes, formatDateFr, localISODate, toast, confirmDialog } from './dom.js';
 
 const root = document.documentElement;
@@ -23,7 +23,7 @@ function iconPanel(ico, title, ...children) { const p = panel(title, ...children
 
 async function render() {
   const profile = root.dataset.pmProfile, mine = ++S.rev;
-  if (!KNOWN.includes(profile)) return;
+  if (!isKnownProfile(profile)) return;
   const [catalog, sessions, weights] = await Promise.all([loadCatalog(), listWorkouts(profile).catch(() => []), listBodyWeights(profile).catch(() => [])]);
   if (mine !== S.rev || root.dataset.pmProfile !== profile) return;
   const name = id => catalog.byId.get(id)?.name || id;

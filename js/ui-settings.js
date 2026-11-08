@@ -4,10 +4,10 @@
  * Profil « demo » : mémoire seulement. Ne rejette jamais : en cas d'erreur, valeurs par défaut.
  */
 import { saveSetting, getSetting } from '../storage.js';
+import { isRealProfile } from './profiles.js';
 
 const KEY = 'ui.settings';
 export const UI_DEFAULTS = Object.freeze({ keepAwake: true, backButton: true, lockAlert: true, animations: true, sfx: true, jingles: true });
-const REAL = ['pierre', 'manon'];
 const cache = new Map();
 
 function sanitize(raw) {
@@ -20,7 +20,7 @@ export function peekUiSettings(profileId) { return { ...(cache.get(profileId) ||
 
 /** @returns {Promise<{keepAwake, backButton, lockAlert, animations, sfx, jingles} (booléens)>} */
 export async function getUiSettings(profileId) {
-  if (REAL.indexOf(profileId) === -1) return peekUiSettings(profileId);
+  if (!isRealProfile(profileId)) return peekUiSettings(profileId);
   try { const s = sanitize(await getSetting(profileId, KEY, null)); cache.set(profileId, s); return { ...s }; }
   catch (_) { return peekUiSettings(profileId); }
 }
@@ -33,7 +33,7 @@ export async function setUiSettings(profileId, patch) {
   const next = sanitize({ ...current, ...patch });
   cache.set(profileId, next);
   let error = null;
-  if (REAL.indexOf(profileId) !== -1) { try { await saveSetting(profileId, KEY, next); } catch (e) { error = 'Réglage non enregistré (stockage indisponible).'; } }
+  if (isRealProfile(profileId)) { try { await saveSetting(profileId, KEY, next); } catch (e) { error = 'Réglage non enregistré (stockage indisponible).'; } }
   if (typeof document !== 'undefined') document.dispatchEvent(new CustomEvent('pm:settings-changed', { detail: { profile: profileId, settings: next } }));
   return { settings: { ...next }, error };
 }

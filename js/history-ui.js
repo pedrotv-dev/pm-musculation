@@ -9,7 +9,7 @@ import {
 import { loadCatalog } from './catalog.js';
 import { plannedIndex, SIDE_LABEL, SIDE_SHORT } from './machine-rules.js';
 import { metricsFor } from './cardio.js';
-import { ALL_PROFILES as KNOWN } from './profiles.js';
+import { isKnownProfile } from './profiles.js';
 import { el, btn, clear, add, dialog, confirmDialog, toast, fmtNum, parseNum, formatMinutes, formatDateFr } from './dom.js';
 
 const root = document.documentElement;
@@ -47,7 +47,7 @@ function acceptSession(p, session) {
 async function load() {
   if (holdDetail()) { reloadPending = true; return; }
   const p = profile(), mine = ++S.rev;
-  if (!KNOWN.includes(p)) return;
+  if (!isKnownProfile(p)) return;
   const [catalog, rows] = await Promise.all([loadCatalog(), listWorkouts(p).catch(() => [])]);
   if (mine !== S.rev || profile() !== p) return;
   if (holdDetail()) { reloadPending = true; return; }
@@ -310,7 +310,7 @@ function renderDetail() {
 }
 
 function render() {
-  if (!KNOWN.includes(profile())) return;
+  if (!isKnownProfile(profile())) return;
   detailView = null; failedFields.clear();
   clear(page);
   page.dataset.view = S.mode; // lu par js/nav-history.js (bouton retour : détail → liste)

@@ -3,7 +3,7 @@
  * Premier module chargé : il fixe `data-pm-profile` sur <html> avant les autres modules.
  * Événements émis : pm:profile-changed { profile | null }.
  */
-import { PROFILE_INFO, PROFILE_STORAGE_KEY, isKnownProfile } from './profiles.js';
+import { PROFILE_STORAGE_KEY, isKnownProfile, isLegacyProfile, getProfileInfo, initProfiles } from './profiles.js';
 
 const root = document.documentElement;
 const $ = selector => document.querySelector(selector);
@@ -28,21 +28,25 @@ function navigate(target) {
   window.scrollTo(0, 0);
 }
 
+/** Couleur du profil et bouton du profil actif en haut (nom accessible = « Changer de profil (Pierre) »). */
+function applyIdentity(data) {
+  root.style.setProperty('--accent', data.accent);
+  root.style.setProperty('--accent-rgb', data.rgb);
+  const switcher = $('#switch-profile');
+  switcher.replaceChildren(document.createTextNode(data.name + ' '), Object.assign(document.createElement('span'), { textContent: '▾', ariaHidden: 'true' }));
+  switcher.setAttribute('aria-label', 'Changer de profil (' + data.name + ')');
+}
+
 function chooseProfile(profile, persist = true) {
   if (!isKnownProfile(profile)) return;
   currentProfile = profile;
   root.dataset.pmProfile = profile;
-  const data = PROFILE_INFO[profile];
-  root.style.setProperty('--accent', data.accent);
-  root.style.setProperty('--accent-rgb', data.rgb);
+  const data = getProfileInfo(profile); // registre des profils (V2-PROF1) ; Pierre, Manon et Démo : identité inchangée
+  applyIdentity(data);
   $('#screen-select').hidden = true;
   $('#app-pages').hidden = false;
   $('#bottom-nav').hidden = false;
-  // un seul profil en haut : le profil ACTIF, qui sert aussi de bouton pour en changer (nom accessible = « Changer de profil (Pierre) »)
-  const switcher = $('#switch-profile');
-  switcher.replaceChildren(document.createTextNode(data.name + ' '), Object.assign(document.createElement('span'), { textContent: '▾', ariaHidden: 'true' }));
-  switcher.setAttribute('aria-label', 'Changer de profil (' + data.name + ')');
-  switcher.hidden = false;
+  $('#switch-profile').hidden = false;
   if (persist) {
     try { localStorage.setItem(PROFILE_STORAGE_KEY, profile); }
     catch (error) { console.warn('Impossible de mémoriser le profil sur cet appareil.', error); }
@@ -68,10 +72,26 @@ document.querySelectorAll('[data-select-profile]').forEach(button => button.addE
 document.querySelectorAll('[data-go]').forEach(button => button.addEventListener('click', () => navigate(button.dataset.go)));
 $('#switch-profile').addEventListener('click', changeProfile);
 
+// Registre des profils (V2-PROF1) : migration automatique de Pierre et Manon (ajout de leurs fiches, aucune donnée
+// touchée), puis lecture. Les profils historiques et la démo sont connus tout de suite : aucun délai au démarrage.
+const profilesStarted = initProfiles();
+profilesStarted.then(r => { if (!r.ok) console.warn('Registre des profils indisponible : profils historiques seulement.', r.error); });
+
 let saved = null;
 try { saved = localStorage.getItem(PROFILE_STORAGE_KEY); }
 catch (error) { console.warn('Stockage de profil indisponible.', error); }
-if (saved && isKnownProfile(saved)) chooseProfile(saved, false);
+if (saved && (isLegacyProfile(saved) || saved === 'demo')) chooseProfile(saved, false);
+else if (saved) profilesStarted.then(() => { if (!currentProfile && isKnownProfile(saved)) chooseProfile(saved, false); }); // profil du registre
+
+// Interface future (écrans ASCENT/KORV) : sélection d'un profil par événement, même chemin que les boutons actuels.
+document.addEventListener('pm:select-profile', e => { const p = e.detail && e.detail.profile; if (isKnownProfile(p)) chooseProfile(p); });
+// Registre modifié : profil actif renommé / recoloré → identité à jour ; profil actif supprimé → retour au choix.
+document.addEventListener('pm:profiles-changed', e => {
+  const { reason, id } = e.detail || {};
+  if (!currentProfile || id !== currentProfile) return;
+  if (reason === 'deleted') changeProfile();
+  else if (reason === 'updated') { const data = getProfileInfo(currentProfile); if (data) applyIdentity(data); }
+});
 
 // Hors ligne : service worker (GitHub Pages, chemins relatifs). Ne touche jamais aux données IndexedDB.
 // Mise à jour : la nouvelle version s'installe en arrière-plan puis attend l'accord de l'utilisateur

@@ -4,8 +4,8 @@
  * Mesure : { id, kg, date: 'AAAA-MM-JJ' }.
  */
 import { saveWeight, listWeights as storageList, deleteWeight } from '../storage.js';
+import { isRealProfile } from './profiles.js';
 
-const PROFILES = ['pierre', 'manon'];
 let demo = null;
 
 async function demoStore() {
@@ -30,7 +30,7 @@ const newId = date => 'w-' + date + '-' + Date.now().toString(36) + Math.random(
 /** Mesures du profil, la plus recente d'abord. */
 export async function listBodyWeights(profileId) {
   if (profileId === 'demo') return (await demoStore()).slice().sort((a, b) => b.date.localeCompare(a.date));
-  if (PROFILES.indexOf(profileId) === -1) return [];
+  if (!isRealProfile(profileId)) return [];
   const rows = await storageList(profileId);
   return rows.map(r => ({ id: r.id, ...r.data })).map(m => ({ id: m.id, kg: m.kg, date: m.date || '' }));
 }
@@ -38,12 +38,12 @@ export async function addBodyWeight(profileId, kg, date) {
   check(kg, date);
   const m = { id: newId(date), kg: Math.round(kg * 10) / 10, date };
   if (profileId === 'demo') { (await demoStore()).push(m); return m; }
-  if (PROFILES.indexOf(profileId) === -1) throw new Error('Profil inconnu.');
+  if (!isRealProfile(profileId)) throw new Error('Profil inconnu.');
   await saveWeight(profileId, m);
   return m;
 }
 export async function removeBodyWeight(profileId, id) {
   if (profileId === 'demo') { const d = await demoStore(); const i = d.findIndex(x => x.id === id); if (i >= 0) d.splice(i, 1); return; }
-  if (PROFILES.indexOf(profileId) === -1) throw new Error('Profil inconnu.');
+  if (!isRealProfile(profileId)) throw new Error('Profil inconnu.');
   await deleteWeight(profileId, id);
 }

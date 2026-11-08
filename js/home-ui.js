@@ -5,7 +5,7 @@
 import { listWorkouts, getResumableWorkout, getWorkoutSummary, getDemoProgram, dayIdOf } from './workouts.js';
 import { getActiveProgram, mondayOf } from './programs.js';
 import { loadCatalog } from './catalog.js';
-import { ALL_PROFILES as KNOWN, PROFILE_INFO } from './profiles.js';
+import { isKnownProfile, getProfileInfo } from './profiles.js';
 import { getBackupStatus, backupAdvice, runBackup } from './backup.js';
 import { el, btn, clear, add, fmtNum, formatMinutes, formatDateFr, localISODate, dialog, toast } from './dom.js';
 import { computeProgress, progressionStartFor } from './gamification.js';
@@ -47,7 +47,7 @@ function progressSection(r) {
 async function renderHome() {
   const profile = root.dataset.pmProfile;
   const mine = ++rev;
-  if (!KNOWN.includes(profile)) return;
+  if (!isKnownProfile(profile)) return;
   const [catalog, resumable, sessions, program] = await Promise.all([
     loadCatalog(), getResumableWorkout(profile).catch(() => null), listWorkouts(profile).catch(() => []), loadProgram(profile)
   ]);
@@ -55,7 +55,7 @@ async function renderHome() {
   clear(page);
   // ASCENT : salut + Korv sur le décor montagne, puis niveau (calculés depuis l'historique du profil, jamais comparés à l'autre)
   const game = computeProgress(sessions, { today: localISODate(), startDate: progressionStartFor(profile) });
-  page.append(homeHero(game, { name: PROFILE_INFO[profile].name, seed: profile + localISODate(), demo: profile === 'demo' }), levelStrip(game));
+  page.append(homeHero(game, { name: getProfileInfo(profile).name, seed: profile + localISODate(), demo: profile === 'demo' }), levelStrip(game));
   page.append(progressSection(recentProgress(sessions, localISODate(), 30)));
 
   if (resumable) {

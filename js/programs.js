@@ -28,10 +28,10 @@
 
 import { saveProgram, getProgram, listPrograms } from '../storage.js';
 import { CARDIO_METRICS, metricError } from './cardio.js';
+import { isRealProfile } from './profiles.js';
 
 const PROGRAM_SCHEMA_VERSION = 1;
 
-const PROFILES = ['pierre', 'manon'];
 const ACTIVITY_TYPES = ['warmup', 'strength', 'cardio'];
 const MAX_FILE_BYTES = 1024 * 1024;
 const DAY_IDS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
@@ -207,18 +207,20 @@ export function validateProgramFile(data, { profileId, knownMachineIds } = {}) {
     errors.push(`weekStart (${data.weekStart}) doit etre un lundi.`);
   }
   if (!isObj(data.programs)) {
-    errors.push('"programs" doit contenir les profils pierre et/ou manon.');
+    errors.push('"programs" doit contenir le programme de chaque profil, par identifiant (ex. pierre, manon).');
     return { ok: false, errors, warnings, unknownMachines };
   }
-  if (profileId !== undefined && !PROFILES.includes(profileId)) {
-    errors.push('Profil actif inconnu : selectionner Pierre ou Manon.');
+  if (profileId !== undefined && !isRealProfile(profileId)) {
+    errors.push('Profil actif inconnu : selectionner un profil existant.');
   }
   for (const key of Object.keys(data.programs)) {
-    if (!PROFILES.includes(key)) warnings.push(`Profil "${key}" inconnu : ignore.`);
+    if (!isRealProfile(key)) warnings.push(`Profil "${key}" inconnu : ignore.`);
   }
 
   const known = knownSet(knownMachineIds);
-  for (const id of PROFILES) {
+  // profils du fichier connus sur cet appareil, plus le profil actif (pour signaler son absence)
+  const ids = [...new Set([...Object.keys(data.programs).filter(isRealProfile), ...(profileId !== undefined && isRealProfile(profileId) ? [profileId] : [])])];
+  for (const id of ids) {
     if (!(id in data.programs)) {
       if (id === profileId) errors.push(`Aucun programme pour le profil actif (${id}) dans ce fichier.`);
       continue;

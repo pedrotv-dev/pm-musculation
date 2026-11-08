@@ -18,14 +18,13 @@
  *  - Pas de protection multi-onglets : etat consultatif, derniere ecriture gagnante.
  */
 
-import { saveSetting, getSetting } from '../storage.js';
+import { saveSetting, getSetting, knownProfileIds } from '../storage.js';
 
 export const REST_MODES = Object.freeze(['auto', 'manual', 'off']);
 const REST_CONFIG_KEY = 'restTimer.config';
 const REST_STATE_KEY = 'restTimer.state';
 
 const DEMO = 'demo';
-const PROFILES = ['pierre', 'manon'];
 const MAX_MS = 3600 * 1000;          // un repos ne depasse pas 1 h
 const ALERT_GRACE_MS = 30 * 1000;    // alerte sonore/visuelle seulement si la fin date de moins de 30 s
 const FINISHED_TTL_MS = 10 * 60 * 1000; // « Repos termine » disparait seul apres 10 min
@@ -42,7 +41,7 @@ const DEFAULT_CONFIG = Object.freeze({
 // ---------------------------------------------------------------- utilitaires
 
 const isObj = v => v !== null && typeof v === 'object' && !Array.isArray(v);
-const isKnown = profileId => profileId === DEMO || PROFILES.indexOf(profileId) !== -1;
+const isKnown = profileId => profileId === DEMO || knownProfileIds().indexOf(profileId) !== -1; // registre des profils (V2-PROF1)
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 const pad = n => String(n).padStart(2, '0');
 

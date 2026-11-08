@@ -11,17 +11,34 @@ import { ENV } from './js/env.js';
 
 // Production : 'pm-musculation-v2' (inchangé). Aperçu : 'pm-musculation-v2-preview' (base distincte, voir js/env.js).
 const DB_NAME = 'pm-musculation-v2' + ENV.suffix;
-const DB_VERSION = 1;
-const PROFILE_IDS = new Set(['pierre', 'manon']);
+const DB_VERSION = 1; // schéma IndexedDB ET version du format de sauvegarde : inchangés par le registre multi-profils
 const STORES = ['programs', 'sessions', 'weights', 'settings'];
 let opening = null;
 
+// ---------------------------------------------------------------- profils (V2-PROF1)
+// Profils historiques : identifiants conservés à vie, connus dès le démarrage (comportement V1 immédiat).
+export const LEGACY_PROFILE_IDS = Object.freeze(['pierre', 'manon']);
+// Identifiant d'un profil : minuscules, chiffres, tirets ; 2 à 40 caractères ; jamais « demo » (profil fictif en mémoire).
+export const PROFILE_ID_PATTERN = /^[a-z0-9][a-z0-9-]{1,39}$/;
+// Registre des profils : lignes du magasin `settings` sous ce pseudo-profil RÉSERVÉ (« ~ » est impossible dans un
+// identifiant valide). Aucune nouvelle base, aucun changement de schéma, aucune version de base à monter.
+// Ces lignes ne sortent jamais dans l'export, la restauration ou l'effacement d'un profil (tous filtrés par profileId).
+const REGISTRY = '~registry';
+const META_KEY = 'meta';
+const profileKey = id => 'profile:' + id;
+// Profils autorisés pour les lectures / écritures : les historiques + ceux du registre une fois chargé.
+const knownProfiles = new Set(LEGACY_PROFILE_IDS);
+
+export const isValidProfileId = id => typeof id === 'string' && PROFILE_ID_PATTERN.test(id) && id !== 'demo';
+
 function validProfile(profileId) {
-  if (!PROFILE_IDS.has(profileId)) {
-    throw new Error('Profil inconnu : selectionner Pierre ou Manon.');
+  if (!knownProfiles.has(profileId)) {
+    throw new Error('Profil inconnu : selectionner un profil existant.');
   }
   return profileId;
 }
+/** Profils actuellement autorisés (historiques + registre chargé). */
+export function knownProfileIds() { return [...knownProfiles]; }
 
 function nonempty(value, label) {
   if (typeof value !== 'string' || !value.trim()) {
@@ -450,4 +467,151 @@ export async function restoreProfileData(profileId, backup, mode) {
       }
     } catch (error) { abortWith(error); }
   });
+}
+
+// ---------------------------------------------------------------- registre des profils (V2-PROF1)
+
+function registryRows(tx) {
+  return tx.objectStore('settings').index('byProfile').getAll(IDBKeyRange.only(REGISTRY));
+}
+function applyRegistry(rows) {
+  const ids = rows.filter(r => r.key.startsWith('profile:') && r.value && isValidProfileId(r.value.id)).map(r => r.value.id);
+  knownProfiles.clear();
+  for (const id of LEGACY_PROFILE_IDS) knownProfiles.add(id);
+  for (const id of ids) knownProfiles.add(id);
+}
+function readRegistry(rows) {
+  const meta = rows.find(r => r.key === META_KEY);
+  const profiles = rows.filter(r => r.key.startsWith('profile:') && r.value && isValidProfileId(r.value.id)).map(r => ({ ...r.value }));
+  return { meta: meta ? { ...meta.value } : null, profiles };
+}
+
+/** Nombre de lignes de données (programmes, séances, poids, réglages) des profils donnés. Lecture seule. */
+export async function countProfileRows(ids) {
+  let n = 0;
+  for (const id of ids) {
+    for (const name of STORES) {
+      const rows = await transaction([name], 'readonly', tx => tx.objectStore(name).index('byProfile').getAll(IDBKeyRange.only(id)));
+      n += (rows || []).length;
+    }
+  }
+  return n;
+}
+
+/** Lit le registre (sans rien écrire) et met à jour la liste des profils autorisés. */
+export async function loadProfileRegistry() {
+  const rows = await transaction(['settings'], 'readonly', tx => registryRows(tx));
+  applyRegistry(rows || []);
+  return readRegistry(rows || []);
+}
+
+/**
+ * Migration du registre, en UNE transaction : ajoute les fiches manquantes (`records`, profils historiques) et la
+ * ligne `meta`. N'écrase JAMAIS une fiche existante, ne lit ni n'écrit aucune donnée de profil. Idempotente ; une
+ * interruption annule toute la transaction (rien d'écrit), la migration est alors simplement rejouée.
+ * @returns {{meta:object, profiles:object[], added:string[]}}
+ */
+export async function migrateProfileRegistry(records, { now = new Date().toISOString(), registryVersion = 1 } = {}) {
+  for (const r of records) if (!isValidProfileId(r?.id)) throw new Error('Fiche de profil invalide.');
+  const db = await openStorage();
+  return new Promise((resolve, reject) => {
+    let tx;
+    try { tx = db.transaction(['settings'], 'readwrite'); } catch (error) { reject(error); return; }
+    let rows = null, added = [], failure = null;
+    tx.oncomplete = () => { applyRegistry(rows); resolve({ ...readRegistry(rows), added }); };
+    tx.onerror = () => { failure ||= tx.error; };
+    tx.onabort = () => reject(failure || tx.error || new Error('Migration du registre annulée.'));
+    try {
+      const store = tx.objectStore('settings');
+      const request = registryRows(tx);
+      request.onsuccess = () => {
+        try {
+          rows = request.result || [];
+          const have = new Set(rows.filter(r => r.key.startsWith('profile:')).map(r => r.key));
+          for (const rec of records) {
+            if (have.has(profileKey(rec.id))) continue; // déjà migré : jamais écrasé
+            const row = { profileId: REGISTRY, key: profileKey(rec.id), value: { ...rec } };
+            store.put(row); rows.push(row); added.push(rec.id);
+          }
+          const meta = rows.find(r => r.key === META_KEY);
+          if (!meta || meta.value?.registryVersion !== registryVersion) {
+            const row = { profileId: REGISTRY, key: META_KEY, value: { registryVersion, migratedAt: meta?.value?.migratedAt || now, updatedAt: now } };
+            store.put(row);
+            if (meta) rows.splice(rows.indexOf(meta), 1, row); else rows.push(row);
+          }
+        } catch (error) { failure = error; try { tx.abort(); } catch (_) { reject(error); } }
+      };
+    } catch (error) { failure = error; try { tx.abort(); } catch (_) { reject(error); } }
+  });
+}
+
+/** Ajoute une fiche de profil ; refuse si l'identifiant existe déjà (aucun écrasement). */
+export function addProfileRecord(record) {
+  if (!isValidProfileId(record?.id)) throw new Error('Identifiant de profil invalide.');
+  return transaction(['settings'], 'readwrite', tx => {
+    const store = tx.objectStore('settings');
+    const request = store.get([REGISTRY, profileKey(record.id)]);
+    request.onsuccess = () => {
+      if (request.result) { tx.abort(); return; }
+      store.put({ profileId: REGISTRY, key: profileKey(record.id), value: { ...record } });
+    };
+    return null;
+  }).then(() => { knownProfiles.add(record.id); return { ...record }; },
+    error => { throw error && /abort|annul/i.test(String(error.message || error)) ? new Error('Ce profil existe déjà.') : error; });
+}
+
+/** Modifie une fiche existante, dans une transaction (lecture + écriture) : `change(copie)` renvoie la fiche suivante. */
+export async function updateProfileRecord(id, change) {
+  if (!isValidProfileId(id)) throw new Error('Identifiant de profil invalide.');
+  let next = null;
+  await transaction(['settings'], 'readwrite', tx => {
+    const store = tx.objectStore('settings');
+    const request = store.get([REGISTRY, profileKey(id)]);
+    request.onsuccess = () => {
+      if (!request.result) { tx.abort(); return; }
+      next = change({ ...request.result.value });
+      if (!next || next.id !== id) { tx.abort(); return; }
+      store.put({ profileId: REGISTRY, key: profileKey(id), value: next });
+    };
+    return null;
+  }).catch(error => { throw /abort|annul/i.test(String(error?.message || error)) ? new Error('Profil introuvable ou modification invalide.') : error; });
+  return { ...next };
+}
+
+/**
+ * Supprime UN profil supplémentaire : sa fiche ET toutes ses données (programmes, séances, poids, réglages),
+ * en UNE transaction ciblée sur son identifiant (index byProfile). Jamais les profils historiques ni la démo.
+ * @returns {{programs:number, sessions:number, weights:number, settings:number}} lignes supprimées
+ */
+export async function deleteProfileAndData(id) {
+  if (!isValidProfileId(id) || LEGACY_PROFILE_IDS.includes(id)) throw new Error('Ce profil ne peut pas être supprimé.');
+  const counts = { programs: 0, sessions: 0, weights: 0, settings: 0 };
+  const db = await openStorage();
+  await new Promise((resolve, reject) => {
+    let tx;
+    try { tx = db.transaction(STORES, 'readwrite'); } catch (error) { reject(error); return; }
+    let failure = null;
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => { failure ||= tx.error; };
+    tx.onabort = () => reject(failure || tx.error || new Error('Suppression annulée.'));
+    const abortWith = error => { failure = error; try { tx.abort(); } catch (_) { reject(error); } };
+    try {
+      const reg = tx.objectStore('settings').get([REGISTRY, profileKey(id)]);
+      reg.onsuccess = () => {
+        if (!reg.result) { abortWith(new Error('Profil introuvable.')); return; }
+        for (const name of STORES) {
+          const request = tx.objectStore(name).index('byProfile').openCursor(IDBKeyRange.only(id));
+          request.onsuccess = () => {
+            try {
+              const cursor = request.result;
+              if (cursor) { counts[name]++; cursor.delete(); cursor.continue(); }
+            } catch (error) { abortWith(error); }
+          };
+        }
+        tx.objectStore('settings').delete([REGISTRY, profileKey(id)]);
+      };
+    } catch (error) { abortWith(error); }
+  });
+  knownProfiles.delete(id);
+  return counts;
 }
