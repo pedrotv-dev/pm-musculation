@@ -69,7 +69,7 @@ const emit = (reason, id) => {
 const channel = (() => {
   try {
     if (typeof BroadcastChannel !== 'function') return null;
-    const c = new BroadcastChannel('pm-musculation:profiles' + ENV.suffix);
+    const c = new BroadcastChannel(PROFILE_STORAGE_KEY + ':registre'); // aperçu isolé : le suffixe est déjà dans la clé
     if (typeof c.unref === 'function') c.unref(); // Node (tests) : le canal ne retient pas le processus ; sans effet en navigateur
     return c;
   } catch (_) { return null; }
