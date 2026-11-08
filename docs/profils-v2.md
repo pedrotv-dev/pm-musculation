@@ -55,8 +55,21 @@ Les changements sont annoncés par l'événement `document` → `pm:profiles-cha
 - `restoreBackup(id, backup, mode)` restaure dans un profil existant, comme avant.
 - `restoreBackupAsNewProfile(backup)` réinscrit sur cet appareil un profil absent, avec **son** identifiant, puis restaure ses données. Elle refuse un profil déjà présent, ce qui évite tout doublon et tout écrasement. En cas d'échec, l'inscription est annulée.
 
+## Plusieurs onglets
+
+- **Garantie (stockage).** Chaque écriture d'un profil supplémentaire relit sa fiche du registre **dans sa propre transaction**. Cela vaut pour un programme, une séance, une série, un poids, un réglage ou une restauration.
+  - Si la fiche a disparu, ou si son *époque* a changé (profil supprimé puis restauré), la transaction est annulée avec le code `PROFILE_DELETED` et rien n'est écrit.
+  - La suppression prend les 4 magasins. IndexedDB exécute donc ces transactions l'une après l'autre, y compris entre onglets : une écriture engagée avant la suppression est effacée avec le profil, une écriture postérieure est refusée.
+  - Aucune donnée orpheline ne peut réapparaître.
+- **Confort (interface).**
+  - Les autres onglets sont prévenus par `BroadcastChannel` et relisent le registre, ce qu'ils font aussi au retour sur l'onglet.
+  - Un onglet qui affichait le profil supprimé revient au choix du profil. S'il était en séance, l'écran de séance se ferme sans rien enregistrer.
+  - Un renommage est propagé aux autres onglets.
+- Pierre et Manon ne peuvent pas être supprimés : leurs écritures ne sont pas soumises à cette vérification.
+
 ## Limites connues
 
-- Le registre est mis en cache par onglet. Un profil créé dans un autre onglet n'apparaît qu'après `refreshProfiles()` ou un rechargement.
+- Un profil **créé** dans un autre onglet n'apparaît ici qu'après la notification ou le retour sur l'onglet. Il peut ne pas apparaître du tout sans `BroadcastChannel`, jusqu'au prochain retour sur l'onglet ou rechargement.
+- Le retour au choix du profil après une suppression faite ailleurs n'affiche aucun message : aucun changement visuel n'a été ajouté.
 - Un fichier de programme se rattache à un profil par sa clé dans `programs`. Pour un profil créé, cette clé est son identifiant.
 - L'écran de choix est encore statique (Pierre, Manon, démo). Les profils créés ne s'ouvrent pour l'instant que par `selectProfile` ou parce qu'ils sont mémorisés comme dernier profil.

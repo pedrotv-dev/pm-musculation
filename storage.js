@@ -27,7 +27,15 @@ const REGISTRY = '~registry';
 const META_KEY = 'meta';
 const profileKey = id => 'profile:' + id;
 // Profils autorisés pour les lectures / écritures : les historiques + ceux du registre une fois chargé.
-const knownProfiles = new Set(LEGACY_PROFILE_IDS);
+// Valeur = « époque » de la fiche (jeton tiré à l'inscription du profil) ; null pour Pierre et Manon (jamais supprimés).
+// Ce n'est qu'un CACHE par onglet : chaque écriture d'un profil supplémentaire est revérifiée dans le registre, DANS sa
+// propre transaction (voir guardedWrite), donc un onglet au registre périmé ne peut jamais écrire dans un profil
+// supprimé ailleurs, ni dans un profil supprimé puis restauré (nouvelle époque).
+const knownProfiles = new Map(LEGACY_PROFILE_IDS.map(id => [id, null]));
+const goneListeners = new Set();
+const newEpoch = () => (typeof crypto !== 'undefined' && crypto.getRandomValues)
+  ? [...crypto.getRandomValues(new Uint8Array(8))].map(b => b.toString(16).padStart(2, '0')).join('')
+  : Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 
 export const isValidProfileId = id => typeof id === 'string' && PROFILE_ID_PATTERN.test(id) && id !== 'demo';
 
@@ -38,7 +46,20 @@ function validProfile(profileId) {
   return profileId;
 }
 /** Profils actuellement autorisés (historiques + registre chargé). */
-export function knownProfileIds() { return [...knownProfiles]; }
+export function knownProfileIds() { return [...knownProfiles.keys()]; }
+/**
+ * Prévient quand une écriture a été refusée parce que le profil n'existe plus (supprimé dans un autre onglet ou
+ * remplacé par une restauration). Le profil est déjà retiré de la liste autorisée de CET onglet. Renvoie le désabonnement.
+ */
+export function onProfileGone(listener) { goneListeners.add(listener); return () => goneListeners.delete(listener); }
+function profileGone(profileId) {
+  knownProfiles.delete(profileId);
+  for (const listener of [...goneListeners]) { try { listener(profileId); } catch (_) { /* un écouteur ne bloque pas le refus */ } }
+  const error = new Error('Ce profil a été supprimé (dans une autre fenêtre ou un autre onglet) : rien n\'a été enregistré.');
+  error.code = 'PROFILE_DELETED';
+  error.profileId = profileId;
+  return error;
+}
 
 function nonempty(value, label) {
   if (typeof value !== 'string' || !value.trim()) {
@@ -142,8 +163,59 @@ function getRecord(store, key) {
   return transaction([store], 'readonly', tx => tx.objectStore(store).get(key));
 }
 
-function putRecord(store, record) {
-  return transaction([store], 'readwrite', tx => tx.objectStore(store).put(record));
+/**
+ * ÉCRITURE D'UN PROFIL, toujours par ici (jamais putRecord / transaction directement).
+ * Pour un profil supplémentaire, la transaction inclut `settings` et relit la fiche du registre AVANT d'écrire : si
+ * elle a disparu (profil supprimé) ou si son époque a changé (supprimé puis restauré), tout est annulé (code
+ * PROFILE_DELETED) et rien n'est écrit. La suppression (deleteProfileAndData) prend les 4 magasins en readwrite : les
+ * deux transactions se recouvrent, IndexedDB les exécute l'une APRÈS l'autre, y compris entre onglets. Une écriture
+ * engagée avant la suppression est donc effacée avec le profil ; une écriture postérieure est refusée. Jamais d'orphelin.
+ * `run(tx, setResult, fail)` est appelé une fois la vérification faite (immédiatement pour Pierre et Manon).
+ */
+async function guardedWrite(profileId, storeNames, run) {
+  validProfile(profileId);
+  const legacy = LEGACY_PROFILE_IDS.includes(profileId);
+  const expected = knownProfiles.get(profileId) ?? '';
+  const names = legacy || storeNames.includes('settings') ? storeNames : [...storeNames, 'settings'];
+  const db = await openStorage();
+  return new Promise((resolve, reject) => {
+    let tx;
+    try { tx = db.transaction(names, 'readwrite'); }
+    catch (error) { reject(error); return; }
+    let result;
+    let failure = null;
+    tx.oncomplete = () => resolve(result);
+    tx.onabort = () => reject(failure || tx.error || new Error('Enregistrement annule.'));
+    tx.onerror = () => { failure ||= tx.error; };
+    const fail = error => {
+      failure = error;
+      try { tx.abort(); } catch (_) { reject(error); }
+    };
+    const go = () => {
+      try { run(tx, value => { result = value; }, fail); }
+      catch (error) { fail(error); }
+    };
+    if (legacy) { go(); return; }
+    try {
+      const check = tx.objectStore('settings').get([REGISTRY, profileKey(profileId)]);
+      check.onsuccess = () => {
+        const row = check.result;
+        if (!row || (row.epoch ?? '') !== expected) { fail(profileGone(profileId)); return; }
+        go();
+      };
+    } catch (error) { fail(error); }
+  });
+}
+/** Écriture simple (put) d'une ligne d'un profil, gardée. */
+function putFor(profileId, store, record) {
+  return guardedWrite(profileId, [store], (tx, setResult) => {
+    const request = tx.objectStore(store).put(record);
+    request.onsuccess = () => setResult(request.result);
+  });
+}
+/** Suppression d'une ligne d'un profil, gardée. */
+function deleteFor(profileId, store, key) {
+  return guardedWrite(profileId, [store], tx => { tx.objectStore(store).delete(key); });
 }
 
 async function recordsFor(profileId, store) {
@@ -158,7 +230,7 @@ export function saveProgram(profileId, weekStart, program) {
   validProfile(profileId);
   nonempty(weekStart, 'Date du lundi');
   objectValue(program, 'Programme');
-  return putRecord('programs', {
+  return putFor(profileId, 'programs', {
     profileId, weekStart, data: program, updatedAt: new Date().toISOString()
   });
 }
@@ -183,7 +255,7 @@ export function saveSession(profileId, session) {
   objectValue(session, 'Seance');
   nonempty(session.id, 'Identifiant de seance');
   nonempty(session.status, 'Etat de seance');
-  return putRecord('sessions', {
+  return putFor(profileId, 'sessions', {
     profileId, id: session.id, status: session.status,
     data: session, updatedAt: new Date().toISOString()
   });
@@ -210,34 +282,16 @@ export function deleteSession(profileId, sessionId) {
   validProfile(profileId);
   nonempty(sessionId, 'Identifiant de seance');
   // La confirmation visuelle de suppression est geree par l'interface.
-  return transaction(['sessions'], 'readwrite', tx =>
-    tx.objectStore('sessions').delete([profileId, sessionId])
-  );
+  return deleteFor(profileId, 'sessions', [profileId, sessionId]);
 }
 
 // SEANCES — operations ATOMIQUES (une seule transaction IndexedDB readwrite).
 // Les transactions readwrite sur un meme store sont serialisees par IndexedDB, y compris entre
 // plusieurs onglets / instances : lecture, verification et ecriture ne peuvent pas s'entrecouper.
 
-/** Execute `run(store, setResult, fail)` dans une transaction readwrite sur `sessions`. */
-async function sessionsTransaction(run) {
-  const db = await openStorage();
-  return new Promise((resolve, reject) => {
-    let tx;
-    try { tx = db.transaction(['sessions'], 'readwrite'); }
-    catch (error) { reject(error); return; }
-    let result;
-    let failure = null;
-    tx.oncomplete = () => resolve(result);
-    tx.onabort = () => reject(failure || tx.error || new Error('Enregistrement annule.'));
-    tx.onerror = () => { failure ||= tx.error; };
-    const fail = error => {
-      failure = error;
-      try { tx.abort(); } catch (_) { reject(error); }
-    };
-    try { run(tx.objectStore('sessions'), value => { result = value; }, fail); }
-    catch (error) { fail(error); }
-  });
+/** Execute `run(store, setResult, fail)` dans une transaction readwrite sur `sessions` (gardée : profil existant). */
+function sessionsTransaction(profileId, run) {
+  return guardedWrite(profileId, ['sessions'], (tx, setResult, fail) => run(tx.objectStore('sessions'), setResult, fail));
 }
 
 function sessionRecord(profileId, session) {
@@ -257,7 +311,7 @@ export function updateSession(profileId, sessionId, updater) {
   validProfile(profileId);
   nonempty(sessionId, 'Identifiant de seance');
   if (typeof updater !== 'function') throw new TypeError('updater doit etre une fonction.');
-  return sessionsTransaction((store, setResult, fail) => {
+  return sessionsTransaction(profileId, (store, setResult, fail) => {
     const request = store.get([profileId, sessionId]);
     request.onsuccess = () => {
       try {
@@ -284,7 +338,7 @@ export function createSessionIfNoneOpen(profileId, session) {
   objectValue(session, 'Seance');
   nonempty(session.id, 'Identifiant de seance');
   nonempty(session.status, 'Etat de seance');
-  return sessionsTransaction((store, setResult, fail) => {
+  return sessionsTransaction(profileId, (store, setResult, fail) => {
     const request = store.index('byProfile').getAll(IDBKeyRange.only(profileId));
     request.onsuccess = () => {
       try {
@@ -309,7 +363,7 @@ export function deleteSessionIf(profileId, sessionId, check) {
   validProfile(profileId);
   nonempty(sessionId, 'Identifiant de seance');
   if (typeof check !== 'function') throw new TypeError('check doit etre une fonction.');
-  return sessionsTransaction((store, setResult, fail) => {
+  return sessionsTransaction(profileId, (store, setResult, fail) => {
     const request = store.get([profileId, sessionId]);
     request.onsuccess = () => {
       try {
@@ -328,7 +382,7 @@ export function saveWeight(profileId, measurement) {
   if (!Number.isFinite(measurement.kg) || measurement.kg <= 0) {
     throw new RangeError('Le poids doit etre un nombre positif (kg).');
   }
-  return putRecord('weights', {
+  return putFor(profileId, 'weights', {
     profileId, id: measurement.id,
     data: measurement, updatedAt: new Date().toISOString()
   });
@@ -337,7 +391,7 @@ export function saveWeight(profileId, measurement) {
 export function deleteWeight(profileId, id) {
   validProfile(profileId);
   nonempty(id, 'Identifiant de mesure');
-  return transaction(['weights'], 'readwrite', tx => tx.objectStore('weights').delete([profileId, id]));
+  return deleteFor(profileId, 'weights', [profileId, id]);
 }
 
 export async function listWeights(profileId) {
@@ -349,7 +403,7 @@ export async function listWeights(profileId) {
 export function saveSetting(profileId, key, value) {
   validProfile(profileId);
   nonempty(key, 'Nom du reglage');
-  return putRecord('settings', { profileId, key, value });
+  return putFor(profileId, 'settings', { profileId, key, value });
 }
 
 export async function getSetting(profileId, key, defaultValue = null) {
@@ -409,20 +463,8 @@ export async function restoreProfileData(profileId, backup, mode) {
     }
   }
 
-  const db = await openStorage();
-  return new Promise((resolve, reject) => {
-    let tx;
-    try { tx = db.transaction(STORES, 'readwrite'); }
-    catch (error) { reject(error); return; }
-    let failure = null;
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => { failure ||= tx.error; };
-    tx.onabort = () => reject(failure || tx.error || new Error('Restauration annulee.'));
-
-    function abortWith(error) {
-      failure = error;
-      try { tx.abort(); } catch (_) { reject(error); }
-    }
+  // Gardée comme toute écriture : un profil supprimé entre-temps n'est jamais « ressuscité » par une restauration.
+  return guardedWrite(profileId, STORES, (tx, setResult, abortWith) => {
     function writeBackup() {
       try {
         for (const name of STORES) {
@@ -475,10 +517,10 @@ function registryRows(tx) {
   return tx.objectStore('settings').index('byProfile').getAll(IDBKeyRange.only(REGISTRY));
 }
 function applyRegistry(rows) {
-  const ids = rows.filter(r => r.key.startsWith('profile:') && r.value && isValidProfileId(r.value.id)).map(r => r.value.id);
+  const valid = rows.filter(r => r.key.startsWith('profile:') && r.value && isValidProfileId(r.value.id));
   knownProfiles.clear();
-  for (const id of LEGACY_PROFILE_IDS) knownProfiles.add(id);
-  for (const id of ids) knownProfiles.add(id);
+  for (const id of LEGACY_PROFILE_IDS) knownProfiles.set(id, null);
+  for (const r of valid) if (!LEGACY_PROFILE_IDS.includes(r.value.id)) knownProfiles.set(r.value.id, r.epoch ?? '');
 }
 function readRegistry(rows) {
   const meta = rows.find(r => r.key === META_KEY);
@@ -545,18 +587,23 @@ export async function migrateProfileRegistry(records, { now = new Date().toISOSt
   });
 }
 
-/** Ajoute une fiche de profil ; refuse si l'identifiant existe déjà (aucun écrasement). */
+/**
+ * Ajoute une fiche de profil ; refuse si l'identifiant existe déjà (aucun écrasement). Chaque inscription reçoit une
+ * nouvelle époque : un profil supprimé puis restauré avec le même identifiant n'accepte pas les écritures d'un onglet
+ * resté sur l'ancienne inscription.
+ */
 export function addProfileRecord(record) {
-  if (!isValidProfileId(record?.id)) throw new Error('Identifiant de profil invalide.');
+  if (!isValidProfileId(record?.id) || LEGACY_PROFILE_IDS.includes(record.id)) throw new Error('Identifiant de profil invalide.');
+  const epoch = newEpoch();
   return transaction(['settings'], 'readwrite', tx => {
     const store = tx.objectStore('settings');
     const request = store.get([REGISTRY, profileKey(record.id)]);
     request.onsuccess = () => {
       if (request.result) { tx.abort(); return; }
-      store.put({ profileId: REGISTRY, key: profileKey(record.id), value: { ...record } });
+      store.put({ profileId: REGISTRY, key: profileKey(record.id), value: { ...record }, epoch });
     };
     return null;
-  }).then(() => { knownProfiles.add(record.id); return { ...record }; },
+  }).then(() => { knownProfiles.set(record.id, epoch); return { ...record }; },
     error => { throw error && /abort|annul/i.test(String(error.message || error)) ? new Error('Ce profil existe déjà.') : error; });
 }
 
@@ -571,7 +618,7 @@ export async function updateProfileRecord(id, change) {
       if (!request.result) { tx.abort(); return; }
       next = change({ ...request.result.value });
       if (!next || next.id !== id) { tx.abort(); return; }
-      store.put({ profileId: REGISTRY, key: profileKey(id), value: next });
+      store.put({ ...request.result, value: next }); // époque conservée : renommer ne change pas l'inscription
     };
     return null;
   }).catch(error => { throw /abort|annul/i.test(String(error?.message || error)) ? new Error('Profil introuvable ou modification invalide.') : error; });

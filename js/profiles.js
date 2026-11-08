@@ -14,7 +14,7 @@
 import { ENV } from './env.js';
 import {
   LEGACY_PROFILE_IDS, isValidProfileId, knownProfileIds, loadProfileRegistry, migrateProfileRegistry, countProfileRows,
-  addProfileRecord, updateProfileRecord, deleteProfileAndData
+  addProfileRecord, updateProfileRecord, deleteProfileAndData, onProfileGone
 } from '../storage.js';
 
 export const DEMO_PROFILE_ID = 'demo';
@@ -60,6 +60,30 @@ const emit = (reason, id) => {
     try { document.dispatchEvent(new CustomEvent('pm:profiles-changed', { detail: { reason, id } })); } catch (_) { /* sans effet */ }
   }
 };
+
+// ---------------------------------------------------------------- synchronisation entre onglets
+// 1. Garantie : storage.js revérifie le registre DANS chaque transaction d'écriture (aucune écriture possible dans un
+//    profil supprimé, même avec un registre périmé). Un refus retire le profil de cet onglet et l'annonce ici.
+// 2. Confort : les autres onglets sont prévenus (BroadcastChannel) et relisent le registre ; au retour sur l'onglet,
+//    le registre est aussi relu (navigateurs sans BroadcastChannel, onglet endormi).
+const channel = (() => {
+  try {
+    if (typeof BroadcastChannel !== 'function') return null;
+    const c = new BroadcastChannel('pm-musculation:profiles' + ENV.suffix);
+    if (typeof c.unref === 'function') c.unref(); // Node (tests) : le canal ne retient pas le processus ; sans effet en navigateur
+    return c;
+  } catch (_) { return null; }
+})();
+/** Annonce locale + aux autres onglets (jamais renvoyé par un onglet qui ne fait que relire). */
+const announce = (reason, id) => {
+  emit(reason, id);
+  try { if (channel) channel.postMessage({ reason, id }); } catch (_) { /* onglet seul */ }
+};
+onProfileGone(id => { cache.delete(id); emit('deleted', id); }); // écriture refusée : profil supprimé ailleurs
+if (channel) channel.onmessage = () => { if (ready) refreshProfiles().catch(() => {}); };
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+  document.addEventListener('visibilitychange', () => { if (ready && document.visibilityState === 'visible') refreshProfiles().catch(() => {}); });
+}
 const clean = (v, max) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
 
 /** Fiche historique (identité V1) pour la migration. */
@@ -94,7 +118,7 @@ async function migrateNow() {
   const res = await migrateProfileRegistry(LEGACY_PROFILE_IDS.map(id => legacyRecord(id, now)), { now });
   fill(res.profiles);
   migrated = true;
-  if (res.added.length) emit('migrated', null);
+  if (res.added.length) announce('migrated', null);
   return res;
 }
 
@@ -136,12 +160,17 @@ export const profilesReady = () => initProfiles();
 /** Dernière erreur de migration / lecture (null si tout va bien). */
 export const profilesError = () => lastError;
 
-/** Relit le registre (autre onglet, restauration…). */
+/**
+ * Relit le registre (autre onglet, restauration…). Les profils disparus sont annoncés « deleted » (l'application
+ * quitte le profil actif s'il en fait partie), puis « refreshed » (identité à jour). Aucune écriture.
+ */
 export async function refreshProfiles() {
   await initProfiles();
+  const before = new Map(cache);
   const { profiles } = await loadProfileRegistry();
   cache.clear();
   for (const p of profiles) cache.set(p.id, p);
+  for (const id of before.keys()) if (!cache.has(id) && !isLegacyProfile(id)) emit('deleted', id);
   emit('refreshed', null);
   return listProfilesSync();
 }
@@ -206,7 +235,7 @@ export async function createProfile(input = {}) {
     try { await addProfileRecord(rec); }
     catch (error) { if (/existe déjà/.test(error.message)) continue; throw error; }
     cache.set(id, rec);
-    emit('created', id);
+    announce('created', id);
     return { ...rec };
   }
   throw new Error('Création du profil impossible : réessaie.');
@@ -220,7 +249,7 @@ export async function updateProfile(id, patch = {}) {
   const extra = patch.extra && typeof patch.extra === 'object' && !Array.isArray(patch.extra) ? JSON.parse(JSON.stringify(patch.extra)) : undefined;
   const next = await updateProfileRecord(id, cur => ({ ...cur, ...fields, ...(extra ? { extra } : {}), id: cur.id, createdAt: cur.createdAt, updatedAt: new Date().toISOString() }));
   cache.set(id, next);
-  emit('updated', id);
+  announce('updated', id);
   return { ...next };
 }
 
@@ -237,7 +266,7 @@ export async function deleteProfile(id, { confirm } = {}) {
   const counts = await deleteProfileAndData(id);
   cache.delete(id);
   try { if (typeof localStorage !== 'undefined' && localStorage.getItem(PROFILE_STORAGE_KEY) === id) localStorage.removeItem(PROFILE_STORAGE_KEY); } catch (_) { /* stockage local bloqué */ }
-  emit('deleted', id);
+  announce('deleted', id);
   return counts;
 }
 
@@ -260,13 +289,13 @@ export async function adoptProfile(meta = {}) {
     extra: meta.extra && typeof meta.extra === 'object' && !Array.isArray(meta.extra) ? JSON.parse(JSON.stringify(meta.extra)) : {} };
   await addProfileRecord(rec);
   cache.set(id, rec);
-  emit('created', id);
+  announce('created', id);
   return { ...rec };
 }
 /** Retire du cache un profil dont l'inscription a été annulée (restauration échouée). Interne à backup.js. */
 export async function forgetAdoptedProfile(id) {
   if (isLegacyProfile(id)) return;
-  try { await deleteProfileAndData(id); } finally { cache.delete(id); emit('deleted', id); }
+  try { await deleteProfileAndData(id); } finally { cache.delete(id); announce('deleted', id); }
 }
 
 // ---------------------------------------------------------------- sélection (pour l'interface future)

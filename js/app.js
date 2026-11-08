@@ -85,11 +85,14 @@ else if (saved) profilesStarted.then(() => { if (!currentProfile && isKnownProfi
 
 // Interface future (écrans ASCENT/KORV) : sélection d'un profil par événement, même chemin que les boutons actuels.
 document.addEventListener('pm:select-profile', e => { const p = e.detail && e.detail.profile; if (isKnownProfile(p)) chooseProfile(p); });
-// Registre modifié : profil actif renommé / recoloré → identité à jour ; profil actif supprimé → retour au choix.
+// Registre modifié (ici ou dans un autre onglet) : profil actif renommé / recoloré → identité à jour ; profil actif
+// supprimé → retour au choix.
 document.addEventListener('pm:profiles-changed', e => {
   const { reason, id } = e.detail || {};
-  if (!currentProfile || id !== currentProfile) return;
-  if (reason === 'deleted') changeProfile();
+  if (!currentProfile) return;
+  if (reason === 'refreshed') { const data = getProfileInfo(currentProfile); if (data) applyIdentity(data); return; } // autre onglet
+  if (id !== currentProfile) return;
+  if (reason === 'deleted') changeProfile(); // ici, dans un autre onglet, ou écriture refusée : retour au choix du profil
   else if (reason === 'updated') { const data = getProfileInfo(currentProfile); if (data) applyIdentity(data); }
 });
 
