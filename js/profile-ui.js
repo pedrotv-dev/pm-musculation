@@ -131,8 +131,8 @@ function backupSection(profile) {
     try {
       const [rows, cat] = await Promise.all([listWorkouts(profile), loadCatalog()]);
       const names = new Map([...cat.byId].map(([id, m]) => [id, m.name]));
-      await saveTextFile('pm-musculation-' + profile + '-resultats.csv', resultsCsv(rows, names), 'text/csv');
-      status.textContent = rows.length + ' séance(s) exportée(s).';
+      const how = await saveTextFile('pm-musculation-' + profile + '-resultats.csv', resultsCsv(rows, names), 'text/csv');
+      status.textContent = how === 'cancelled' ? 'Export annulé.' : rows.length + ' séance(s) exportée(s).';
     } catch (e) { status.textContent = 'Échec : ' + (e.message || e); }
   });
   const file = el('input'); file.type = 'file'; file.accept = '.json,application/json'; file.setAttribute('aria-label', 'Fichier de sauvegarde à restaurer');
