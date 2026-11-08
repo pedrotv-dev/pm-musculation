@@ -285,8 +285,10 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 }
 
 /* V1-M1 · D2 — détail de l'historique : à 320 px la grille à 6 colonnes ne laissait que 40 px à chaque champ.
-   Sur petit écran : repère, charge, « kg × », répétitions sur la 1re ligne ; ✓ et × dessous, alignés à droite. */
-@media (max-width:374px) {
+   Sur petit écran : repère, charge, « kg × », répétitions sur la 1re ligne ; ✓ et × dessous, alignés à droite.
+   V1-UI1 : étendu jusqu'à 389 px. À 375 px, Chrome sur ordinateur (barre de défilement de 15 px, police système plus
+   large comme Segoe UI) ne laissait que 56 à 58 px à un champ, et « 102,5 » en demande 58 à 61 : valeur coupée. */
+@media (max-width:389px) {
   .pm-hist-set { grid-template-columns:24px minmax(0,1fr) auto minmax(0,1fr); row-gap:6px; }
   .pm-hist-set > .pm-icon-btn { grid-row:2; grid-column:4; justify-self:end; }
   .pm-hist-set > .pm-icon-btn:nth-last-of-type(2) { margin-right:50px; } /* ✓ à gauche de × (44 px + 6 px) */
@@ -297,3 +299,8 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-cal-grid { grid-template-columns:repeat(7, minmax(0, 1fr)); gap:4px; }
 .pm-cal-day { aspect-ratio:auto; min-width:0; width:100%; min-height:48px; padding:0; }
 @media (max-width:374px) { .pm-cal-grid { gap:3px; } .pm-cal-day { min-height:44px; } }
+
+/* V1-UI1 — champ refusé (valeur invalide) ou correction non enregistrée : repère visible, pas seulement aria-invalid.
+   Couleurs d'alerte existantes ; le turquoise du focus reste prioritaire pendant la saisie. */
+.pm-input[aria-invalid="true"] { border-color:var(--danger); background:var(--surface-danger); box-shadow:0 0 0 1px var(--stroke-danger) inset; }
+.pm-input[aria-invalid="true"]:not(:focus-visible) { color:var(--text-danger); }
