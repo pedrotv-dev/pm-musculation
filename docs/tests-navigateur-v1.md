@@ -57,4 +57,6 @@ L'ancien échec isolé `offline-flow` n'a pas de trace disponible dans le dépô
 
 Une autre fragilité du test V1-UX2 a été observée à 320 px : `scrollY = 460` faisait échouer un seuil fixe de 400 px, alors que le cadre courant était visible au-dessus du chrono. Le test contrôle maintenant ce contrat géométrique réel, avec une attente conditionnelle. Il n'augmente pas le seuil et ne force pas le défilement après le clic. L'ancienne capture et sa trace ont été conservées lors de la validation locale.
 
+L'intégration de V1-UI1 a révélé un champ trop étroit à 390 px sous Chromium Linux avec barres de défilement classiques : 63 px disponibles pour 67 px nécessaires à « 102,5 ». La disposition compacte existante du détail d'historique s'applique désormais jusqu'à 399 px. Les assertions sont conservées ; le CSS et sa VERSION ont été actualisés avec autorisation MASTER, sans déploiement.
+
 Ces tests Chromium Linux ne certifient ni Safari iPhone, ni Chrome Windows, ni le comportement sonore réel des téléphones.

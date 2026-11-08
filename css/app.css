@@ -286,9 +286,9 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 
 /* V1-M1 · D2 — détail de l'historique : à 320 px la grille à 6 colonnes ne laissait que 40 px à chaque champ.
    Sur petit écran : repère, charge, « kg × », répétitions sur la 1re ligne ; ✓ et × dessous, alignés à droite.
-   V1-UI1 : étendu jusqu'à 389 px. À 375 px, Chrome sur ordinateur (barre de défilement de 15 px, police système plus
-   large comme Segoe UI) ne laissait que 56 à 58 px à un champ, et « 102,5 » en demande 58 à 61 : valeur coupée. */
-@media (max-width:389px) {
+   V1-UI1 : étendu jusqu'à 399 px. Avec une barre de défilement classique de 15 px, à 390 px sous Chromium Linux,
+   un champ n'offre que 63 px alors que « 102,5 » en demande 67. La disposition compacte garde les valeurs lisibles. */
+@media (max-width:399px) {
   .pm-hist-set { grid-template-columns:24px minmax(0,1fr) auto minmax(0,1fr); row-gap:6px; }
   .pm-hist-set > .pm-icon-btn { grid-row:2; grid-column:4; justify-self:end; }
   .pm-hist-set > .pm-icon-btn:nth-last-of-type(2) { margin-right:50px; } /* ✓ à gauche de × (44 px + 6 px) */
