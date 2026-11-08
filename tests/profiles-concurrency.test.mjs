@@ -87,7 +87,7 @@ test('séance en cours dans B, écritures DÉJÀ ENGAGÉES quand A supprime : av
   assert.equal(rowsOf(y), 0);
 });
 
-test('profil supprimé puis restauré (même identifiant) : B, périmé, ne peut pas écrire dans la nouvelle incarnation', async () => {
+test('profil supprimé puis restauré (même identifiant) : B, périmé, ne peut pas écrire dans la nouvelle inscription, même après relecture ; un onglet rechargé le peut', async () => {
   const B = await import('../js/backup.js');
   const z = (await PA.createProfile({ name: 'Z fictif', color: 'violet' })).id;
   await SA.saveWeight(z, { id: 'w1', kg: 55, date: '2026-11-01' });
@@ -98,8 +98,16 @@ test('profil supprimé puis restauré (même identifiant) : B, périmé, ne peut
   const restored = await exportOf(SA, z);
   await assert.rejects(SB.saveWeight(z, { id: 'w2', kg: 99, date: '2026-11-02' }), e => e.code === 'PROFILE_DELETED');
   assert.equal(await exportOf(SA, z), restored, 'profil restauré intact');
-  await SB.loadProfileRegistry(); // B se resynchronise : il peut alors écrire normalement
-  await SB.saveWeight(z, { id: 'w2', kg: 56, date: '2026-11-02' });
+  // B relit le registre : la nouvelle inscription n'est PAS adoptée en silence (ancienne retirée jusqu'au rechargement)
+  await SB.loadProfileRegistry();
+  assert.equal(SB.knownProfileIds().includes(z), false);
+  assert.equal((await SB.loadProfileRegistry()).profiles.some(p => p.id === z), false);
+  assert.throws(() => SB.saveWeight(z, { id: 'w2', kg: 98, date: '2026-11-02' }), /Profil inconnu/);
+  assert.equal(await exportOf(SA, z), restored);
+  // onglet rechargé (nouvelle instance) : il découvre la nouvelle inscription et l'utilise normalement
+  const SC = await import('../storage.js?onglet=recharge');
+  await SC.loadProfileRegistry();
+  await SC.saveWeight(z, { id: 'w2', kg: 56, date: '2026-11-02' });
   assert.ok((await exportOf(SA, z)).includes('"kg":56'));
 });
 
@@ -110,4 +118,52 @@ test('Pierre, Manon et le profil conservé : intacts, écritures toujours possib
   await SB.saveWeight('manon', { id: 'w1', kg: 58, date: '2026-11-02' });
   await SB.saveWeight(keep, { id: 'w2', kg: 61, date: '2026-11-02' });
   assert.ok((await exportOf(SA, keep)).includes('"kg":61'));
+});
+
+test('fiche supprimée puis restaurée (nouvelle époque) : l’ancien onglet ne peut ni la modifier ni la supprimer', async () => {
+  const B = await import('../js/backup.js');
+  const r = (await PA.createProfile({ name: 'R fictif', color: 'ambre' })).id;
+  await SA.saveWeight(r, { id: 'w1', kg: 62, date: '2026-11-01' });
+  const backup = JSON.parse((await B.createBackupFile(r)).text);
+  await SB.loadProfileRegistry();                       // B connaît R (ancienne époque)
+  await PA.deleteProfile(r, { confirm: r });
+  await B.restoreBackupAsNewProfile(backup);            // A : nouvelle inscription de R
+  const registryRow = () => [...idb.stores.settings.rows.values()].find(v => v.profileId === '~registry' && v.key === 'profile:' + r);
+  const before = JSON.stringify(registryRow());
+  const data = await exportOf(SA, r);
+  await assert.rejects((async () => SB.updateProfileRecord(r, cur => ({ ...cur, name: 'Ancien onglet' })))(), e => e.code === 'PROFILE_DELETED', 'modification refusée');
+  assert.equal(JSON.stringify(registryRow()), before, 'fiche intacte');
+  await assert.rejects((async () => SB.deleteProfileAndData(r))(), e => e.code === 'PROFILE_DELETED' || /Profil inconnu|ne peut pas/.test(e.message), 'suppression refusée');
+  assert.equal(JSON.stringify(registryRow()), before, 'fiche toujours là');
+  assert.equal(await exportOf(SA, r), data, 'données de la nouvelle inscription intactes');
+});
+
+test('restauration dans l’onglet même : réinscription autorisée ici ; échec de restauration nettoyé sans toucher une autre inscription', async () => {
+  const B = await import('../js/backup.js');
+  const t = (await PA.createProfile({ name: 'T fictif', color: 'sauge' })).id;
+  await SA.saveWeight(t, { id: 'w1', kg: 64, date: '2026-11-01' });
+  const backup = JSON.parse((await B.createBackupFile(t)).text);
+  await PA.deleteProfile(t, { confirm: t });
+  const rec = await B.restoreBackupAsNewProfile(backup);   // A supprime puis restaure LUI-MÊME : autorisé
+  assert.equal(rec.id, t);
+  await SA.saveWeight(t, { id: 'w2', kg: 65, date: '2026-11-02' });
+  assert.ok((await exportOf(SA, t)).includes('"kg":65'));
+  // échec de restauration (donnée invalide) : l'inscription provisoire est retirée, rien ne reste
+  const u = 'p-test-restauration';
+  const bad = { format: 'pm-musculation-backup', schemaVersion: 1, profileId: u, profile: { id: u, name: 'U fictif', color: 'bleu' },
+    data: { programs: [], sessions: [], weights: [{ profileId: u, id: 'w1', data: { id: 'w1', kg: 1, bad: 10n } }], settings: [] } };
+  await assert.rejects(B.restoreBackupAsNewProfile(bad));
+  assert.equal(rowsOf(u), 0);
+  assert.equal([...idb.stores.settings.rows.values()].some(v => v.profileId === '~registry' && v.key === 'profile:' + u), false, 'fiche provisoire retirée');
+  assert.equal(PA.isKnownProfile(u), false);
+  // le profil T (autre inscription) n'a pas été touché par ce nettoyage
+  assert.ok((await exportOf(SA, t)).includes('"kg":65'));
+});
+
+test('profils historiques : modification de fiche toujours possible, suppression toujours refusée', async () => {
+  const pierre = await PA.updateProfile('pierre', { goal: 'Prise de muscle, force et endurance' });
+  assert.equal(pierre.id, 'pierre');
+  await assert.rejects(PA.deleteProfile('pierre', { confirm: 'pierre' }), /ne peut pas/);
+  await assert.rejects((async () => SB.deleteProfileAndData('manon'))(), /ne peut pas/);
+  await SB.updateProfileRecord('manon', cur => ({ ...cur })); // B (autre onglet) : historiques non soumis à l'époque
 });

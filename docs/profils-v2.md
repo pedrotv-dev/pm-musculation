@@ -65,10 +65,17 @@ Les changements sont annoncés par l'événement `document` → `pm:profiles-cha
   - Les autres onglets sont prévenus par `BroadcastChannel` et relisent le registre, ce qu'ils font aussi au retour sur l'onglet.
   - Un onglet qui affichait le profil supprimé revient au choix du profil. S'il était en séance, l'écran de séance se ferme sans rien enregistrer.
   - Un renommage est propagé aux autres onglets.
-- Pierre et Manon ne peuvent pas être supprimés : leurs écritures ne sont pas soumises à cette vérification.
+- **Fiches de profil.** La modification (`updateProfile`) et la suppression (`deleteProfile`) d'une fiche passent par la même vérification transactionnelle de l'existence et de l'époque. Un onglet resté sur une ancienne inscription ne peut ni modifier ni supprimer une nouvelle inscription du même identifiant.
+- **Inscription retirée.** Quand un onglet constate qu'une inscription qu'il connaissait a disparu ou changé d'époque, cette inscription est retirée pour cet onglet jusqu'à son rechargement. Il le constate par un refus d'écriture ou une relecture du registre (notification, retour sur l'onglet).
+  - L'onglet revient au choix du profil.
+  - Il n'adopte jamais en silence la nouvelle inscription, car ses opérations en file appartiennent à l'ancienne.
+  - Seule une création ou une restauration faite dans l'onglet même réautorise l'identifiant.
+- **Restauration échouée.** Le nettoyage (`forgetAdoptedProfile`) ne supprime que l'inscription créée par cette restauration.
+- Pierre et Manon ne peuvent pas être supprimés : leurs écritures et la modification de leur fiche ne sont pas soumises à l'époque.
 
 ## Limites connues
 
+- Un profil supprimé puis restauré dans un autre onglet n'est utilisable dans un onglet qui connaissait l'ancienne inscription qu'**après rechargement** de cet onglet.
 - Un profil **créé** dans un autre onglet n'apparaît ici qu'après la notification ou le retour sur l'onglet. Il peut ne pas apparaître du tout sans `BroadcastChannel`, jusqu'au prochain retour sur l'onglet ou rechargement.
 - Le retour au choix du profil après une suppression faite ailleurs n'affiche aucun message : aucun changement visuel n'a été ajouté.
 - Un fichier de programme se rattache à un profil par sa clé dans `programs`. Pour un profil créé, cette clé est son identifiant.

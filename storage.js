@@ -32,6 +32,11 @@ const profileKey = id => 'profile:' + id;
 // propre transaction (voir guardedWrite), donc un onglet au registre périmé ne peut jamais écrire dans un profil
 // supprimé ailleurs, ni dans un profil supprimé puis restauré (nouvelle époque).
 const knownProfiles = new Map(LEGACY_PROFILE_IDS.map(id => [id, null]));
+// Inscriptions RETIRÉES dans cet onglet : profil vu ici avec une époque qui a disparu (supprimé, ou supprimé puis
+// réinscrit). Jusqu'au rechargement de la page, cet onglet n'adopte JAMAIS silencieusement la nouvelle inscription du
+// même identifiant (ses opérations en file appartiennent à l'ancienne). Seule une inscription faite ICI (création,
+// restauration) la réautorise.
+const retired = new Set();
 const goneListeners = new Set();
 const newEpoch = () => (typeof crypto !== 'undefined' && crypto.getRandomValues)
   ? [...crypto.getRandomValues(new Uint8Array(8))].map(b => b.toString(16).padStart(2, '0')).join('')
@@ -54,6 +59,7 @@ export function knownProfileIds() { return [...knownProfiles.keys()]; }
 export function onProfileGone(listener) { goneListeners.add(listener); return () => goneListeners.delete(listener); }
 function profileGone(profileId) {
   knownProfiles.delete(profileId);
+  retired.add(profileId);
   for (const listener of [...goneListeners]) { try { listener(profileId); } catch (_) { /* un écouteur ne bloque pas le refus */ } }
   const error = new Error('Ce profil a été supprimé (dans une autre fenêtre ou un autre onglet) : rien n\'a été enregistré.');
   error.code = 'PROFILE_DELETED';
@@ -518,13 +524,17 @@ function registryRows(tx) {
 }
 function applyRegistry(rows) {
   const valid = rows.filter(r => r.key.startsWith('profile:') && r.value && isValidProfileId(r.value.id));
+  const next = new Map(valid.filter(r => !LEGACY_PROFILE_IDS.includes(r.value.id)).map(r => [r.value.id, r.epoch ?? '']));
+  // inscription connue ici qui a disparu ou changé d'époque : retirée pour cet onglet
+  for (const [id, epoch] of knownProfiles) if (epoch !== null && next.get(id) !== epoch) retired.add(id);
   knownProfiles.clear();
   for (const id of LEGACY_PROFILE_IDS) knownProfiles.set(id, null);
-  for (const r of valid) if (!LEGACY_PROFILE_IDS.includes(r.value.id)) knownProfiles.set(r.value.id, r.epoch ?? '');
+  for (const [id, epoch] of next) if (!retired.has(id)) knownProfiles.set(id, epoch);
 }
+/** Fiches lisibles par CET onglet : historiques + inscriptions autorisées (jamais une inscription retirée ici). */
 function readRegistry(rows) {
   const meta = rows.find(r => r.key === META_KEY);
-  const profiles = rows.filter(r => r.key.startsWith('profile:') && r.value && isValidProfileId(r.value.id)).map(r => ({ ...r.value }));
+  const profiles = rows.filter(r => r.key.startsWith('profile:') && r.value && isValidProfileId(r.value.id) && knownProfiles.has(r.value.id)).map(r => ({ ...r.value }));
   return { meta: meta ? { ...meta.value } : null, profiles };
 }
 
@@ -603,25 +613,30 @@ export function addProfileRecord(record) {
       store.put({ profileId: REGISTRY, key: profileKey(record.id), value: { ...record }, epoch });
     };
     return null;
-  }).then(() => { knownProfiles.set(record.id, epoch); return { ...record }; },
+  }).then(() => { retired.delete(record.id); knownProfiles.set(record.id, epoch); return { ...record }; },
     error => { throw error && /abort|annul/i.test(String(error.message || error)) ? new Error('Ce profil existe déjà.') : error; });
 }
 
-/** Modifie une fiche existante, dans une transaction (lecture + écriture) : `change(copie)` renvoie la fiche suivante. */
+/**
+ * Modifie une fiche existante, dans UNE transaction gardée (comme toute écriture) : pour un profil supplémentaire, la
+ * fiche doit exister ET porter l'époque connue de cet onglet, sinon PROFILE_DELETED et rien n'est modifié (un onglet
+ * resté sur une ancienne inscription ne touche jamais la nouvelle). `change(copie)` renvoie la fiche suivante.
+ */
 export async function updateProfileRecord(id, change) {
   if (!isValidProfileId(id)) throw new Error('Identifiant de profil invalide.');
   let next = null;
-  await transaction(['settings'], 'readwrite', tx => {
+  await guardedWrite(id, ['settings'], (tx, setResult, fail) => {
     const store = tx.objectStore('settings');
     const request = store.get([REGISTRY, profileKey(id)]);
     request.onsuccess = () => {
-      if (!request.result) { tx.abort(); return; }
-      next = change({ ...request.result.value });
-      if (!next || next.id !== id) { tx.abort(); return; }
-      store.put({ ...request.result, value: next }); // époque conservée : renommer ne change pas l'inscription
+      try {
+        if (!request.result) { fail(new Error('Profil introuvable ou modification invalide.')); return; }
+        next = change({ ...request.result.value });
+        if (!next || next.id !== id) { fail(new Error('Profil introuvable ou modification invalide.')); return; }
+        store.put({ ...request.result, value: next }); // époque conservée : renommer ne change pas l'inscription
+      } catch (error) { fail(error); }
     };
-    return null;
-  }).catch(error => { throw /abort|annul/i.test(String(error?.message || error)) ? new Error('Profil introuvable ou modification invalide.') : error; });
+  });
   return { ...next };
 }
 
@@ -633,32 +648,20 @@ export async function updateProfileRecord(id, change) {
 export async function deleteProfileAndData(id) {
   if (!isValidProfileId(id) || LEGACY_PROFILE_IDS.includes(id)) throw new Error('Ce profil ne peut pas être supprimé.');
   const counts = { programs: 0, sessions: 0, weights: 0, settings: 0 };
-  const db = await openStorage();
-  await new Promise((resolve, reject) => {
-    let tx;
-    try { tx = db.transaction(STORES, 'readwrite'); } catch (error) { reject(error); return; }
-    let failure = null;
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => { failure ||= tx.error; };
-    tx.onabort = () => reject(failure || tx.error || new Error('Suppression annulée.'));
-    const abortWith = error => { failure = error; try { tx.abort(); } catch (_) { reject(error); } };
-    try {
-      const reg = tx.objectStore('settings').get([REGISTRY, profileKey(id)]);
-      reg.onsuccess = () => {
-        if (!reg.result) { abortWith(new Error('Profil introuvable.')); return; }
-        for (const name of STORES) {
-          const request = tx.objectStore(name).index('byProfile').openCursor(IDBKeyRange.only(id));
-          request.onsuccess = () => {
-            try {
-              const cursor = request.result;
-              if (cursor) { counts[name]++; cursor.delete(); cursor.continue(); }
-            } catch (error) { abortWith(error); }
-          };
-        }
-        tx.objectStore('settings').delete([REGISTRY, profileKey(id)]);
+  // Gardée : la fiche doit exister avec l'époque connue de cet onglet (sinon PROFILE_DELETED, rien n'est supprimé).
+  await guardedWrite(id, STORES, (tx, setResult, fail) => {
+    for (const name of STORES) {
+      const request = tx.objectStore(name).index('byProfile').openCursor(IDBKeyRange.only(id));
+      request.onsuccess = () => {
+        try {
+          const cursor = request.result;
+          if (cursor) { counts[name]++; cursor.delete(); cursor.continue(); }
+        } catch (error) { fail(error); }
       };
-    } catch (error) { abortWith(error); }
+    }
+    tx.objectStore('settings').delete([REGISTRY, profileKey(id)]);
   });
   knownProfiles.delete(id);
+  retired.add(id);
   return counts;
 }

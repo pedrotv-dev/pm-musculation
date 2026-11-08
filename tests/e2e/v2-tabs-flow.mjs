@@ -119,6 +119,72 @@ await step('onglet avec notification (A) : profil supprimé dans un autre onglet
   await pageC.close();
 });
 
+const selectIn = async (page, id) => {
+  await api(page, async id => { const P = await import('./js/profiles.js'); await P.refreshProfiles(); P.selectProfile(id); }, id);
+  await page.waitForFunction(id => document.documentElement.dataset.pmProfile === id, id);
+};
+const registryRow = (page, id) => api(page, async id => JSON.stringify((await (await import('./storage.js')).loadProfileRegistry()).profiles.find(p => p.id === id) || null), id);
+/** A : sauvegarde du profil, suppression, puis restauration sous le MÊME identifiant (nouvelle inscription). */
+const deleteAndRestore = (page, id) => api(page, async id => {
+  const Bk = await import('./js/backup.js'); const P = await import('./js/profiles.js');
+  await P.refreshProfiles();
+  const backup = JSON.parse((await Bk.createBackupFile(id)).text);
+  await P.deleteProfile(id, { confirm: id });
+  await Bk.restoreBackupAsNewProfile(backup);
+}, id);
+/** Action de l'API des profils dans un onglet : 'ok', ou le code / message du refus (pas d'eval : CSP de l'application). */
+const outcomeIn = (page, action, id) => page.evaluate(async ([action, id]) => {
+  const P = await import('./js/profiles.js');
+  try {
+    if (action === 'update') await P.updateProfile(id, { name: 'Ancien onglet' });
+    else if (action === 'delete') await P.deleteProfile(id, { confirm: id });
+    return 'ok';
+  } catch (e) { return e.code || e.message; }
+}, [action, id]);
+
+await step('profil supprimé puis restauré dans A : l’ancien onglet B ne peut ni modifier ni supprimer la nouvelle inscription', async () => {
+  const r = await create(pageA, 'R fictif', 'ambre');
+  await api(pageA, async id => (await import('./js/weights.js')).addBodyWeight(id, 62.5, '2026-11-01'), r);
+  await selectIn(pageB, r);                                   // B affiche R (ancienne inscription), sans notification
+  await deleteAndRestore(pageA, r);
+  const row = await registryRow(pageA, r), data = await exportOf(pageA, r);
+  assert.notEqual(row, 'null');
+  const upd = await outcomeIn(pageB, 'update', r);
+  console.log('    B : updateProfile →', upd);
+  assert.notEqual(upd, 'ok', 'modification refusée');
+  const del = await outcomeIn(pageB, 'delete', r);
+  assert.notEqual(del, 'ok', 'suppression refusée (' + upd + ' / ' + del + ')');
+  console.log('    B : deleteProfile →', del);
+  assert.equal(await registryRow(pageA, r), row, 'fiche de la nouvelle inscription intacte');
+  assert.equal(await exportOf(pageA, r), data, 'données de la nouvelle inscription intactes');
+  await pageB.waitForSelector('#screen-select:not([hidden])');
+  await remove(pageA, r);
+});
+
+await step('onglet sans notification : un rafraîchissement qui détecte la SUPPRESSION du profil actif ramène au choix du profil', async () => {
+  const q = await create(pageA, 'Q fictif', 'bleu');
+  await selectIn(pageB, q);
+  await remove(pageA, q);
+  assert.equal(await current(pageB), q, 'B ne sait encore rien');
+  await pageB.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); // retour sur l'onglet
+  await pageB.waitForSelector('#screen-select:not([hidden])');
+  assert.equal(await current(pageB), null);
+});
+
+await step('onglet sans notification : un rafraîchissement qui détecte une NOUVELLE INSCRIPTION du profil actif ramène au choix, sans écriture possible', async () => {
+  const q = await create(pageA, 'Q2 fictif', 'violet');
+  await api(pageA, async id => (await import('./js/weights.js')).addBodyWeight(id, 70.5, '2026-11-01'), q);
+  await selectIn(pageB, q);
+  await deleteAndRestore(pageA, q);
+  const data = await exportOf(pageA, q);
+  await pageB.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await pageB.waitForSelector('#screen-select:not([hidden])');
+  const w = await api(pageB, async id => (async () => (await import('./js/weights.js')).addBodyWeight(id, 99.5, '2026-11-02'))().then(() => 'ok', e => e.code || e.message), q);
+  assert.notEqual(w, 'ok', 'écriture refusée');
+  assert.equal(await exportOf(pageA, q), data);
+  await remove(pageA, q);
+});
+
 await step('Pierre et Manon intacts ; écriture toujours possible depuis les deux onglets', async () => {
   assert.equal(await exportOf(pageA, 'pierre'), pierreBefore);
   assert.equal(await exportOf(pageB, 'manon'), manonBefore);
