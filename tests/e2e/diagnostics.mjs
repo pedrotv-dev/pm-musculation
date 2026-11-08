@@ -36,7 +36,8 @@ export async function checkpoint(page, label) {
       registrations: await Promise.all((await navigator.serviceWorker.getRegistrations()).map(async r => ({
         scope: r.scope, active: r.active?.state, waiting: r.waiting?.state, installing: r.installing?.state
       }))),
-      caches: await Promise.all((await caches.keys()).map(async name => ({ name, entries: (await (await caches.open(name)).keys()).length }))),
+      // keys() est une lecture pure ; open() pourrait recréer un cache supprimé pendant une mise à jour.
+      caches: await caches.keys(),
       databases: indexedDB.databases ? await indexedDB.databases() : []
     })));
     log('checkpoint', { label, state });
