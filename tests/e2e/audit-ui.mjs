@@ -46,3 +46,4 @@ for (const k of order) {
 }
 console.log('\nerreurs JS :', errors.length);
 await browser.close(); srv.close();
+process.exitCode = findings.size || errors.length ? 1 : 0;

@@ -294,6 +294,12 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
   .pm-hist-set > .pm-icon-btn:nth-last-of-type(2) { margin-right:50px; } /* ✓ à gauche de × (44 px + 6 px) */
 }
 
+/* À 390 px avec une barre classique sous Chromium Linux : 63 px par champ pour 67 px nécessaires à « 102,5 ».
+   Réduire seulement les marges intérieures garde la grille et les cibles tactiles existantes ; dès 400 px, le texte tient. */
+@media (min-width:390px) and (max-width:399px) {
+  .pm-hist-set .pm-input { padding-inline:var(--space-1); }
+}
+
 /* V1-M1 · UX-01 — calendrier de l'historique : jours carrés de 38 px minimum, impossibles à caser dans 7 colonnes à
    320 px (296 px pour 246 px : débordement de 50 px). Colonnes bornées à 0, hauteur tactile de 44 px (48 px dès 375 px). */
 .pm-cal-grid { grid-template-columns:repeat(7, minmax(0, 1fr)); gap:4px; }

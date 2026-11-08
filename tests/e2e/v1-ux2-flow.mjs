@@ -91,16 +91,24 @@ for (const [w, h] of SIZES) {
     assert.equal(await y(), before);
   });
 
-  await step(`UX2-04 · récapitulatif → « Retour à la séance » : vue de la machine depuis le haut (${w} px)`, async () => {
+  await step(`UX2-04 · récapitulatif → « Retour à la séance » : série visible, défilement limité au cadre courant (${w} px)`, async () => {
     await page.click('.pm-footer button:has-text("Terminer")');
     await page.waitForSelector('.pm-recap-feedback');
     await page.evaluate(() => scrollTo(0, 99999)); await page.waitForTimeout(100);
     assert.ok(await y() > 0);
     await page.click('button:has-text("Retour à la séance")');
-    await page.waitForTimeout(500);
-    const r = await page.evaluate(() => { const b = document.querySelector('.pm-current-set')?.getBoundingClientRect(); return { y: Math.round(scrollY), boxTop: b ? Math.round(b.top) : null }; });
-    assert.ok(r.boxTop === null || r.boxTop >= 0, 'cadre « Série en cours » au-dessus de l’écran'); // C2 peut descendre juste ce qu’il faut
-    assert.ok(r.y <= 400, 'vue restée en bas : ' + r.y);
+    // C2 révèle le cadre courant entre le haut de l'écran et le chrono : sa position dépend de la machine,
+    // des images et des retours à la ligne. Un seuil absolu de scrollY (400 px) ne vérifie pas ce contrat.
+    await page.waitForFunction(() => {
+      const box = document.querySelector('.pm-current-set')?.getBoundingClientRect();
+      const rest = document.querySelector('.pm-rest-ui:not([hidden])')?.getBoundingClientRect();
+      return box && box.top >= 0 && box.bottom <= (rest?.top ?? innerHeight) - 7;
+    });
+    const r = await page.evaluate(() => {
+      const box = document.querySelector('.pm-current-set').getBoundingClientRect();
+      return { y: scrollY, documentTop: box.top + scrollY };
+    });
+    assert.ok(r.y <= r.documentTop, 'défilement au-delà du cadre courant : ' + JSON.stringify(r));
   });
 
   await step(`UX2-01 · option écran allumé décochée : l’alerte écran verrouillé reprend son fichier son (comportement d’origine) (${w} px)`, async () => {

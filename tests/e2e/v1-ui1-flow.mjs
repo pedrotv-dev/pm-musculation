@@ -2,15 +2,15 @@
 // visuel des champs refusés, message juste quand l'export CSV est annulé. 320×568, 375×667, 390×844.
 // node tests/e2e/v1-ui1-flow.mjs
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
-import { execSync } from 'node:child_process';
+import { chromium } from 'playwright';
+import { diagnostics } from './diagnostics.mjs';
 import { serve, watch, step, summary } from './lib.mjs';
 
-const { chromium } = createRequire(execSync('npm root -g').toString().trim() + '/')('playwright');
 const srv = await serve();
 const SIZES = [[320, 568], [375, 667], [390, 844]];
 // barres de défilement classiques (15 px), comme Chrome sous Windows : la largeur utile n'est plus celle de l'écran
 const browser = await chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
+await diagnostics.instrument(browser);
 
 /** Le champ peut-il afficher « 102,5 » en entier (texte + marges intérieures) ? */
 const fits = locator => locator.evaluate(i => {

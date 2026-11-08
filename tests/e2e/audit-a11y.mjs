@@ -1,10 +1,9 @@
 // Audit d'accessibilité (WCAG 2 A/AA) avec axe-core sur tous les écrans. node tests/e2e/audit-a11y.mjs
-// Prérequis (hors projet, aucune dépendance ajoutée) : npm i -g axe-core   (ou AXE_CORE_PATH=/chemin/axe.min.js)
+// Dépendance de développement verrouillée ; AXE_CORE_PATH reste possible pour un diagnostic local.
 import fs from 'node:fs';
-import { execSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { serve, launch } from './lib.mjs';
-const axePath = process.env.AXE_CORE_PATH || execSync('npm root -g').toString().trim() + '/axe-core/axe.min.js';
-if (!fs.existsSync(axePath)) { console.error('axe-core introuvable : npm i -g axe-core'); process.exit(2); }
+const axePath = process.env.AXE_CORE_PATH || createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 const AXE = fs.readFileSync(axePath, 'utf8');
 const srv = await serve(); const { browser, context } = await launch({ bypassCSP: true }); const page = await context.newPage();
 page.setDefaultTimeout(15000);

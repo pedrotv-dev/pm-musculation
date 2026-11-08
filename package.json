@@ -5,6 +5,11 @@
   "description": "PM Musculation — suivi d'entraînement Pierre & Manon (JavaScript natif, sans dépendance)",
   "scripts": {
     "test": "node --test",
-    "e2e": "node tests/e2e/pierre-flow.mjs && node tests/e2e/demo-flow.mjs && node tests/e2e/data-flow.mjs && node tests/e2e/offline-flow.mjs && node tests/e2e/update-flow.mjs"
+    "e2e": "node tests/e2e/run.mjs",
+    "e2e:offline": "node tests/e2e/run.mjs --suite offline --repeat 10"
+  },
+  "devDependencies": {
+    "axe-core": "4.10.3",
+    "playwright": "1.56.1"
   }
 }
