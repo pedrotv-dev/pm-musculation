@@ -20,7 +20,7 @@ node tests/e2e/run.mjs --suite audits
 npm run e2e:offline
 ```
 
-`core` contient les 10 parcours Pierre, Démo, données, hors ligne, mise à jour, CSS, isolation production/aperçu, jeu, navigation et retours. `mobile` contient les 5 parcours V1-mobile, V1-M1, corrections d'historique, V1-UX2 et outils Démo. `audits` lance les pannes de stockage, axe-core et les contrôles UI. Le contrôle UI échoue désormais réellement en cas de problème détecté.
+La suite complète intègre **19 parcours** : 10 core, 6 mobile et 3 audits. `core` contient les 10 parcours Pierre, Démo, données, hors ligne, mise à jour, CSS, isolation production/aperçu, jeu, navigation et retours. `mobile` contient les 6 parcours V1-mobile, V1-M1, corrections d'historique, V1-UX2, outils Démo et V1-UI1. Ce dernier conserve les barres de défilement classiques et vérifie les champs à 320, 375 et 390 px ainsi que les trois issues de l'export CSV ; il utilise Playwright local verrouillé et les mêmes diagnostics pour ses six contextes. `audits` lance les pannes de stockage, axe-core et les contrôles UI. Le contrôle UI échoue désormais réellement en cas de problème détecté.
 
 Le lanceur conserve le résultat de chaque passage et renvoie un code non nul si un seul échoue. Les répétitions (`--repeat 1..20`) sont des passages indépendants, pas des retries : une réussite ultérieure n'efface jamais un échec. Un parcours bloqué est interrompu après quatre minutes ; ses journaux déjà écrits sont conservés.
 

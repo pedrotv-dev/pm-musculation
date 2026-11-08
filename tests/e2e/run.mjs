@@ -7,7 +7,7 @@ import { spawn } from 'node:child_process';
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const suites = {
   core: ['pierre-flow', 'demo-flow', 'data-flow', 'offline-flow', 'update-flow', 'css-update-flow', 'isolation-flow', 'jeu-flow', 'nav-flow', 'retours-flow'],
-  mobile: ['v1-mobile-flow', 'v1-m1-mobile-flow', 'history-edit-flow', 'v1-ux2-flow', 'demo-tools-flow'],
+  mobile: ['v1-mobile-flow', 'v1-m1-mobile-flow', 'history-edit-flow', 'v1-ux2-flow', 'demo-tools-flow', 'v1-ui1-flow'],
   audits: ['audit-faults', 'audit-a11y', 'audit-ui'],
   offline: ['offline-flow']
 };
