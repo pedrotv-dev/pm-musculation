@@ -62,3 +62,11 @@ Aucun lien ajouté à l'app et aucun déploiement déclenché. L'assembleur d'ap
 Limites : prototypes de consultation, pas de raccordement aux données réelles, pas de nouveau parcours d'entraînement, pas d'état de succès débloqué conçu, pas de test sur téléphone physique ni Safari, pas d'audit complet d'accessibilité. Les tests automatisés existants ne sont pas tous verts sous Windows ; aucune garantie absolue de non-régression n'est revendiquée. La preuve principale d'absence de changement fonctionnel est le diff exclusivement additif dans le dossier isolé, complété par les contrôles ci-dessus.
 
 Décision demandée au MASTER : valider ou ajuster les deux propositions avant toute intégration. La PR dédiée ne doit pas être fusionnée dans cette mission.
+
+## Clôture GitHub
+
+- [PR #64 en brouillon](https://github.com/pedrotv-dev/pm-musculation/pull/64), aucune fusion ni publication.
+- [CI Linux Tests réussi](https://github.com/pedrotv-dev/pm-musculation/actions/runs/42469706498) sur le commit initial de la PR.
+- Le main a évolué pendant la mission vers `025ec9a` (V1-UI1 : champs invalides, grille d'historique à 375 px et message d'export CSV). Diff examiné : aucune règle utilisée par les deux maquettes n'est concernée ; la référence visuelle reste `50ab21f`, sans réécriture des changements de main.
+- Publication par le connecteur GitHub après blocage de l'authentification Git locale. L'arbre Git publié initialement (`77a50a60aa2c057417f575991f2c615b068e22ac`) est identique à l'arbre local contrôlé.
+
