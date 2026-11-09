@@ -180,6 +180,9 @@ function reconcileWriter(w, next) {
     w.base[f] = saved[f]; w.shown[f] = saved[f];
     if (live) { i.value = fmtNum(saved[f]); changed = true; }
   }
+  // Une valeur réaffichée parce qu'elle a changé ailleurs n'a pas été choisie par l'utilisateur : toute validation ou
+  // clôture en cours est interrompue (comme un conflit) ; jamais de « done » sur une valeur qu'il n'a pas vue.
+  if (changed) S.conflictSeq++;
   return changed;
 }
 /**
