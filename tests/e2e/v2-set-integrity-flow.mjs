@@ -143,7 +143,7 @@ await step('P0-2 · brouillon de Pierre (66 kg, confirmation retardée) puis Man
 });
 
 // ------------------------------------------------------------------------------------------------ P0-3
-await step('P0-3 · deux onglets : A enregistre 66, B (40 affiché) valide sans rien modifier → refusé (FIX6), 66 jamais réécrit ; reps de B + charge de A gardées ensemble', async () => {
+await step('P0-3 · deux onglets : A enregistre 66, B modifie ses répétitions → B réaffiche 66 (FIX8), 66 jamais réécrit ; reps de B + charge de A gardées ensemble', async () => {
   await freshContext();
   const a = await newPage();
   await startPierre(a);
@@ -155,13 +155,14 @@ await step('P0-3 · deux onglets : A enregistre 66, B (40 affiché) valide sans 
   await typeAndLeave(b, 'reps', '8');                      // B modifie un AUTRE champ (sa charge affichée : 40)
   await waitDb(b, 'pierre', 0, { reps: 8 });
   assert.deepEqual(await dbSet(a, 'pierre', 0), { kg: 66, reps: 8, done: false }, 'charge de A et répétitions de B conservées');
-  await b.click('#pm-validate-set');                       // B valide sans saisir de charge (il affiche encore 40)
-  // FIX6 : « done » est conditionné aux valeurs que B valide (40) ; la base contient 66 → refusé, rien n'est validé,
-  // 66 n'est jamais réécrit, B affiche désormais 66 ; garanties FIX3 inchangées (66 conservé, répétitions de B gardées)
-  await b.waitForFunction(() => document.querySelector('#pm-save-state')?.dataset.state === 'error');
+  // FIX8 : l'écriture réussie de B renvoie l'état complet ; sa charge, non modifiée dans B, est réaffichée (66) : B ne
+  // montre jamais « Sauvegardé » sous une charge périmée (40). Garanties FIX3 / FIX6 inchangées : 66 jamais réécrit,
+  // répétitions de B gardées, « done » conditionné aux valeurs validées (voir aussi v2-fix6-flow P0, v2-fix8-flow).
   await b.waitForFunction(() => document.querySelector('#pm-current-kg')?.value === '66');
-  assert.deepEqual(await dbSet(b, 'pierre', 0), { kg: 66, reps: 8, done: false }, 'validation de B refusée : 66 conservé, rien de validé');
-  await b.click('#pm-validate-set');                       // nouvelle validation, sur la valeur réellement enregistrée
+  await b.waitForFunction(() => document.querySelector('#pm-save-state')?.dataset.state === 'ok');
+  assert.equal((await shown(b)).reps, '8');
+  assert.deepEqual(await dbSet(b, 'pierre', 0), { kg: 66, reps: 8, done: false }, 'rien de validé, 66 conservé');
+  await b.click('#pm-validate-set');                       // validation de la valeur affichée = enregistrée
   await waitDb(b, 'pierre', 0, { done: true });
   assert.deepEqual(await dbSet(b, 'pierre', 0), { kg: 66, reps: 8, done: true }, 'validation volontaire de B : 66 conservé');
   await b.reload();
