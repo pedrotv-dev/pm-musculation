@@ -212,6 +212,19 @@ await step('16-17 · rechargement : toutes les données vérifiées dans Indexed
   await page.waitForSelector('.pm-hero-title:has-text("Salut Alex fictif")');
 });
 
+await step('conflit d’import : sauvegarde d’un profil déjà présent → Annuler (rien), puis Fusionner (aucun doublon)', async () => {
+  await toSelect();
+  await page.setInputFiles('#import-profile-file', { name: 'alex.json', mimeType: 'application/json', buffer: Buffer.from(backupText) });
+  await page.waitForSelector('.pm-modal:has-text("Ce profil existe déjà")');
+  await page.click('.pm-modal .pm-modal-btn:has-text("Annuler")');
+  await page.waitForSelector('#import-profile-status:has-text("rien n’a été modifié")');
+  await page.setInputFiles('#import-profile-file', { name: 'alex.json', mimeType: 'application/json', buffer: Buffer.from(backupText) });
+  await page.click('.pm-modal .pm-modal-btn:has-text("Fusionner")');
+  await page.waitForFunction(id => document.documentElement.dataset.pmProfile === id, alex);
+  const r = await db(async id => ({ sessions: (await (await import('./js/workouts.js')).listWorkouts(id)).length, profiles: (await (await import('./storage.js')).loadProfileRegistry()).profiles.filter(p => p.id === id).length }), alex);
+  assert.deepEqual(r, { sessions: 1, profiles: 1 });
+});
+
 await step('second profil « Sam fictif » : indépendant (vide), séance libre, Alex inchangé', async () => {
   const alexBefore = await db(async id => { const d = await (await import('./storage.js')).exportProfileData(id); delete d.exportedAt; return JSON.stringify(d); }, alex);
   await toSelect();
