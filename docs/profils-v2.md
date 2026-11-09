@@ -136,3 +136,17 @@ Les changements sont annoncés par l'événement `document` → `pm:profiles-cha
 - **« Sauvegardé ».** Ce message n'est affiché que si aucune série de l'écran n'a de champ non enregistré. Sinon, le statut indique la valeur réellement enregistrée (« Non enregistré : charge de la série 1 (…) (enregistré : 40 kg × 10) »). Il est recalculé à chaque rendu, récapitulatif compris, jusqu'à une écriture réussie ou une validation explicite des valeurs enregistrées.
 - **Sorties asynchrones.** Quitter, Pause, Terminer (récapitulatif), Machines, le retour arrière et la fin de séance revérifient leur cible après l'attente. Un ancien rappel ne ferme ni n'ouvre jamais l'écran d'une autre séance ou d'un autre profil.
 
+## Conflits, statut exact, confirmations et clôture (FIX5)
+
+- **Conflit pendant une validation.** Un `SET_CONFLICT` reçu par une écriture préalable interrompt toute validation (ou fin de séance) en cours. Le mécanisme repose sur un compteur global : il résiste à la reconstruction de l'écran et au remplacement de l'état d'écriture.
+  - La valeur enregistrée ailleurs est relue et affichée.
+  - `done` n'est jamais envoyé : un nouveau clic sur « Valider » est exigé.
+- **« Sauvegardé ».** Ce message n'apparaît que si aucune écriture n'est en cours et si toutes les valeurs affichées sont égales aux valeurs enregistrées. Sinon, l'écran affiche « Enregistrement… », ou l'erreur en cas d'échec. Le succès d'une écriture plus ancienne ne confirme jamais une saisie ultérieure.
+- **Arrêt depuis l'accueil (`stopPartial`).** La confirmation est liée au profil, à la séance et à la génération du contexte (`S.rev`), capturés avant l'attente. Un changement de profil, ou l'ouverture ou la reprise d'une séance, la révoque. La cible est revérifiée après la confirmation, puis juste avant la transaction.
+- **Clôture et sortie** (Valider ma séance, partielle ou complète, chemin de secours, Quitter, retour arrière). Les écritures en cours sont d'abord attendues. S'il reste une valeur en échec ou non envoyée, l'utilisateur choisit **explicitement** :
+  - réessayer l'enregistrement ;
+  - abandonner ces valeurs (les valeurs enregistrées sont conservées) ;
+  - annuler.
+
+  Il n'y a jamais d'abandon silencieux, et la confirmation de séance partielle ne promet plus que les résultats **enregistrés**.
+

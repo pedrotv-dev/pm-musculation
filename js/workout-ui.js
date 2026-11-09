@@ -38,7 +38,7 @@ panel.setAttribute('aria-label', 'Suivi de la séance');
 main.append(panel);
 
 const S = { profile: null, session: null, selected: null, view: 'activity', rev: 0, queue: Promise.resolve(),
-  catalog: { byId: new Map(), strength: [], list: [], images: new Set() }, history: [], finished: false, keepAwake: true, leaving: false, flushers: new Set(), disposers: new Set(), renderRev: 0, writers: new Map(), pendingSaves: new Set(), clock: null, undo: null, busy: false };
+  catalog: { byId: new Map(), strength: [], list: [], images: new Set() }, history: [], finished: false, keepAwake: true, leaving: false, flushers: new Set(), disposers: new Set(), renderRev: 0, writers: new Map(), pendingSaves: new Set(), conflictSeq: 0, clock: null, undo: null, busy: false };
 const valid = (profile, rev) => S.profile === profile && root.dataset.pmProfile === profile && S.rev === rev;
 const act = (session, key) => session.activities.find(a => a.key === key);
 const nameOf = a => a.type === 'strength' ? (S.catalog.byId.get(a.machineId)?.name || a.machineId)
@@ -158,12 +158,27 @@ function markFailed(w) {
  * série a un champ non enregistré, sinon `okText` (rien si null). Recalculé à chaque rendu : jamais perdu.
  */
 function saveStatus(okText) {
-  const failing = [...S.writers.values()].filter(w => w.failed.size && isLive(w.t));
-  if (!failing.length) { if (okText) setStatus(okText, 'ok'); return; }
-  const parts = failing.map(w => [...w.failed].map(f => (f === 'kg' ? 'charge' : 'répétitions')).join(' et ') + ' de la ' + w.label +
-    ' (enregistré : ' + fmtNum(w.base.kg) + ' kg × ' + w.base.reps + ')');
-  setStatus('Non enregistré : ' + parts.join(' ; ') + '. Modifie le champ ou valide la série pour réessayer.', 'error');
+  const live = [...S.writers.values()].filter(w => isLive(w.t));
+  const failing = live.filter(w => w.failed.size);
+  if (failing.length) {
+    const parts = failing.map(w => [...w.failed].map(f => (f === 'kg' ? 'charge' : 'répétitions')).join(' et ') + ' de la ' + w.label +
+      ' (enregistré : ' + fmtNum(w.base.kg) + ' kg × ' + w.base.reps + ')');
+    setStatus('Non enregistré : ' + parts.join(' ; ') + '. Modifie le champ ou valide la série pour réessayer.', 'error');
+    return;
+  }
+  // une écriture encore en cours, ou une saisie pas encore envoyée : jamais « Sauvegardé » (un succès plus ancien ne
+  // confirme jamais une saisie ultérieure)
+  if (live.some(w => w.pending || isDirty(w))) { setStatus('Enregistrement…', ''); return; }
+  if (okText) setStatus(okText, 'ok');
 }
+/** Valeur affichée par les champs de la série (rendu courant), sinon la dernière saisie connue ; null si invalide. */
+function shownNow(w) {
+  const i = w.inputs();
+  if (i.kg && i.kg.isConnected && i.reps && i.reps.isConnected) return readSet(i.kg, i.reps);
+  return w.shown;
+}
+/** La valeur affichée diffère-t-elle de la référence (saisie non envoyée, ou invalide) ? */
+const isDirty = w => { const v = shownNow(w); return !v || v.kg !== w.base.kg || v.reps !== w.base.reps; };
 function writeSet(w, v, { silent = true, done = false, after } = {}) {
   const t = w.t;
   w.shown = { kg: v.kg, reps: v.reps };
@@ -188,6 +203,7 @@ function writeSet(w, v, { silent = true, done = false, after } = {}) {
     } catch (error) {
       w.pending--; counted = false;
       if (error?.code === 'SET_CONFLICT') {
+        S.conflictSeq++;         // toute validation ou clôture en cours est interrompue (voir validate / finish)
         S.writers.delete(w.key); // la valeur enregistrée ailleurs devient la référence au prochain rendu
         await reloadAfterConflict(t, error);
         return null;
@@ -271,6 +287,36 @@ function select(key, { persist = true } = {}) {
 }
 
 // ---------------------------------------------------------------- brouillons (sauvegarde AVANT validation)
+
+/**
+ * Avant une clôture ou une sortie de l'écran de séance : aucune valeur affichée non enregistrée ne disparaît en
+ * silence. Les écritures en cours sont attendues ; s'il reste une valeur en échec ou différente de la base, l'utilisateur
+ * choisit EXPLICITEMENT : réessayer l'enregistrement, abandonner ces valeurs (les valeurs enregistrées sont conservées),
+ * ou annuler. @returns {Promise<boolean>} true si l'action peut continuer.
+ */
+async function resolveUnsaved(t, action) {
+  for (;;) {
+    await flushAll();
+    if (!isLive(t)) return false;
+    const list = [...S.writers.values()].filter(w => isLive(w.t) && w.t.id === t.id && (w.failed.size || isDirty(w)));
+    if (!list.length) return true;
+    const desc = list.map(w => { const v = w.failed.size ? w.shown : (shownNow(w) || w.shown);
+      return w.label + ' : ' + fmtNum(v.kg) + ' kg × ' + v.reps + ' non enregistré (enregistré : ' + fmtNum(w.base.kg) + ' kg × ' + w.base.reps + ')'; });
+    const pick = await dialog({ title: 'Valeurs non enregistrées',
+      message: 'Avant de ' + action + ' : ' + desc.join(' ; ') + '. Réessayer l’enregistrement, ou abandonner ces valeurs (les valeurs enregistrées sont conservées) ?',
+      choices: [{ label: 'Annuler', value: null }, { label: 'Abandonner ces valeurs', value: 'drop' }, { label: 'Réessayer l’enregistrement', value: 'retry', kind: 'primary' }] });
+    if (!isLive(t)) return false;
+    if (pick === 'retry') {
+      for (const w of list) { const v = w.failed.size ? w.shown : shownNow(w); if (v) w.write({ ...v }, { silent: true }); }
+      await flushAll();
+      if (!isLive(t)) return false;
+      render(); // l'écran (récapitulatif compris) montre l'état réellement enregistré avant la nouvelle vérification
+      continue;
+    }
+    if (pick === 'drop') { for (const w of list) S.writers.delete(w.key); render(); return true; } // abandon explicite
+    return false;
+  }
+}
 
 /**
  * Enregistre les brouillons en attente PUIS attend toutes les écritures déjà lancées pour la séance affichée : un
@@ -412,6 +458,7 @@ function renderSets(card, a) {
       if (!readSet(box.inputs.kg, box.inputs.reps)) { setStatus('Renseigne une charge et des répétitions valides.', 'error'); toast('Charge ou répétitions invalides.'); return; }
       S.busy = true;
       lock(true);
+      const seq = S.conflictSeq; // un conflit pendant la validation l'interrompt, quel que soit l'état d'écriture ensuite
       try {
         // Règle : une saisie déjà engagée (avant ou malgré le verrou) est enregistrée, dans l'ordre, AVANT la validation ;
         // la validation n'envoie ensuite que « done » : jamais une valeur capturée au clic, donc jamais l'écrasement d'une
@@ -421,8 +468,12 @@ function renderSets(card, a) {
           if (!isLive(T)) return;
           if (!W.pending && same(readSet(box.inputs.kg, box.inputs.reps), W.base)) break;
         }
-        const shownNow = readSet(box.inputs.kg, box.inputs.reps);
-        if (W.pending || W.failed.size || !same(shownNow, W.base)) { // état incertain : pas de validation
+        if (S.conflictSeq !== seq) { // modifiée ailleurs pendant la validation : rien n'est validé, nouveau clic exigé
+          setStatus('Validation interrompue : cette série a été modifiée ailleurs (autre onglet ou fenêtre). Vérifie la valeur enregistrée affichée, puis valide à nouveau.', 'error');
+          return;
+        }
+        const shownValue = readSet(box.inputs.kg, box.inputs.reps);
+        if (W.pending || W.failed.size || !same(shownValue, W.base)) { // état incertain : pas de validation
           saveStatus(null);
           if (!W.failed.size) setStatus('Série non validée : la valeur affichée n’est pas encore enregistrée. Réessaie.', 'error');
           return;
@@ -760,8 +811,10 @@ function renderRecap() {
         kg.input.addEventListener('change', save); reps.input.addEventListener('change', save);
         row.append(el('span', 'pm-set-mark', set.done ? '✓' : '○'), kg.wrap, reps.wrap);
         if (!set.done) row.append(btn('Valider', 'pm-icon-btn pm-text-btn', async () => {
+          const seq = S.conflictSeq;
           await flushAll();
           if (!isLive(T)) return;
+          if (S.conflictSeq !== seq) { setStatus('Validation interrompue : série modifiée ailleurs. Vérifie puis valide à nouveau.', 'error'); return; }
           const v = readSet(kg.input, reps.input);
           // valide les valeurs AFFICHÉES seulement si ce sont celles enregistrées ; n'envoie que « done »
           if (W.pending || !v || v.kg !== W.base.kg || v.reps !== W.base.reps) { saveStatus(null); setStatus('Série non validée : valeur affichée non enregistrée. Réessaie.', 'error'); return; }
@@ -786,15 +839,19 @@ function renderRecap() {
 async function finish(complete) {
   if (S.busy) return;
   S.busy = true;
-  const t = targetNow(), profile = S.profile, s = S.session;
+  const t = targetNow(), profile = S.profile;
+  const seq = S.conflictSeq;
   try {
-    await flushAll();
+    if (!(await resolveUnsaved(t, 'terminer la séance'))) return; // jamais de clôture avec une valeur non enregistrée
     if (!isLive(t)) return;
+    if (S.conflictSeq !== seq) { setStatus('Fin de séance interrompue : une série a été modifiée ailleurs. Vérifie le récapitulatif, puis termine à nouveau.', 'error'); return; }
+    const s = S.session;
     const notDone = s.activities.filter(a => a.status !== 'done');
     if (!complete && !(await confirmDialog(
       notDone.length + ' activité(s) ne sont pas terminées (' + notDone.map(nameOf).slice(0, 4).join(', ') +
-      '). Terminer en séance PARTIELLE ? Tous les résultats déjà saisis sont conservés.', { title: 'Séance partielle', ok: 'Terminer en partielle' }))) return;
+      '). Terminer en séance PARTIELLE ? Tous les résultats enregistrés sont conservés.', { title: 'Séance partielle', ok: 'Terminer en partielle' }))) return;
     if (!isLive(t)) return; // la séance affichée a changé pendant la confirmation : rien n'est terminé
+    if (!(await resolveUnsaved(t, 'terminer la séance'))) return; // une saisie faite pendant la confirmation
     const result = await op(() => (isLive(t) ? finishWorkout(profile, t.id, complete ? 'completed' : 'partial') : STALE));
     if (result === STALE || !isLive(t)) return;
     S.session = result;
@@ -807,6 +864,7 @@ async function finish(complete) {
 }
 async function commitPartial(t) {
   if (!isLive(t)) return;
+  if (!(await resolveUnsaved(t, 'terminer la séance'))) return;
   const result = await op(() => (isLive(t) ? finishWorkout(t.profile, t.id, 'partial') : STALE));
   if (result !== STALE && isLive(t)) { S.session = result; renderDone(result); emit('pm:workout-changed', { profile: t.profile, final: true }); }
 }
@@ -872,7 +930,7 @@ function render() {
   clock.id = 'pm-clock'; clock.title = 'Durée de la séance (hors pauses)';
   const right = el('div', 'pm-bar-actions');
   add(right, clock, btn('Quitter', 'pm-icon-btn pm-text-btn', async () => {
-    await flushAll();
+    if (!(await resolveUnsaved(T, 'quitter la séance'))) return; // attend aussi les écritures ; jamais d'abandon silencieux
     if (!isLive(T)) return; // une autre séance (ou un autre profil) est affichée entre-temps : on ne la ferme pas
     toast('Séance conservée : tu pourras la reprendre depuis l’accueil.');
     closeWorkout({ goTo: 'accueil' });
@@ -982,15 +1040,22 @@ async function resumeExisting(detail = {}) {
 
 /** Fin « partielle » depuis l'accueil, sans rouvrir l'ecran de seance. */
 async function stopPartial() {
-  const profile = S.profile;
+  // Identité exacte capturée AVANT toute attente : profil, séance, génération du contexte (S.rev change à chaque
+  // changement de profil et à chaque ouverture / reprise / fermeture de séance). Un aller-retour Pierre → Manon → Pierre
+  // ou la reprise de la séance révoque donc cette confirmation.
+  const profile = S.profile, rev = S.rev;
+  const still = () => S.rev === rev && S.profile === profile && root.dataset.pmProfile === profile && !S.session;
   const session = await getResumableWorkout(profile).catch(() => null);
-  if (!session) return;
+  if (!session || !still()) return;
   const hasData = session.activities.some(a => a.status !== 'pending' || a.sets.some(x => x.done));
   const ok = await confirmDialog(hasData
-    ? 'Terminer cette séance comme PARTIELLE ? Les résultats déjà saisis sont conservés.'
+    ? 'Terminer cette séance comme PARTIELLE ? Les résultats enregistrés sont conservés.'
     : 'Cette séance est vide. L’annuler ?', { title: 'Arrêter la séance', ok: hasData ? 'Terminer en partielle' : 'Annuler la séance', danger: !hasData });
-  if (!ok || S.profile !== profile || root.dataset.pmProfile !== profile) return; // profil changé pendant la confirmation
+  if (!ok) return;
+  if (!still()) { toast('Confirmation périmée (profil ou séance changés entre-temps) : rien n’a été modifié.'); return; }
   try {
+    const current = await getResumableWorkout(profile).catch(() => null); // revérifiée juste avant la transaction
+    if (!still() || !current || current.id !== session.id) { toast('Confirmation périmée : rien n’a été modifié.'); return; }
     if (hasData) await finishWorkout(profile, session.id, 'partial');
     else if (profile === 'demo') await deleteWorkout(profile, session.id);
     else await discardWorkout(profile, session.id);
@@ -1015,7 +1080,7 @@ async function confirmLeave() {
     { title: 'Quitter la séance', ok: 'Quitter', cancel: 'Rester' });
   S.leaving = false;
   if (!ok || !isLive(t)) return;
-  await flushAll();
+  if (!(await resolveUnsaved(t, 'quitter la séance'))) return;
   if (!isLive(t)) return; // la séance affichée a changé pendant l'attente : on ne la ferme pas
   toast('Séance conservée : reprends-la depuis l’accueil.');
   closeWorkout({ goTo: 'accueil' });
