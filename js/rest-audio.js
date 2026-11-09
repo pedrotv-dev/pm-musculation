@@ -55,7 +55,8 @@ export function buildRestWav(seconds) {
 
 // ------------------------------------------------------------------ lecture (navigateur seulement)
 
-const S = { audio: null, url: null, endsAt: 0, beepAtMs: 0, unlocked: false, enabled: true, failed: false, view: null };
+// `unlocking` : amorçage (son silencieux du premier geste) en cours ; aucun son de repos n'est lancé avant sa fin.
+const S = { audio: null, url: null, endsAt: 0, beepAtMs: 0, unlocked: false, unlocking: null, enabled: true, failed: false, view: null };
 
 /** Safari 16.4+ : type de session audio de la page. Sans effet ailleurs. */
 function sessionType(type) {
@@ -111,9 +112,19 @@ export function unlockRestAudio() {
     const url = SILENT_CLIP();
     a.src = url; a.volume = 0;
     const p = a.play();
-    const done = () => { try { a.pause(); } catch (_) { /* ok */ } a.volume = 1; a.removeAttribute('src'); URL.revokeObjectURL(url); };
-    if (p && typeof p.then === 'function') p.then(done, () => { S.unlocked = false; a.volume = 1; URL.revokeObjectURL(url); }); else done();
-  } catch (_) { S.unlocked = false; }
+    // Fin de l'amorçage : l'élément n'est remis à zéro que s'il joue ENCORE le son d'amorçage (jamais le son d'un repos),
+    // puis un repos demandé entre-temps est lancé. Le son d'amorçage n'est donc jamais interrompu en plein chargement
+    // (aucune requête « blob: » annulée) et ne peut plus couper le son d'un repos.
+    const settle = ok => {
+      if (a.getAttribute('src') === url) { try { a.pause(); } catch (_) { /* ok */ } a.removeAttribute('src'); }
+      a.volume = 1; URL.revokeObjectURL(url);
+      if (!ok) S.unlocked = false;
+      S.unlocking = null;
+      if (S.view) syncRestAudio(S.view, { enabled: S.enabled });
+    };
+    if (p && typeof p.then === 'function') S.unlocking = p.then(() => settle(true), () => settle(false));
+    else settle(true);
+  } catch (_) { S.unlocked = false; S.unlocking = null; }
 }
 if (typeof document !== 'undefined') {
   for (const type of ['pointerdown', 'touchend', 'click', 'keydown']) {
@@ -129,6 +140,7 @@ if (typeof document !== 'undefined') {
 export function syncRestAudio(view, { enabled = true } = {}) {
   if (typeof Audio !== 'function') return;
   S.enabled = enabled; S.view = view || null;
+  if (S.unlocking) return; // amorçage en cours (quelques ms) : ce repos sera lancé à sa fin, sans l'interrompre
   const running = view && view.status === 'running' && enabled && view.endsAt;
   if (running && !restAudioNeeded()) { if (S.endsAt) release(); return; } // écran allumé au premier plan : pas de flux
   if (!running) {
