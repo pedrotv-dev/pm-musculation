@@ -147,7 +147,12 @@ test('8 · export et restauration : fiche jointe, restauration dans le bon profi
   const v1 = JSON.parse(pierreBefore); v1.exportedAt = NOW.toISOString(); delete v1.profile;
   const parsed = B.parseBackupText(JSON.stringify(v1));
   await B.restoreBackup('pierre', parsed, 'replace');
-  assert.equal(await exportOf('pierre'), pierreBefore);
+  // FIX7 : contenu identique ; seul le jeton d'incarnation `gen` des séances est renouvelé (jamais repris du fichier)
+  const withoutGen = text => JSON.stringify(JSON.parse(text), (k, v) => (k === 'gen' ? undefined : v));
+  const after = await exportOf('pierre');
+  assert.equal(withoutGen(after), withoutGen(pierreBefore));
+  const gens = text => JSON.parse(text).data.sessions.map(r => r.data.gen);
+  assert.ok(gens(after).every((g, i) => typeof g === 'string' && g && g !== gens(pierreBefore)[i]), 'jetons renouvelés');
 });
 
 test('9 · suppression d’un profil supplémentaire : confirmation explicite, ses données seules, jamais Pierre / Manon / Démo', async () => {

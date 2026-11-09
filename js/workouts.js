@@ -357,6 +357,7 @@ export function startWorkout(profileId, { dayId, weekStart, now = new Date(), st
     const session = {
       schemaVersion: WORKOUT_SCHEMA_VERSION,
       id: newId(profileId, now),
+      gen: newGen(),
       profileId,
       weekStart: week,
       dayId: day.id,
@@ -591,25 +592,34 @@ export function returnToPostponed(profileId, sessionId, activityKey, options) {
 // ---------------------------------------------------------------- fin de seance
 
 /**
+ * Identité d'INCARNATION d'une séance (FIX7) : jeton tiré à la création, renouvelé par le stockage à chaque restauration
+ * ou remplacement (jamais repris d'un fichier importé). Avec la révision `rev`, il identifie l'état exact qu'une
+ * confirmation a montré : une restauration portant le même identifiant et la même révision reste un AUTRE état.
+ * Séances anciennes sans jeton : '' (comparé tel quel).
+ */
+export const newGen = () => ((typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12));
+/** Refus si la séance a changé depuis l'état (`expectRev`, `expectGen`) qu'une confirmation a montré (vérifié dans la transaction). */
+function checkRev(s, expectRev, expectGen) {
+  if (expectRev === undefined && expectGen === undefined) return;
+  if ((expectGen !== undefined && (s.gen || '') !== expectGen) ||
+      (expectRev !== undefined && (Number.isInteger(s.rev) ? s.rev : 0) !== expectRev)) {
+    throw new WorkoutError('La séance a été modifiée entre-temps (autre onglet ou fenêtre) : rien n’a été clos. Vérifie puis confirme à nouveau.', 'SESSION_CHANGED');
+  }
+}
+/**
  * Termine la seance.
  * - mode 'completed' : toutes les activites doivent etre faites (code INCOMPLETE sinon, `error.pending` =
  *   cles restantes ; penser a reprendre les machines reportees).
  * - mode 'partial' : cloture avec ce qui a ete fait.
+ * - `expectRev` / `expectGen` : état confirmé (révision + incarnation), vérifié dans la transaction (SESSION_CHANGED).
  * @returns {Promise<session>} avec `endedAt`, `summary`
  */
-/** Refus si la séance a changé depuis la révision `expectRev` qu'une confirmation a montrée (vérifié dans la transaction). */
-function checkRev(s, expectRev) {
-  if (expectRev === undefined) return;
-  if ((Number.isInteger(s.rev) ? s.rev : 0) !== expectRev) {
-    throw new WorkoutError('La séance a été modifiée entre-temps (autre onglet ou fenêtre) : rien n’a été clos. Vérifie puis confirme à nouveau.', 'SESSION_CHANGED');
-  }
-}
-export function finishWorkout(profileId, sessionId, mode = 'completed', { now = new Date(), expectRev } = {}) {
+export function finishWorkout(profileId, sessionId, mode = 'completed', { now = new Date(), expectRev, expectGen } = {}) {
   if (mode !== 'completed' && mode !== 'partial') {
     return Promise.reject(new WorkoutError('Choisir « completed » ou « partial ».', 'INVALID_ARGUMENT'));
   }
   return mutate(profileId, sessionId, s => {
-    checkRev(s, expectRev);
+    checkRev(s, expectRev, expectGen);
     if (mode === 'completed') {
       const pending = s.activities.filter(a => a.status !== 'done').map(a => a.key);
       if (pending.length) {
@@ -631,13 +641,13 @@ export function finishWorkout(profileId, sessionId, mode = 'completed', { now = 
 }
 
 /** Annule une seance demarree par erreur. Refuse si une serie ou activite est deja validee (code HAS_DATA). */
-export function discardWorkout(profileId, sessionId, { expectRev } = {}) {
+export function discardWorkout(profileId, sessionId, { expectRev, expectGen } = {}) {
   try { writable(profileId); nonEmpty(sessionId, 'Identifiant de séance'); }
   catch (error) { return Promise.reject(error); }
   // verification et suppression dans la meme transaction : une serie validee ailleurs n'est jamais perdue
   return backend(profileId).removeIf(profileId, sessionId, s => {
     if (!s || s.profileId !== profileId) throw new WorkoutError('Séance introuvable.', 'NOT_FOUND');
-    checkRev(s, expectRev);
+    checkRev(s, expectRev, expectGen);
     if (isClosed(s) || s.activities.some(a => a.status !== 'pending' || a.sets.some(x => x.done))) {
       throw new WorkoutError('Cette séance contient des résultats : la terminer en partielle.', 'HAS_DATA');
     }
@@ -926,9 +936,10 @@ export async function commitDemoSession(prepared, base, { authorize } = {}) {
   if (st.generation !== base.generation || st.revision !== base.revision) {
     throw new WorkoutError('La démo a changé pendant la préparation (modification ou réinitialisation) : rien n’a été appliqué.', 'CONFLICT');
   }
-  if (st.sessions.has(prepared.id)) st.update(prepared.id, () => clone(prepared));
-  else st.create(clone(prepared));
-  return clone(prepared);
+  const applied = { ...clone(prepared), gen: newGen() }; // remplacement : nouvelle incarnation (anciennes confirmations périmées)
+  if (st.sessions.has(prepared.id)) st.update(prepared.id, () => clone(applied));
+  else st.create(clone(applied));
+  return clone(applied);
 }
 
 /**

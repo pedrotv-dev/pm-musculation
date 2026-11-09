@@ -435,6 +435,15 @@ export async function exportProfileData(profileId) {
 }
 
 const KEY_FIELDS = { programs: 'weekStart', sessions: 'id', weights: 'id', settings: 'key' };
+/**
+ * Ligne prête à écrire depuis une sauvegarde : une séance restaurée est une NOUVELLE incarnation (FIX7) ; son jeton
+ * `gen` est toujours tiré ici, jamais repris du fichier. Les autres champs (révision comprise) restent ceux du fichier.
+ * La sauvegarde d'origine n'est jamais modifiée.
+ */
+function restoredRow(name, row) {
+  if (name !== 'sessions' || !row.data || typeof row.data !== 'object') return row;
+  return { ...row, data: { ...row.data, gen: newEpoch() } };
+}
 /** Vérifie le contenu d'une sauvegarde d'UN profil (format, version, propriétaire de chaque ligne). Aucune écriture. */
 function checkBackup(profileId, backup) {
   objectValue(backup, 'Sauvegarde');
@@ -480,7 +489,8 @@ export async function restoreProfileData(profileId, backup, mode) {
       try {
         for (const name of STORES) {
           const store = tx.objectStore(name);
-          for (const row of backup.data[name]) {
+          for (const source of backup.data[name]) {
+            const row = restoredRow(name, source);
             if (mode === 'replace') {
               store.put(row);
             } else {
@@ -650,7 +660,7 @@ export async function restoreAsNewProfile(record, backup) {
     tx.onabort = () => reject(failure || tx.error || new Error('Restauration annulée.'));
     const fail = error => { failure = error; try { tx.abort(); } catch (_) { reject(error); } };
     const write = () => {
-      try { for (const name of STORES) for (const row of backup.data[name]) tx.objectStore(name).put(row); }
+      try { for (const name of STORES) for (const row of backup.data[name]) tx.objectStore(name).put(restoredRow(name, row)); }
       catch (error) { fail(error); }
     };
     try {
