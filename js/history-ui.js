@@ -205,6 +205,11 @@ function renderDetail() {
   box.append(btn('‹ Retour à la liste', 'pm-secondary', () => { S.mode = 'list'; S.detail = null; render(); }));
   const head = el('article', 'panel');
   const updates = [];
+  // État présenté de la séance (FIX8) : celui du rendu, puis des corrections confirmées. Une confirmation de retrait ou
+  // de suppression capture révision + incarnation AVANT de s'ouvrir ; le moteur les vérifie dans la transaction.
+  let shown = s;
+  updates.push(next => { shown = next; });
+  const presented = () => Object.freeze({ expectRev: Number.isInteger(shown.rev) ? shown.rev : 0, expectGen: shown.gen || '' });
   const summaryText = session => {
     const sum = session.summary || getWorkoutSummary(session);
     return formatDateFr(session.date) + ' · ' + formatMinutes(sum.durationMinutes) + ' · ' + sum.setsDone + ' séries · ' + fmtNum(sum.volumeKg) + ' kg';
@@ -246,7 +251,9 @@ function renderDetail() {
         const toggle = btn(set.done ? '✓' : '○', 'pm-icon-btn', () => fix(T, (p, id) => correctSet(p, id, a.key, set.id, { done: !set.done })));
         toggle.title = set.done ? 'Marquer comme non faite' : 'Marquer comme faite'; toggle.setAttribute('aria-label', toggle.title);
         const del = btn('×', 'pm-icon-btn', async () => {
-          if (await confirmDialog('Retirer la série ' + (i + 1) + ' ?', { ok: 'Retirer', danger: true }) && stillShown()) fix(T, (p, id) => correctRemoveSet(p, id, a.key, set.id), 'Série retirée');
+          // préconditions capturées AVANT la confirmation : une série modifiée ou restaurée entre-temps n'est jamais retirée
+          const pre = { ...presented(), expectSet: { kg: set.kg, reps: set.reps, done: set.done } };
+          if (await confirmDialog('Retirer la série ' + (i + 1) + ' ?', { ok: 'Retirer', danger: true }) && stillShown()) fix(T, (p, id) => correctRemoveSet(p, id, a.key, set.id, pre), 'Série retirée');
         });
         del.setAttribute('aria-label', 'Retirer la série ' + (i + 1));
         const mark = el('span', 'pm-set-mark', String(i + 1));
@@ -314,16 +321,17 @@ function renderDetail() {
   box.append(fb);
 
   box.append(btn('Supprimer cette séance', 'pm-warning pm-block', async () => {
+    const pre = presented(); // état présenté AVANT la confirmation (FIX8)
     const ok = await confirmDialog('Supprimer définitivement cette séance (' + (s.dayName || s.dayId) + ', ' + formatDateFr(s.date) +
       ') ? Cette action est irréversible. Pense à faire une sauvegarde si besoin.', { title: 'Supprimer la séance', ok: 'Supprimer', danger: true });
     if (!ok || !stillShown()) return; // profil ou séance changés pendant la confirmation : rien n'est supprimé
     try {
-      await deleteWorkout(T.profile, T.id);
+      await deleteWorkout(T.profile, T.id, pre);
       if (isShown(T)) { S.detail = null; S.mode = 'list'; }
       document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile: T.profile } }));
       toast('Séance supprimée');
       if (profile() === T.profile) await load();
-    } catch (error) { toast(error?.message || 'Suppression impossible.'); }
+    } catch (error) { toast(error?.message || 'Suppression impossible.'); if (profile() === T.profile) await load(); }
   }));
   detailView = { profile: T.profile, id: T.id, box, update: next => updates.forEach(update => update(next)) };
   return box;

@@ -186,13 +186,15 @@ const isClosed = s => s.status === 'completed' || s.status === 'partial';
  * toujours a partir de la version la plus recente (deux onglets ne s'ecrasent pas, une seance terminee
  * ailleurs est vue comme terminee). Rien n'est ecrit si `change` ou une verification leve une erreur.
  */
-function mutate(profileId, sessionId, change, { now, allowPaused = false, allowClosed = false, keepUpdatedAt = false, store } = {}) {
+function mutate(profileId, sessionId, change, { now, allowPaused = false, allowClosed = false, keepUpdatedAt = false, store, expectRev, expectGen } = {}) {
   try { writable(profileId); nonEmpty(sessionId, 'Identifiant de séance'); }
   catch (error) { return Promise.reject(error); }
   return backend(profileId, store).update(profileId, sessionId, s => {
     if (!s || s.profileId !== profileId) throw new WorkoutError('Séance introuvable.', 'NOT_FOUND');
     if (!allowClosed && isClosed(s)) throw new WorkoutError('Cette séance est terminée.', 'SESSION_CLOSED');
     if (!allowPaused && s.status === 'paused') throw new WorkoutError('Séance en pause : la reprendre d\'abord.', 'SESSION_PAUSED');
+    // FIX8 : toute mutation peut exiger l'état exact (révision + incarnation) qu'une confirmation a présenté
+    checkRev(s, expectRev, expectGen);
     change(s);
     // Révision PERSISTANTE de la séance (FIX6) : +1 à chaque mutation, dans la même transaction. Une confirmation
     // (clôture, arrêt) peut ainsi exiger l'état exact qu'elle a montré (option `expectRev`) ; absente = 0 (anciennes séances).
@@ -509,12 +511,29 @@ export function addSet(profileId, sessionId, activityKey, { kg, reps } = {}, opt
   }, options);
 }
 
-/** Retire une serie (validee ou non). */
+/**
+ * Vérifie, DANS la transaction, que la série est encore dans l'état présenté par la confirmation (`expectSet` :
+ * { kg?, reps?, done? }, comparaison stricte). Sinon SET_CONFLICT : rien n'est modifié (FIX8).
+ */
+function checkSet(set, expectSet) {
+  if (expectSet === undefined) return;
+  if (!isObj(expectSet)) throw new WorkoutError('Modification invalide.', 'INVALID_SET');
+  for (const field of ['kg', 'reps', 'done']) {
+    if (expectSet[field] !== undefined && set[field] !== expectSet[field]) {
+      throw new WorkoutError('Cette série a été modifiée ailleurs (autre onglet, fenêtre ou restauration) : rien n’a été retiré. Vérifie la valeur enregistrée affichée, puis recommence si besoin.',
+        'SET_CONFLICT', { field, current: set[field] });
+    }
+  }
+}
+/**
+ * Retire une serie (validee ou non). Options de confirmation (FIX8) : `expectRev`, `expectGen` (état de la séance
+ * présenté) et `expectSet` (état de la série présentée), vérifiés dans la transaction avant toute suppression.
+ */
 export function removeSet(profileId, sessionId, activityKey, setId, options) {
   return mutate(profileId, sessionId, s => {
     const a = findActivity(s, activityKey);
     requireStrength(a);
-    findSet(a, setId);
+    checkSet(findSet(a, setId), options && options.expectSet);
     a.sets = a.sets.filter(x => x.id !== setId);
     refresh(a);
   }, options);
@@ -603,7 +622,7 @@ function checkRev(s, expectRev, expectGen) {
   if (expectRev === undefined && expectGen === undefined) return;
   if ((expectGen !== undefined && (s.gen || '') !== expectGen) ||
       (expectRev !== undefined && (Number.isInteger(s.rev) ? s.rev : 0) !== expectRev)) {
-    throw new WorkoutError('La séance a été modifiée entre-temps (autre onglet ou fenêtre) : rien n’a été clos. Vérifie puis confirme à nouveau.', 'SESSION_CHANGED');
+    throw new WorkoutError('La séance a été modifiée entre-temps (autre onglet, fenêtre ou restauration) : rien n’a été modifié. Vérifie puis confirme à nouveau.', 'SESSION_CHANGED');
   }
 }
 /**
@@ -800,7 +819,7 @@ export function correctRemoveSet(profileId, sessionId, activityKey, setId, optio
   return mutate(profileId, sessionId, s => {
     const a = findActivity(s, activityKey);
     requireStrength(a);
-    findSet(a, setId);
+    checkSet(findSet(a, setId), options && options.expectSet); // FIX8 : état de la série présentée
     a.sets = a.sets.filter(x => x.id !== setId);
     refresh(a); settleClosedStatus(s);
   }, { ...(options || {}), allowPaused: true, allowClosed: true, keepUpdatedAt: true });
@@ -836,12 +855,16 @@ export function correctActivityMetrics(profileId, sessionId, activityKey, metric
   }, { ...(options || {}), allowPaused: true, allowClosed: true, keepUpdatedAt: true });
 }
 
-/** Supprime DEFINITIVEMENT une seance (ouverte ou terminee). La confirmation est geree par l'interface. */
-export function deleteWorkout(profileId, sessionId) {
+/**
+ * Supprime DEFINITIVEMENT une seance (ouverte ou terminee). La confirmation est geree par l'interface ; `expectRev` /
+ * `expectGen` (FIX8) : état présenté par la confirmation, vérifié dans la transaction (SESSION_CHANGED sinon).
+ */
+export function deleteWorkout(profileId, sessionId, { expectRev, expectGen } = {}) {
   try { writable(profileId); nonEmpty(sessionId, 'Identifiant de séance'); }
   catch (error) { return Promise.reject(error); }
   return backend(profileId).removeIf(profileId, sessionId, s => {
     if (!s || s.profileId !== profileId) throw new WorkoutError('Séance introuvable.', 'NOT_FOUND');
+    checkRev(s, expectRev, expectGen);
   });
 }
 

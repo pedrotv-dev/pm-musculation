@@ -82,7 +82,7 @@ const isLive = t => !!t && valid(t.profile, t.rev) && S.session?.id === t.id;
 function disposeView(flush) {
   const list = [...S.disposers];
   S.disposers.clear(); S.flushers.clear();
-  if (!flush) S.writers.clear(); // changement de séance ou de profil : aucun état d'écriture d'un autre contexte n'est réutilisé
+  if (!flush) { S.writers.clear(); S.fb = null; } // changement de séance ou de profil : aucun état d'écriture d'un autre contexte n'est réutilisé
   for (const d of list) { try { d(flush); } catch (e) { console.error('PM séance :', e); } }
 }
 
@@ -99,7 +99,8 @@ async function commitTo(t, call, { silent = false, after, rethrow = false } = {}
     if (next && next.id === id) { advanceSeen(next); S.session = next; }
     if (after) after(next);
     if (!silent) render(); // l'écran est reconstruit d'abord : sinon le message de sauvegarde serait effacé
-    saveStatus('✓ Sauvegardé'); // jamais « Sauvegardé » si une valeur affichée n'est pas enregistrée
+    const refreshed = next && next.id === id ? reconcileAll(next) : false;
+    saveStatus(refreshed ? REFRESHED_OK : '✓ Sauvegardé'); // jamais « Sauvegardé » si une valeur affichée n'est pas enregistrée
     emit('pm:workout-changed', { profile });
     return next;
   } catch (error) {
@@ -118,6 +119,17 @@ async function commitTo(t, call, { silent = false, after, rethrow = false } = {}
 const revOf = session => (Number.isInteger(session?.rev) ? session.rev : 0);
 const genOf = session => session?.gen || '';
 function markSeen(session) { S.seenRev = revOf(session); S.seenGen = genOf(session); }
+/**
+ * Instantané IMMUABLE de l'état présenté, pris AVANT l'ouverture d'une confirmation (FIX8) : la confirmation ne vaut
+ * que pour cet état. Un rendu ultérieur (ancien bouton, actualisation) ne le remplace jamais ; toute modification
+ * survenue depuis (ailleurs ou ici) fait refuser l'opération par le moteur, dans la transaction.
+ */
+const consentNow = () => Object.freeze({ expectRev: S.seenRev, expectGen: S.seenGen });
+/** Valeurs enregistrées connues de la série (dernier état reçu du moteur), pour la précondition `expectSet`. */
+function setNow(key, setId) {
+  const set = S.session && act(S.session, key)?.sets.find(x => x.id === setId);
+  return set ? { kg: set.kg, reps: set.reps, done: set.done } : null;
+}
 function advanceSeen(next) {
   if (genOf(next) === S.seenGen && (revOf(next) === S.seenRev + 1 || revOf(next) === S.seenRev)) S.seenRev = revOf(next);
 }
@@ -129,6 +141,51 @@ async function reloadAfterConflict(t, error) {
     S.session = fresh; render();
     setStatus(error.message, 'error');
   } catch (_) { /* la relecture échoue : le message d'erreur reste affiché */ }
+}
+
+/**
+ * Mutation soumise à des préconditions (confirmation, état affiché) : en cas de refus du moteur (SESSION_CHANGED,
+ * SET_CONFLICT, HAS_DATA, élément introuvable), rien n'est modifié ; la séance réellement enregistrée est relue et
+ * affichée avec le message. @returns la séance enregistrée, ou null si refusé.
+ */
+const REFUSALS = new Set(['SESSION_CHANGED', 'SET_CONFLICT', 'HAS_DATA', 'SET_NOT_FOUND', 'ACTIVITY_NOT_FOUND']);
+async function guardedCommit(t, call, options = {}) {
+  try { return await commitTo(t, call, { ...options, rethrow: true }); }
+  catch (error) {
+    if (REFUSALS.has(error?.code) && isLive(t)) { S.conflictSeq++; await reloadAfterChange(t, error.message); }
+    return null;
+  }
+}
+/**
+ * Réconciliation (FIX8) : une écriture réussie renvoie l'état COMPLET enregistré. Un champ affiché que l'utilisateur
+ * n'a PAS modifié ici, mais qui a changé ailleurs (autre onglet), prend la valeur enregistrée : l'écran ne montre jamais
+ * une valeur périmée sous « Sauvegardé ». Une saisie locale non enregistrée (en attente, en échec, ou pas encore
+ * envoyée) n'est jamais écrasée : sa référence reste celle sur laquelle l'utilisateur s'est appuyé, et son écriture
+ * déclenchera le conflit explicite habituel (SET_CONFLICT) si la base a changé.
+ * @returns {boolean} true si un champ affiché a été actualisé.
+ */
+const REFRESHED_OK = '✓ Sauvegardé · valeur modifiée ailleurs actualisée';
+function reconcileWriter(w, next) {
+  if (!next || next.id !== w.t.id || !isLive(w.t) || w.pending || w.failed.size) return false;
+  const saved = act(next, w.activityKey)?.sets.find(x => x.id === w.setId);
+  if (!saved) return false;
+  const inputs = w.inputs();
+  let changed = false;
+  for (const f of ['kg', 'reps']) {
+    if (saved[f] === w.base[f]) continue;
+    const i = inputs[f], live = !!(i && i.isConnected);
+    const shown = live ? parseNum(i.value) : w.shown[f];
+    if (shown !== w.base[f]) continue; // saisie locale non enregistrée : jamais écrasée
+    w.base[f] = saved[f]; w.shown[f] = saved[f];
+    if (live) { i.value = fmtNum(saved[f]); changed = true; }
+  }
+  return changed;
+}
+function reconcileAll(next) {
+  let changed = false;
+  for (const w of S.writers.values()) if (reconcileWriter(w, next)) changed = true;
+  if (S.fb && reconcileFeedback(S.fb, next)) changed = true;
+  return changed;
 }
 
 /**
@@ -157,6 +214,69 @@ function setWriterFor(t, a, set, label) {
   w.label = label;
   return w;
 }
+/**
+ * Ressenti et remarques (FIX8) : même protection que les charges et répétitions. `base` = valeurs enregistrées,
+ * `shown` = dernière saisie ; une saisie en attente ou en échec survit aux nouveaux rendus (récapitulatif compris), est
+ * signalée, et n'est jamais abandonnée sans choix explicite (resolveUnsaved : réessayer, abandonner, annuler).
+ */
+const savedFeedback = s => ({ note: s?.feedback?.note || '', feeling: s?.feedback?.feeling ?? null });
+function feedbackWriterFor(t, s) {
+  const key = [t.profile, t.rev, t.id].join('|');
+  if (!S.fb || S.fb.key !== key) S.fb = { key, t, base: savedFeedback(s), shown: savedFeedback(s), pending: 0, failed: new Set(), note: () => null };
+  else if (!S.fb.pending && !S.fb.failed.size && !feedbackDirty(S.fb)) { S.fb.base = savedFeedback(s); S.fb.shown = { ...S.fb.base }; }
+  return S.fb;
+}
+const feedbackShown = f => f.shown;
+function feedbackDirty(f) {
+  const n = f.note();
+  const note = n && n.isConnected ? n.value : f.shown.note;
+  return note !== f.base.note || f.shown.feeling !== f.base.feeling;
+}
+function feedbackLabel(f) {
+  const parts = [];
+  if (f.failed.has('note') || f.shown.note !== f.base.note) parts.push('remarque « ' + (f.shown.note.length > 40 ? f.shown.note.slice(0, 40) + '…' : f.shown.note) + ' »');
+  if (f.failed.has('feeling') || f.shown.feeling !== f.base.feeling) parts.push('ressenti');
+  return parts.join(' et ') || 'remarques';
+}
+function markFeedback(f) {
+  const n = f.note();
+  if (n) { if (f.failed.has('note')) n.setAttribute('aria-invalid', 'true'); else n.removeAttribute('aria-invalid'); }
+}
+function writeFeedback(f, patch) {
+  const t = f.t;
+  if (!Object.keys(patch).length) return Promise.resolve(null);
+  Object.assign(f.shown, patch);
+  f.pending++;
+  const run = (async () => {
+    try {
+      const next = await commitTo(t, (p, id) => setWorkoutFeedback(p, id, patch), { silent: true, rethrow: true });
+      f.pending--;
+      if (next) for (const k of Object.keys(patch)) { f.failed.delete(k); f.base[k] = patch[k]; }
+      markFeedback(f);
+      if (next && isLive(t)) saveStatus('✓ Sauvegardé');
+      return next;
+    } catch (error) {
+      f.pending--;
+      for (const k of Object.keys(patch)) f.failed.add(k); // la saisie reste affichée et signalée
+      markFeedback(f);
+      if (isLive(t)) saveStatus(null);
+      return null;
+    }
+  })();
+  const tracked = { run, t };
+  S.pendingSaves.add(tracked);
+  run.finally(() => S.pendingSaves.delete(tracked));
+  return run;
+}
+/** Remarque ou ressenti modifiés ailleurs, non modifiés ici : l'affichage prend la valeur enregistrée (FIX8). */
+function reconcileFeedback(f, next) {
+  if (!next || next.id !== f.t.id || !isLive(f.t) || f.pending || f.failed.size || feedbackDirty(f)) return false;
+  const saved = savedFeedback(next);
+  if (saved.note === f.base.note && saved.feeling === f.base.feeling) return false;
+  f.base = saved; f.shown = { ...saved };
+  const n = f.note(); if (n && n.isConnected) n.value = saved.note;
+  return true;
+}
 /** Valeurs à afficher dans le cadre « Série en cours » : la saisie tant qu'elle n'est pas confirmée, sinon la référence. */
 const displayed = w => (w.pending || w.failed.size ? w.shown : w.base);
 function markFailed(w) {
@@ -173,15 +293,17 @@ function markFailed(w) {
 function saveStatus(okText) {
   const live = [...S.writers.values()].filter(w => isLive(w.t));
   const failing = live.filter(w => w.failed.size);
-  if (failing.length) {
+  const fb = S.fb && isLive(S.fb.t) ? S.fb : null;
+  if (failing.length || fb?.failed.size) {
     const parts = failing.map(w => [...w.failed].map(f => (f === 'kg' ? 'charge' : 'répétitions')).join(' et ') + ' de la ' + w.label +
       ' (enregistré : ' + fmtNum(w.base.kg) + ' kg × ' + w.base.reps + ')');
+    if (fb?.failed.size) parts.push(feedbackLabel(fb));
     setStatus('Non enregistré : ' + parts.join(' ; ') + '. Modifie le champ ou valide la série pour réessayer.', 'error');
     return;
   }
   // une écriture encore en cours, ou une saisie pas encore envoyée : jamais « Sauvegardé » (un succès plus ancien ne
   // confirme jamais une saisie ultérieure)
-  if (live.some(w => w.pending || isDirty(w))) { setStatus('Enregistrement…', ''); return; }
+  if (live.some(w => w.pending || isDirty(w)) || (fb && (fb.pending || feedbackDirty(fb)))) { setStatus('Enregistrement…', ''); return; }
   if (okText) setStatus(okText, 'ok');
 }
 /** Valeur affichée par les champs de la série (rendu courant), sinon la dernière saisie connue ; null si invalide. */
@@ -216,7 +338,7 @@ function writeSet(w, v, { silent = true, done = false, after } = {}) {
       if (done && next) w.failed.clear(); // validation explicite des valeurs enregistrées : l'échec est acquitté
       w.pending--; counted = false;
       markFailed(w);
-      if (next && isLive(t)) saveStatus('✓ Sauvegardé');
+      if (next && isLive(t)) saveStatus(reconcileWriter(w, next) ? REFRESHED_OK : '✓ Sauvegardé');
       return next;
     } catch (error) {
       w.pending--; counted = false;
@@ -317,21 +439,30 @@ async function resolveUnsaved(t, action) {
     await flushAll();
     if (!isLive(t)) return false;
     const list = [...S.writers.values()].filter(w => isLive(w.t) && w.t.id === t.id && (w.failed.size || isDirty(w)));
-    if (!list.length) return true;
+    const fb = S.fb && isLive(S.fb.t) && S.fb.t.id === t.id && (S.fb.failed.size || feedbackDirty(S.fb)) ? S.fb : null;
+    if (fb) { const n = fb.note(); if (n && n.isConnected) fb.shown.note = n.value; }
+    if (!list.length && !fb) return true;
     const desc = list.map(w => { const v = w.failed.size ? w.shown : (shownNow(w) || w.shown);
       return w.label + ' : ' + fmtNum(v.kg) + ' kg × ' + v.reps + ' non enregistré (enregistré : ' + fmtNum(w.base.kg) + ' kg × ' + w.base.reps + ')'; });
+    if (fb) desc.push(feedbackLabel(fb) + ' non enregistré(e)');
     const pick = await dialog({ title: 'Valeurs non enregistrées',
       message: 'Avant de ' + action + ' : ' + desc.join(' ; ') + '. Réessayer l’enregistrement, ou abandonner ces valeurs (les valeurs enregistrées sont conservées) ?',
       choices: [{ label: 'Annuler', value: null }, { label: 'Abandonner ces valeurs', value: 'drop' }, { label: 'Réessayer l’enregistrement', value: 'retry', kind: 'primary' }] });
     if (!isLive(t)) return false;
     if (pick === 'retry') {
       for (const w of list) { const v = w.failed.size ? w.shown : shownNow(w); if (v) w.write({ ...v }, { silent: true }); }
+      if (fb) {
+        const patch = {};
+        if (fb.failed.has('note') || fb.shown.note !== fb.base.note) patch.note = fb.shown.note;
+        if (fb.failed.has('feeling') || fb.shown.feeling !== fb.base.feeling) patch.feeling = fb.shown.feeling;
+        writeFeedback(fb, patch);
+      }
       await flushAll();
       if (!isLive(t)) return false;
       render(); // l'écran (récapitulatif compris) montre l'état réellement enregistré avant la nouvelle vérification
       continue;
     }
-    if (pick === 'drop') { for (const w of list) S.writers.delete(w.key); render(); return true; } // abandon explicite
+    if (pick === 'drop') { for (const w of list) S.writers.delete(w.key); if (fb) S.fb = null; render(); return true; } // abandon explicite
     return false;
   }
 }
@@ -542,14 +673,28 @@ function renderSets(card, a) {
     if (set.done) {
       tools.append(btn('↺', 'pm-icon-btn', async () => {
         await flushAll();
-        await commitTo(T, (p, id) => updateSet(p, id, a.key, set.id, { done: false }));
-        fx('set-undone'); emit('pm:workout-set-undone', { profile: S.profile, sessionId: S.session.id, activityKey: a.key });
+        if (!isLive(T)) return;
+        const known = setNow(a.key, set.id);
+        if (!known) return;
+        // rouvre la série seulement si elle est toujours celle affichée (validée, mêmes valeurs) : vérifié dans la transaction
+        if (await guardedCommit(T, (p, id) => updateSet(p, id, a.key, set.id, { done: false, expect: { kg: known.kg, reps: known.reps, done: true } }))) {
+          fx('set-undone'); emit('pm:workout-set-undone', { profile: S.profile, sessionId: S.session.id, activityKey: a.key });
+        }
       }));
       tools.lastChild.title = 'Rouvrir cette série'; tools.lastChild.setAttribute('aria-label', 'Rouvrir la ' + setLabel(a, idx));
     }
     const del = btn('×', 'pm-icon-btn', async () => {
-      if (set.done && !(await confirmDialog('Retirer cette série déjà validée ?', { ok: 'Retirer', danger: true }))) return;
-      await commitTo(T, (p, id) => removeSet(p, id, a.key, set.id));
+      // Préconditions capturées AVANT la confirmation (FIX8) : état présenté de la séance (révision + incarnation) et de
+      // la série ; vérifiées par le moteur dans la transaction de retrait. Une modification ou une restauration
+      // survenue entre-temps fait refuser le retrait : la série enregistrée est réaffichée, un nouveau clic est exigé.
+      await flushAll();
+      if (!isLive(T)) return;
+      const known = setNow(a.key, set.id);
+      if (!known) return;
+      const pre = { ...consentNow(), expectSet: known };
+      if (known.done && !(await confirmDialog('Retirer cette série déjà validée ?', { ok: 'Retirer', danger: true }))) return;
+      if (!isLive(T)) return;
+      await guardedCommit(T, (p, id) => removeSet(p, id, a.key, set.id, pre));
     });
     del.setAttribute('aria-label', 'Retirer la ' + setLabel(a, idx)); del.title = 'Retirer cette série';
     tools.append(del);
@@ -566,11 +711,12 @@ function offerUndo(a, setId) {
   const T = targetNow(); // cible capturée au rendu : les rappels (même après une attente) visent CETTE séance
   if (S.undo) S.undo.dismiss();
   const rev = S.rev, id = S.session.id;
+  const validated = setNow(a.key, setId); // état validé : l'annulation ne vaut que pour lui (FIX8)
   S.undo = toast('Série validée ✓', {
     actionLabel: 'Annuler', duration: 5000,
     onAction: async () => {
-      if (!valid(S.profile, rev) || S.session?.id !== id) return;
-      await commitTo(T, (p, sid) => updateSet(p, sid, a.key, setId, { done: false }));
+      if (!valid(S.profile, rev) || S.session?.id !== id || !validated) return;
+      if (!(await guardedCommit(T, (p, sid) => updateSet(p, sid, a.key, setId, { done: false, expect: { kg: validated.kg, reps: validated.reps, done: true } })))) return;
       fx('set-undone'); emit('pm:workout-set-undone', { profile: S.profile, sessionId: id, activityKey: a.key });
     }
   });
@@ -718,8 +864,12 @@ function renderList() {
     up.setAttribute('aria-label', 'Monter'); down.setAttribute('aria-label', 'Descendre');
     const rm = btn('Retirer', 'pm-icon-btn pm-text-btn', async () => {
       if (a.status === 'done' || a.sets.some(x => x.done)) { toast('Cette machine contient des résultats : utilise « Passer ».'); return; }
+      await flushAll();
+      if (!isLive(T)) return;
+      const pre = consentNow(); // état présenté AVANT la confirmation (FIX8)
       if (!(await confirmDialog('Retirer « ' + nameOf(a) + ' » de cette séance ?', { ok: 'Retirer', danger: true }))) return;
-      await commitTo(T, (p, id) => removeActivity(p, id, key));
+      if (!isLive(T)) return;
+      if (!(await guardedCommit(T, (p, id) => removeActivity(p, id, key, pre)))) return;
       if (S.selected === key) S.selected = getNextActivity(S.session)?.key || S.session.order[0];
       render();
     });
@@ -768,27 +918,38 @@ const FEELINGS = [['1', 'Très dur'], ['2', 'Dur'], ['3', 'Correct'], ['4', 'Bie
 /** Bloc « Ressenti » + « Remarques » de la fin de séance (mêmes saisies et enregistrements qu'avant). */
 function feedbackBlock(s) {
   const T = targetNow(); // cible capturée au rendu : les rappels (même après une attente) visent CETTE séance
+  const F = feedbackWriterFor(T, s); // état d'écriture partagé par les rendus (FIX8)
+  const start = feedbackShown(F);
   const fb = el('section', 'pm-recap-feedback');
   fb.setAttribute('aria-label', 'Ressenti et remarques');
   fb.append(el('h2', 'pm-sets-title', 'Ressenti')); // h2 : premier titre de la carte, avant « Récapitulatif » (ordre des titres)
   const feelings = el('div', 'pm-feelings');
-  let feeling = s.feedback?.feeling ?? null;
   FEELINGS.forEach(([v, label]) => {
-    const b = btn(v + ' · ' + label, 'pm-feeling' + (String(feeling) === v ? ' pm-on' : ''), () => {
-      feeling = Number(v) === feeling ? null : Number(v);
+    const b = btn(v + ' · ' + label, 'pm-feeling' + (String(start.feeling) === v ? ' pm-on' : ''), () => {
+      const feeling = Number(v) === F.shown.feeling ? null : Number(v);
+      F.shown.feeling = feeling;
       feelings.querySelectorAll('.pm-feeling').forEach(x => x.classList.toggle('pm-on', x.dataset.v === String(feeling)));
-      commitTo(T, (p, id) => setWorkoutFeedback(p, id, { feeling }), { silent: true });
+      writeFeedback(F, { feeling });
     });
     b.dataset.v = v; feelings.append(b);
   });
   fb.append(feelings);
   const note = el('textarea', 'pm-textarea-note');
-  note.placeholder = 'Remarques, difficultés, douleurs…'; note.maxLength = 1000; note.value = s.feedback?.note || '';
+  note.placeholder = 'Remarques, difficultés, douleurs…'; note.maxLength = 1000; note.value = start.note;
   note.setAttribute('aria-label', 'Remarques sur la séance');
+  F.note = () => note;
+  markFeedback(F); // un échec survit au nouveau rendu
   let t = null, disposed = false;
-  const saveNote = () => { clearTimeout(t); t = null; if (!disposed) commitTo(T, (p, id) => setWorkoutFeedback(p, id, { note: note.value }), { silent: true }); };
-  note.addEventListener('input', () => { if (disposed) return; clearTimeout(t); t = setTimeout(saveNote, 500); });
+  const saveNote = () => {
+    clearTimeout(t); t = null;
+    if (disposed) return undefined;
+    F.shown.note = note.value;
+    if (note.value === F.base.note && !F.failed.has('note')) { saveStatus(null); return undefined; }
+    return writeFeedback(F, { note: note.value });
+  };
+  note.addEventListener('input', () => { if (disposed) return; F.shown.note = note.value; clearTimeout(t); t = setTimeout(saveNote, 500); saveStatus('✓ Sauvegardé'); });
   note.addEventListener('blur', saveNote);
+  S.flushers.add(() => (t !== null ? saveNote() : undefined));
   S.disposers.add(flush => { const pending = t !== null; clearTimeout(t); t = null; if (flush && pending) saveNote(); disposed = true; });
   fb.append(el('h2', 'pm-sets-title', 'Remarques'), note);
 
@@ -861,11 +1022,11 @@ function renderRecap() {
 async function reloadAfterChange(t, message) {
   try {
     const fresh = await getWorkout(t.profile, t.id);
-    if (fresh && isLive(t)) { S.session = fresh; if (S.view !== 'activity') S.view = 'recap'; render(); }
+    if (fresh && isLive(t)) { S.session = fresh; render(); }
   } catch (_) { /* message seul */ }
   if (isLive(t)) setStatus(message, 'error');
 }
-const CHANGED_MSG = 'La séance a été modifiée ailleurs : rien n’a été clos. Vérifie le récapitulatif actualisé, puis valide à nouveau.';
+const CHANGED_MSG = 'La séance a été modifiée ailleurs (ou depuis ta confirmation) : rien n’a été clos. Vérifie le récapitulatif actualisé, puis valide à nouveau.';
 const INCOMPLETE_MSG = 'Des activités ne sont plus terminées (modifiées ailleurs) : rien n’a été clos. Termine-les, ou valide à nouveau pour confirmer une fin partielle.';
 async function finish(complete) {
   if (S.busy) return;
@@ -879,6 +1040,9 @@ async function finish(complete) {
     if (!(await resolveUnsaved(t, 'terminer la séance'))) return; // jamais de clôture avec une valeur non enregistrée
     if (!isLive(t)) return;
     if (S.conflictSeq !== seq) { interrupted(); return; }
+    // Instantané immuable de l'état présenté, pris AVANT la confirmation (FIX8) : un rendu survenu pendant la
+    // confirmation (ancien bouton, actualisation, restauration) ne le remplace jamais.
+    const consent = consentNow();
     const s = S.session;
     const notDone = s.activities.filter(a => a.status !== 'done');
     if (!complete && !(await confirmDialog(
@@ -888,9 +1052,10 @@ async function finish(complete) {
     if (S.conflictSeq !== seq) { interrupted(); return; } // conflit pendant la confirmation : elle est périmée
     if (!(await resolveUnsaved(t, 'terminer la séance'))) return; // une saisie faite pendant la confirmation
     if (!stillValid()) { if (isLive(t)) interrupted(); return; }
-    // État attendu relevé DANS la file d'écritures, juste avant la transaction : les écritures de CET onglet y sont
-    // appliquées ; l'état exigé est celui PRÉSENTÉ (incarnation + révision), jamais la seule révision courante.
-    const result = await op(() => (stillValid() ? finishWorkout(profile, t.id, complete ? 'completed' : 'partial', { expectRev: S.seenRev, expectGen: S.seenGen }) : STALE));
+    // L'état exigé dans la transaction est celui PRÉSENTÉ par la confirmation (incarnation + révision), jamais la
+    // révision courante ni celle d'un rendu ultérieur : une modification faite depuis, ici ou ailleurs, impose un
+    // nouveau consentement.
+    const result = await op(() => (stillValid() ? finishWorkout(profile, t.id, complete ? 'completed' : 'partial', consent) : STALE));
     if (result === STALE) { if (isLive(t)) interrupted(); return; }
     if (!isLive(t)) return;
     S.session = result;
@@ -1007,9 +1172,12 @@ function render() {
     panel.append(foot);
     if (!s.activities.some(a => a.status !== 'pending') && S.profile !== 'demo') {
       panel.append(btn('Annuler cette séance (vide)', 'pm-link', async () => {
+        await flushAll();
+        if (!isLive(T)) return;
+        const pre = consentNow(); // état présenté AVANT la confirmation (FIX8)
         if (!(await confirmDialog('Annuler cette séance ? Rien n’a été validé.', { ok: 'Annuler la séance', danger: true }))) return;
         if (!isLive(T)) return; // cible capturée au rendu : jamais S.profile relu après la confirmation
-        try { const r = await op(() => (isLive(T) ? discardWorkout(T.profile, T.id, { expectRev: S.seenRev, expectGen: S.seenGen }) : STALE)); if (r !== STALE && isLive(T)) closeWorkout({ goTo: 'accueil' }); }
+        try { const r = await op(() => (isLive(T) ? discardWorkout(T.profile, T.id, pre) : STALE)); if (r !== STALE && isLive(T)) closeWorkout({ goTo: 'accueil' }); }
         catch (e) {
           if (e?.code === 'SESSION_CHANGED' || e?.code === 'HAS_DATA') { if (isLive(T)) await reloadAfterChange(T, 'La séance a changé entre-temps : rien n’a été annulé.'); }
           else if (isLive(T)) report(e);
