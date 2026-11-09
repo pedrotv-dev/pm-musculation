@@ -273,7 +273,9 @@ function writeFeedback(f, patch) {
     try {
       // Préconditions (QA9) : valeurs enregistrées sur lesquelles la saisie s'appuie, et incarnation de la séance ; une
       // remarque restaurée ou modifiée ailleurs n'est jamais écrasée par un ancien récapitulatif.
-      const expectFeedback = {}; for (const k of keys) expectFeedback[k] = f.base[k];
+      // La remarque (texte qu'on peut perdre) exige sa valeur enregistrée ; le ressenti (un choix) suit la dernière
+      // sélection, comme en FIX9. L'incarnation est exigée pour les deux (restauration : jamais d'écrasement).
+      const expectFeedback = {}; if (keys.includes('note')) expectFeedback.note = f.base.note;
       const next = await commitTo(t, (p, id) => setWorkoutFeedback(p, id, patch, { expectFeedback, expectGen: f.gen }), { silent: true, rethrow: true });
       done();
       if (next) for (const k of keys) { f.failed.delete(k); if (!f.pend[k]) f.base[k] = savedFeedback(next)[k]; }
