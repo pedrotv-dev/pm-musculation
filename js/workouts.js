@@ -446,6 +446,20 @@ export function updateSet(profileId, sessionId, activityKey, setId, patch = {}, 
     const a = findActivity(s, activityKey);
     requireStrength(a);
     const set = findSet(a, setId);
+    // Concurrence (autre onglet, autre fenêtre) : `expect` = valeurs sur lesquelles l'utilisateur s'est appuyé pour
+    // modifier un champ. Vérifiées DANS la transaction : si la base a changé entre-temps (valeur différente de l'attendue
+    // ET de la nouvelle), conflit explicite plutôt qu'écrasement silencieux. Facultatif : appels existants inchangés.
+    if (patch.expect !== undefined) {
+      if (!isObj(patch.expect)) throw new WorkoutError('Modification invalide.', 'INVALID_SET');
+      for (const field of ['kg', 'reps']) {
+        const expected = patch.expect[field];
+        if (expected === undefined || patch[field] === undefined) continue;
+        if (set[field] !== expected && set[field] !== patch[field]) {
+          throw new WorkoutError('Cette série a été modifiée ailleurs (autre onglet ou fenêtre) : la valeur enregistrée est conservée et affichée. Vérifie-la, puis ressaisis si besoin.',
+            'SET_CONFLICT', { field, current: set[field] });
+        }
+      }
+    }
     const kg = patch.kg === undefined ? set.kg : checkKg(patch.kg);
     const reps = patch.reps === undefined ? set.reps : checkReps(patch.reps);
     const done = patch.done === undefined ? set.done : patch.done === true;

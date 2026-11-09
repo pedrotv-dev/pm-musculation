@@ -6,7 +6,7 @@
  * Evenements ecoutes : pm:profile-changed, pm:start-workout {profileId, weekStart, dayId}, pm:resume-workout.
  */
 import {
-  startWorkout, getResumableWorkout, listWorkouts, logSet, updateSet, addSet, removeSet, completeActivity, skipActivity,
+  startWorkout, getResumableWorkout, getWorkout, listWorkouts, updateSet, addSet, removeSet, completeActivity, skipActivity,
   postponeActivity, returnToPostponed, pauseWorkout, resumeWorkout, finishWorkout, discardWorkout, deleteWorkout,
   addActivity, removeActivity, moveActivity, setCursor, setWorkoutFeedback, getNextActivity, getWorkoutSummary,
   getWorkoutDuration, getPostponedActivities
@@ -38,7 +38,7 @@ panel.setAttribute('aria-label', 'Suivi de la séance');
 main.append(panel);
 
 const S = { profile: null, session: null, selected: null, view: 'activity', rev: 0, queue: Promise.resolve(),
-  catalog: { byId: new Map(), strength: [], list: [], images: new Set() }, history: [], finished: false, keepAwake: true, leaving: false, flushers: new Set(), disposers: new Set(), renderRev: 0, drafts: new Map(), draftSerial: 0, clock: null, undo: null, busy: false };
+  catalog: { byId: new Map(), strength: [], list: [], images: new Set() }, history: [], finished: false, keepAwake: true, leaving: false, flushers: new Set(), disposers: new Set(), renderRev: 0, drafts: new Map(), draftSerial: 0, pendingSaves: new Set(), clock: null, undo: null, busy: false };
 const valid = (profile, rev) => S.profile === profile && root.dataset.pmProfile === profile && S.rev === rev;
 const act = (session, key) => session.activities.find(a => a.key === key);
 const nameOf = a => a.type === 'strength' ? (S.catalog.byId.get(a.machineId)?.name || a.machineId)
@@ -82,13 +82,14 @@ const isLive = t => !!t && valid(t.profile, t.rev) && S.session?.id === t.id;
 function disposeView(flush) {
   const list = [...S.disposers];
   S.disposers.clear(); S.flushers.clear();
+  if (!flush) S.drafts.clear(); // changement de séance ou de profil : aucun brouillon d'un autre contexte n'est réutilisé
   for (const d of list) { try { d(flush); } catch (e) { console.error('PM séance :', e); } }
 }
 
 /** Applique un changement moteur à la séance affichée (cible capturée maintenant). */
 function commit(call, options) { return commitTo(targetNow(), call, options); }
 /** Applique un changement moteur à la cible `t` capturée plus tôt. `silent` : ne reconstruit pas l'ecran (saisie en cours). */
-async function commitTo(t, call, { silent = false, after } = {}) {
+async function commitTo(t, call, { silent = false, after, rethrow = false } = {}) {
   if (!isLive(t)) return null; // avant toute mutation
   const profile = t.profile, id = t.id;
   setStatus('Enregistrement…');
@@ -103,8 +104,71 @@ async function commitTo(t, call, { silent = false, after } = {}) {
     return next;
   } catch (error) {
     if (isLive(t)) report(error);
+    if (rethrow) throw error; // l'appelant sait que RIEN n'a été écrit (rétablit sa référence, signale le champ)
     return null;
   }
+}
+/** Conflit (série modifiée ailleurs) : relit la séance et l'affiche, avec le message ; rien n'est réécrit. */
+async function reloadAfterConflict(t, error) {
+  try {
+    const fresh = await getWorkout(t.profile, t.id);
+    if (!fresh || !isLive(t)) return;
+    S.session = fresh; render();
+    setStatus(error.message, 'error');
+  } catch (_) { /* la relecture échoue : le message d'erreur reste affiché */ }
+}
+
+/**
+ * Écritures de la charge et des répétitions d'UNE série, pour un écran donné (cible `t` immuable).
+ * - `base` : valeurs sur lesquelles s'appuie l'écran (confirmées, ou demandées et pas encore confirmées) ; seuls les
+ *   champs qui en diffèrent sont envoyés, avec `expect` (= base) : une valeur modifiée ailleurs n'est jamais écrasée
+ *   (SET_CONFLICT), une validation sans nouvelle saisie n'envoie que `done`.
+ * - Échec : rien n'est écrit ; la référence redevient la valeur confirmée, le champ est signalé (aria-invalid) et sa
+ *   valeur sera renvoyée à la prochaine modification ou validation (même valeur comprise). Jamais « Sauvegardé » tant
+ *   qu'un champ affiché n'est pas enregistré.
+ * - Chaque écriture est suivie dans S.pendingSaves : flushAll() attend aussi les écritures DÉJÀ lancées.
+ */
+function setWriter(t, activityKey, setId, base, inputs, { draftKey = null } = {}) {
+  const failed = new Set();
+  const mark = (field, on) => { const i = inputs()[field]; if (!i) return; if (on) i.setAttribute('aria-invalid', 'true'); else i.removeAttribute('aria-invalid'); };
+  const settle = () => { // champ revenu à la valeur de référence : plus rien d'« en attente » pour lui
+    const shown = readSet(inputs().kg, inputs().reps);
+    for (const f of [...failed]) if (shown && shown[f] === base[f]) { failed.delete(f); mark(f, false); }
+    if (failed.size && isLive(t)) setStatus('Non enregistré : ' + [...failed].map(f => f === 'kg' ? 'charge' : 'répétitions').join(' et ') + '. Modifie le champ ou valide pour réessayer.', 'error');
+  };
+  function write(v, { silent = true, done = false, after } = {}) {
+    const patch = {}, expect = {};
+    for (const f of ['kg', 'reps']) if (v[f] !== base[f]) { patch[f] = v[f]; expect[f] = base[f]; }
+    if (!Object.keys(patch).length && !done) return Promise.resolve(null);
+    Object.assign(base, patch); // évite les doubles écritures ; rétablie en cas d'échec
+    const entry = draftKey ? { kg: base.kg, reps: base.reps, serial: ++S.draftSerial } : null;
+    if (draftKey) S.drafts.set(draftKey, entry); // valeur demandée, affichée par tout rendu de CE contexte jusqu'à confirmation
+    const body = { ...patch };
+    if (Object.keys(expect).length) body.expect = expect;
+    if (done) body.done = true;
+    const run = (async () => {
+      try {
+        const next = await commitTo(t, (p, id) => updateSet(p, id, activityKey, setId, body), { silent, after, rethrow: true });
+        for (const f of Object.keys(patch)) { failed.delete(f); mark(f, false); }
+        settle();
+        return next;
+      } catch (error) {
+        const confirmed = isLive(t) ? act(S.session, activityKey)?.sets.find(x => x.id === setId) : null;
+        for (const f of Object.keys(patch)) { base[f] = confirmed ? confirmed[f] : expect[f]; failed.add(f); mark(f, true); }
+        if (draftKey && S.drafts.get(draftKey) === entry) S.drafts.delete(draftKey); // refusée : plus jamais réaffichée
+        if (error?.code === 'SET_CONFLICT') await reloadAfterConflict(t, error); // affiche la valeur enregistrée ailleurs
+        else settle();
+        return null;
+      } finally {
+        if (draftKey && S.drafts.get(draftKey) === entry) S.drafts.delete(draftKey); // confirmée, refusée ou abandonnée
+      }
+    })();
+    const tracked = { run, t };
+    S.pendingSaves.add(tracked);
+    run.finally(() => S.pendingSaves.delete(tracked));
+    return run;
+  }
+  return { write, failed };
 }
 
 // ---------------------------------------------------------------- ouverture / fermeture
@@ -174,7 +238,19 @@ function select(key, { persist = true } = {}) {
 
 // ---------------------------------------------------------------- brouillons (sauvegarde AVANT validation)
 
-async function flushAll() { await Promise.all([...S.flushers].map(f => f())); }
+/**
+ * Enregistre les brouillons en attente PUIS attend toutes les écritures déjà lancées pour la séance affichée : un
+ * récapitulatif, une validation ou une fin de séance ne partent jamais d'un état antérieur à ces écritures. Une écriture
+ * qui échoue pendant l'attente est signalée par son champ ; l'état affiché ensuite est l'état réellement enregistré.
+ */
+async function flushAll() {
+  await Promise.all([...S.flushers].map(f => f()));
+  for (;;) {
+    const mine = [...S.pendingSaves].filter(x => isLive(x.t)).map(x => x.run);
+    if (!mine.length) break;
+    await Promise.allSettled(mine);
+  }
+}
 function inputField(label, value, { kind }) {
   const wrap = el('label', 'pm-field');
   wrap.append(el('span', 'pm-field-name', label));
@@ -265,7 +341,8 @@ function renderSets(card, a) {
     // confirmé (S.drafts), sinon la valeur confirmée. Un nouveau rendu ne réaffiche donc jamais une valeur dépassée, et
     // `base` sert de référence : seuls les champs réellement modifiés sont envoyés (jamais l'autre champ, éventuellement
     // obsolète, qui écraserait une valeur plus récente).
-    const dkey = T.id + '|' + a.key + '|' + current.id;
+    // brouillon attaché au profil, à la séance et au contexte d'ouverture (S.rev) : jamais réutilisé ailleurs
+    const dkey = [T.profile, T.rev, T.id, a.key, current.id].join('|');
     const pending = S.drafts.get(dkey);
     const base = { kg: pending ? pending.kg : current.kg, reps: pending ? pending.reps : current.reps };
     const known = knownWeights(a);
@@ -273,20 +350,13 @@ function renderSets(card, a) {
       onStep: (input, dir) => { input.value = fmtNum(stepWeight(parseNum(input.value), known, dir)); schedule(); } });
     const repsF = stepper({ id: 'pm-current-reps', label: 'Répétitions', value: base.reps, kind: 'reps',
       onStep: (input, dir) => { const r = parseNum(input.value); input.value = String(Math.max(1, (Number.isInteger(r) ? r : base.reps) + dir)); schedule(); } });
+    const writer = setWriter(T, a.key, current.id, base, () => ({ kg: kgF.input, reps: repsF.input }), { draftKey: dkey });
     const save = async ({ final = false } = {}) => {
       clearTimeout(timer); timer = null;
       if (disposed) return; // rendu détruit : ce brouillon ne peut plus écrire
       const v = readSet(kgF.input, repsF.input);
       if (!v) return;
-      const patch = {};
-      if (v.kg !== base.kg) patch.kg = v.kg;
-      if (v.reps !== base.reps) patch.reps = v.reps;
-      if (!Object.keys(patch).length) return;
-      Object.assign(base, patch); // évite les doubles écritures
-      const entry = { kg: base.kg, reps: base.reps, serial: ++S.draftSerial };
-      S.drafts.set(dkey, entry); // valeur demandée, affichée par tout rendu jusqu'à confirmation
-      try { await commitTo(T, (p, id) => updateSet(p, id, a.key, current.id, patch), { silent: !final || formFocused() }); }
-      finally { if (S.drafts.get(dkey) === entry) S.drafts.delete(dkey); } // confirmée (S.session à jour) ou abandonnée
+      await writer.write(v, { silent: !final || formFocused() });
     };
     const schedule = () => { if (disposed) return; clearTimeout(timer); timer = setTimeout(() => save(), 350); };
     S.disposers.add(flush => { const pending = timer !== null; clearTimeout(timer); timer = null; if (flush && pending) save(); disposed = true; });
@@ -310,17 +380,21 @@ function renderSets(card, a) {
       if (!v) { setStatus('Renseigne une charge et des répétitions valides.', 'error'); toast('Charge ou répétitions invalides.'); return; }
       S.busy = true;
       try {
-        await flushAll();
-        const session = await commitTo(T, (p, id) => logSet(p, id, a.key, next.set.id, v), {
-          after: () => {
+        await flushAll(); // brouillons ET écritures déjà lancées
+        if (writer.failed.size) { // une valeur affichée n'est pas enregistrée : pas de validation sur un état incertain
+          setStatus('Série non validée : ' + [...writer.failed].map(f => f === 'kg' ? 'la charge' : 'les répétitions').join(' et ') + ' affichée(s) ne sont pas enregistrée(s). Réessaie.', 'error');
+          return;
+        }
+        // validation : seuls les champs encore différents de la référence sont envoyés (normalement aucun) ; jamais une
+        // charge non saisie, donc jamais l'écrasement d'une valeur enregistrée ailleurs
+        const session = await writer.write(v, { silent: false, done: true, after: () => {
             fx('set-validated', { machineId: a.machineId });
             if (a.sets.every(x => x.done || x.id === next.set.id)) fx('activity-done', { kind: 'strength', machineId: a.machineId });
             emit('pm:workout-set-validated', {
               profile: S.profile, sessionId: S.session.id, activityKey: a.key, machineId: a.machineId,
               setId: next.set.id, restSeconds: a.restSeconds
             });
-          }
-        });
+          } });
         if (session) offerUndo(a, next.set.id);
       } finally { S.busy = false; }
     }), 'valider');
@@ -634,19 +708,16 @@ function renderRecap() {
       a.sets.forEach((set, idx) => {
         const row = el('div', 'pm-recap-set' + (set.done ? '' : ' pm-undone'));
         const kg = inputField('kg', set.kg, { kind: 'kg' }), reps = inputField('reps', set.reps, { kind: 'reps' });
-        const save = () => {
-          const v = readSet(kg.input, reps.input);
-          if (!v) return;
-          const patch = {}; // seulement le champ réellement modifié : l'autre n'écrase jamais une valeur plus récente
-          if (v.kg !== set.kg) patch.kg = v.kg;
-          if (v.reps !== set.reps) patch.reps = v.reps;
-          if (!Object.keys(patch).length) return;
-          Object.assign(set, patch);
-          commitTo(T, (p, id) => updateSet(p, id, a.key, set.id, patch), { silent: true });
-        };
+        // récapitulatif construit APRÈS flushAll (état enregistré) ; même règles d'écriture que la série en cours
+        const writer = setWriter(T, a.key, set.id, { kg: set.kg, reps: set.reps }, () => ({ kg: kg.input, reps: reps.input }));
+        const save = () => { const v = readSet(kg.input, reps.input); if (v) writer.write(v, { silent: true }); };
         kg.input.addEventListener('change', save); reps.input.addEventListener('change', save);
         row.append(el('span', 'pm-set-mark', set.done ? '✓' : '○'), kg.wrap, reps.wrap);
-        if (!set.done) row.append(btn('Valider', 'pm-icon-btn pm-text-btn', () => commitTo(T, (p, id) => logSet(p, id, a.key, set.id, readSet(kg.input, reps.input) || { kg: set.kg, reps: set.reps }))));
+        if (!set.done) row.append(btn('Valider', 'pm-icon-btn pm-text-btn', async () => {
+          await flushAll();
+          if (writer.failed.size) { setStatus('Série non validée : valeur affichée non enregistrée. Réessaie.', 'error'); return; }
+          writer.write(readSet(kg.input, reps.input) || { kg: set.kg, reps: set.reps }, { silent: false, done: true });
+        }));
         block.append(row);
         void idx;
       });

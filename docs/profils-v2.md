@@ -110,3 +110,16 @@ Les changements sont annoncés par l'événement `document` → `pm:profiles-cha
 
 - Tant que l'enregistrement d'une série n'est pas confirmé, les champs « Série en cours » affichent la dernière valeur **demandée** pour cette série. Un nouveau rendu ne réaffiche donc jamais une valeur dépassée.
 - Seuls les champs réellement modifiés sont envoyés (`updateSet` partiel), dans l'écran de séance comme dans le récapitulatif. Changer les répétitions ne renvoie jamais une ancienne charge.
+
+## Intégrité des charges et répétitions (FIX3)
+
+- **Corrections relatives à ce que l'écran a affiché.** Chaque écriture n'envoie que les champs modifiés, accompagnés des valeurs sur lesquelles l'écran s'appuyait (`updateSet(…, { kg, expect: { kg } })`).
+  - Le moteur vérifie ces valeurs dans la transaction. Si la base a été modifiée ailleurs entre-temps (autre onglet), l'écriture est refusée (`SET_CONFLICT`) : la valeur enregistrée est conservée, affichée et signalée, jamais écrasée en silence.
+  - Des champs différents modifiés dans deux onglets sont conservés ensemble.
+- **Validation d'une série.** Elle n'envoie que `done`, plus les éventuels champs encore modifiés. Une charge non saisie n'est jamais réécrite.
+- **`flushAll()`** attend aussi les écritures déjà lancées pour la séance affichée. Récapitulatif, validation et fin de séance partent donc toujours de l'état réellement enregistré.
+- **Brouillons rattachés** au profil, à la séance et au contexte d'ouverture. Ils sont effacés à chaque changement de séance ou de profil : une confirmation tardive ne touche jamais un autre contexte.
+- **Écriture refusée.** Le champ garde la saisie, signalée (`aria-invalid`, message « Non enregistré : … »), et la référence redevient la valeur enregistrée.
+  - La même valeur peut être renvoyée : en modifiant le champ, un autre champ, ou en validant.
+  - L'écran n'affiche jamais « Sauvegardé » tant qu'une valeur affichée n'est pas enregistrée, et une série n'est pas validée dans cet état.
+
