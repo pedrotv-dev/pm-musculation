@@ -60,6 +60,9 @@
           </div>
           <p class="pm-create-note">Le profil reste sur ce téléphone : aucun compte, aucun e-mail.</p>
         </form>
+        <button type="button" class="secondary pm-create-profile" id="import-profile">Importer un profil (fichier de sauvegarde)</button>
+        <input type="file" id="import-profile-file" accept=".json,application/json" hidden aria-label="Fichier de sauvegarde d’un profil">
+        <p class="pm-create-error" id="import-profile-status" role="status" hidden></p>
         <button type="button" class="choice demo" data-select-profile="demo"><span class="initial" aria-hidden="true">▶</span><span class="demo-copy"><strong>Explorer la démo</strong><span>Exemples de programmes, séances et progrès · données fictives</span></span></button>
         <p class="footnote">Aucun compte à créer. La démo ne modifie pas vos historiques.</p>
       </section>

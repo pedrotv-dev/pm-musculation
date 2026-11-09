@@ -444,7 +444,7 @@ function showWorkout(session) {
   if (!isKnownProfile(S.profile) || session.profileId !== S.profile || root.dataset.pmProfile !== S.profile) return;
   disposeView(false); // brouillons d'une autre séance : abandonnés
   ++S.rev;
-  S.session = session; S.view = 'activity'; S.selected = startPosition(session); S.finished = false;
+  S.session = session; S.view = session.activities.length ? 'activity' : 'list'; S.selected = startPosition(session); S.finished = false; // séance libre vide : liste des machines
   S.keepAwake = peekUiSettings(S.profile).keepAwake; // valeur connue tout de suite, puis relue depuis la base
   getUiSettings(S.profile).then(st => { if (S.session && S.session.id === session.id) { S.keepAwake = st.keepAwake; applyAwake(); } });
   root.classList.add('pm-workout-active');
@@ -1259,7 +1259,7 @@ async function begin(detail) {
   try {
     let session;
     try {
-      session = await startWorkout(profile, { dayId: detail.dayId, weekStart: detail.weekStart });
+      session = await startWorkout(profile, { dayId: detail.dayId, weekStart: detail.weekStart, free: detail.free === true });
     } catch (error) {
       if (error.code !== 'SESSION_IN_PROGRESS') throw error;
       const pick = await dialog({ title: 'Une séance est déjà en cours', message: 'Reprends-la ou termine-la avant d’en démarrer une autre.',

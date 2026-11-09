@@ -142,6 +142,43 @@ form.addEventListener('submit', async event => {
   }
 });
 profilesStarted.then(() => renderUserProfiles());
+
+// ---------------------------------------------------------------- importer un profil (sauvegarde d'un autre téléphone)
+// Transfert manuel entre appareils : fichier de sauvegarde → profil absent : inscrit avec SES données (tout ou rien) ;
+// profil déjà présent : choix explicite (fusionner, remplacer après confirmation, annuler). Rien n'est écrit sans accord.
+const importBtn = $('#import-profile'), importFile = $('#import-profile-file'), importStatus = $('#import-profile-status');
+const importSay = (text, ok = false) => { importStatus.textContent = text; importStatus.hidden = !text; importStatus.dataset.state = ok ? 'ok' : 'error'; };
+importBtn.addEventListener('click', () => { importSay(''); importFile.value = ''; importFile.click(); });
+importFile.addEventListener('change', async () => {
+  const file = importFile.files && importFile.files[0];
+  if (!file) return;
+  importBtn.disabled = true;
+  try {
+    const [{ parseBackupText, describeBackup, restoreBackup, restoreBackupAsNewProfile }, { dialog, confirmDialog }] = await Promise.all([import('./backup.js'), import('./dom.js')]);
+    await profilesStarted;
+    const backup = parseBackupText(await file.text());
+    const d = describeBackup(backup);
+    const name = (backup.profile && backup.profile.name) || (getProfileInfo(backup.profileId) || {}).name || backup.profileId;
+    const summary = d.sessions + ' séance(s), ' + d.programs + ' programme(s), ' + d.weights + ' mesure(s) de poids';
+    if (backup.profileId === 'demo') throw new Error('La démo ne se restaure pas.');
+    if (isKnownProfile(backup.profileId)) {
+      const pick = await dialog({ title: 'Ce profil existe déjà', message: 'Le profil « ' + name + ' » existe déjà sur ce téléphone. Sauvegarde : ' + summary + '. Que faire ?',
+        choices: [{ label: 'Annuler', value: null }, { label: 'Fusionner (garder l’existant)', value: 'merge', kind: 'primary' }, { label: 'Remplacer ses données', value: 'replace', kind: 'danger' }] });
+      if (!pick) { importSay('Import annulé : rien n’a été modifié.'); return; }
+      if (pick === 'replace' && !(await confirmDialog('Remplacer TOUTES les données de « ' + name + ' » sur ce téléphone par celles du fichier ?', { title: 'Remplacer les données', ok: 'Remplacer', danger: true }))) { importSay('Import annulé : rien n’a été modifié.'); return; }
+      await restoreBackup(backup.profileId, backup, pick);
+      importSay('Profil « ' + name + ' » restauré (' + (pick === 'merge' ? 'fusion' : 'remplacement') + ').', true);
+      chooseProfile(backup.profileId);
+    } else {
+      if (!(await confirmDialog('Ajouter le profil « ' + name + ' » sur ce téléphone avec ses données (' + summary + ') ?', { title: 'Importer un profil', ok: 'Importer' }))) { importSay('Import annulé : rien n’a été modifié.'); return; }
+      const rec = await restoreBackupAsNewProfile(backup);
+      await renderUserProfiles();
+      importSay('Profil « ' + rec.name + ' » importé.', true);
+      chooseProfile(rec.id);
+    }
+  } catch (error) { importSay('Import impossible : ' + (error && error.message ? error.message : error) + ' Rien n’a été modifié.'); }
+  finally { importBtn.disabled = false; importFile.value = ''; }
+});
 document.addEventListener('pm:profiles-changed', () => { renderUserProfiles(); });
 
 // Interface future (écrans ASCENT/KORV) : sélection d'un profil par événement, même chemin que les boutons actuels.

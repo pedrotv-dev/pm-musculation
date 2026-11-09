@@ -16,6 +16,7 @@ import { isRealProfile as real, isKnownProfile, getProfileInfo } from './profile
 import { APP_VERSION } from './version.js';
 import { getUiSettings, setUiSettings } from './ui-settings.js';
 import { isWakeLockSupported } from './wakelock.js';
+import { identitySection, sportSection, gymSection, coachSection } from './coach-ui.js';
 import { el, btn, clear, add, dialog, confirmDialog, toast, fmtNum, parseNum, formatDateFr } from './dom.js';
 
 const root = document.documentElement;
@@ -279,12 +280,14 @@ async function render() {
   const config = await getRestConfig(profile);
   const ui = await getUiSettings(profile);
   const bilan = await bilanSection(profile);
+  const [sport, gym] = await Promise.all([sportSection(profile), gymSection(profile)]); // V2 : profil sportif et salle
   if (mine !== S.rev || root.dataset.pmProfile !== profile) return;
   clear(page);
   const head = section('', '');
   head.replaceChildren(el('h3', '', person(profile).name), el('p', 'pm-muted', profile === 'demo' ? 'Mode démo — données fictives' : person(profile).goal.replace(/^./, c => c.toUpperCase())),
     btn('Changer de profil', 'pm-secondary', () => document.getElementById('switch-profile')?.click()));
-  add(page, el('div', 'eyebrow', 'Mon espace'), el('h2', '', 'Profil'), head, korvGuide(profile), chronoSection(profile, config), usageSection(profile, ui), effectsSection(profile, ui), backupSection(profile), bilan, localDataSection(profile), demoSection(profile));
+  const identity = identitySection(profile);
+  add(page, el('div', 'eyebrow', 'Mon espace'), el('h2', '', 'Profil'), head, korvGuide(profile), ...(identity ? [identity] : []), coachSection(profile), sport, gym, chronoSection(profile, config), usageSection(profile, ui), effectsSection(profile, ui), backupSection(profile), bilan, localDataSection(profile), demoSection(profile));
   page.append(section('À propos', null, el('p', 'pm-muted', 'PM Musculation · version ' + APP_VERSION + ' · fonctionne hors connexion après installation.')));
   const update = btn('Rechercher une mise à jour', 'pm-secondary', async () => {
     try {
@@ -303,4 +306,5 @@ const refresh = () => render().catch(console.error);
 const reload = () => { if (!page.hidden) refresh(); };
 document.addEventListener('pm:profile-changed', () => { S.other = null; S.bilan = ''; S.notice = ''; reload(); });
 document.addEventListener('pm:data-changed', () => { S.bilan = ''; reload(); });
+document.addEventListener('pm:profiles-changed', e => { if (e.detail?.id === root.dataset.pmProfile && e.detail?.reason === 'updated') reload(); });
 document.addEventListener('click', e => { if (e.target.closest?.('.nav-btn[data-go="profil"]')) refresh(); });

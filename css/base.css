@@ -228,3 +228,4 @@ body { background:radial-gradient(ellipse 85% 42% at 50% -12%,rgba(20,230,199,.0
 .pm-create-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .pm-create-actions .primary { margin-top:0; }
 .pm-create-note { color:var(--muted); font-size:12px; margin:0; text-align:center; }
+.pm-create-error[data-state="ok"] { color:var(--turq); }

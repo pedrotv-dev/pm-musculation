@@ -327,14 +327,15 @@ export function getWorkoutSummary(session, now) {
  * (code SESSION_IN_PROGRESS, `error.sessionId`) : une seule seance ouverte par profil, garantie par IndexedDB.
  * @returns {Promise<session>}
  */
-export function startWorkout(profileId, { dayId, weekStart, now = new Date(), store } = {}) {
+export function startWorkout(profileId, { dayId, weekStart, now = new Date(), store, free = false } = {}) {
   try { writable(profileId); } catch (error) { return Promise.reject(error); }
   return (async () => {
     const week = weekStart || mondayOf(now);
     const wanted = dayId || dayIdOf(now);
-    const program = await backend(profileId, store).program(profileId, week);
-    if (!program) throw new WorkoutError(`Aucun programme pour la semaine du ${week}.`, 'PROGRAM_NOT_FOUND');
-    const day = (program.days || []).find(d => d.id === wanted);
+    // Séance libre (V2) : sans programme ; les machines sont ajoutées pendant la séance (addActivity).
+    const program = free ? null : await backend(profileId, store).program(profileId, week);
+    if (!free && !program) throw new WorkoutError(`Aucun programme pour la semaine du ${week}.`, 'PROGRAM_NOT_FOUND');
+    const day = free ? { id: 'libre', name: 'Séance libre', activities: [] } : (program.days || []).find(d => d.id === wanted);
     if (!day) throw new WorkoutError(`Pas de séance « ${wanted} » dans ce programme.`, 'DAY_NOT_FOUND');
 
     const planned = clone(day.activities);

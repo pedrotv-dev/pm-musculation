@@ -310,3 +310,30 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
    Couleurs d'alerte existantes ; le turquoise du focus reste prioritaire pendant la saisie. */
 .pm-input[aria-invalid="true"] { border-color:var(--danger); background:var(--surface-danger); box-shadow:0 0 0 1px var(--stroke-danger) inset; }
 .pm-input[aria-invalid="true"]:not(:focus-visible) { color:var(--text-danger); }
+
+/* V2 — Profil : sections repliables, formulaires du profil sportif, machines, demande ChatGPT (composants existants) */
+.pm-fold > summary { cursor:pointer; list-style:none; font-weight:800; font-size:17px; min-height:44px; display:flex; align-items:center; justify-content:space-between; }
+.pm-fold > summary::-webkit-details-marker { display:none; }
+.pm-fold > summary::after { content:'▾'; color:var(--muted); transition:transform var(--dur-fast) var(--ease-out); }
+.pm-fold[open] > summary::after { transform:rotate(180deg); }
+.pm-coach-field { display:flex; flex-direction:column; gap:6px; margin-top:12px; }
+.pm-coach-label { font-weight:700; font-size:14px; margin:12px 0 0; }
+.pm-coach-field .pm-coach-label { margin:0; }
+.pm-coach-input, .pm-coach-select { text-align:left; font-size:16px; font-weight:600; }
+.pm-coach-area { width:100%; min-height:72px; padding:10px; border-radius:var(--radius-12); border:1px solid var(--stroke); background:var(--surface-raised); color:var(--text); font:inherit; font-size:16px; resize:vertical; }
+.pm-coach-area:focus-visible { outline:3px solid var(--turq); outline-offset:1px; }
+.pm-coach-help { font-size:12px; margin:0; }
+.pm-coach-sub { margin:18px 0 0; font-size:15px; color:var(--turq); }
+.pm-coach-checks { display:flex; flex-wrap:wrap; gap:0 16px; }
+.pm-coach-checks .pm-check { min-height:44px; }
+.pm-coach-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:0 10px; }
+.pm-coach-warning { font-size:13px; border-left:3px solid var(--turq); padding-left:10px; }
+.pm-coach-status { min-height:20px; font-size:14px; margin:8px 0 0; }
+.pm-coach-status[data-state="ok"] { color:var(--turq); }
+.pm-coach-status[data-state="error"] { color:#ff8a8a; }
+.pm-coach-out { min-height:220px; margin-top:10px; font-size:13px; }
+.pm-gym-list { display:flex; flex-direction:column; gap:2px; margin-top:8px; }
+.pm-gym-row { display:grid; grid-template-columns:minmax(0, 1fr) auto auto; gap:6px; align-items:center; border-bottom:1px solid var(--stroke); padding:4px 0; }
+.pm-gym-name { font-size:14px; font-weight:700; overflow-wrap:anywhere; }
+.pm-gym-check { margin-top:0; font-size:12px; min-height:44px; }
+@media (max-width:360px) { .pm-gym-row { grid-template-columns:minmax(0, 1fr) auto; } .pm-gym-name { grid-column:1 / -1; } .pm-coach-grid { grid-template-columns:1fr; } }

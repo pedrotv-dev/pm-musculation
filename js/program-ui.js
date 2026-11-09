@@ -3,14 +3,18 @@
  * Stockage/validation : js/programs.js (Claude). Aucune ecriture hors importProgram.
  * Les sessions de demonstration sont uniquement des objets JavaScript en memoire.
  */
-import { prepareProgramImport, importProgram, listProgramWeeks, getActiveProgram, mondayOf } from './programs.js';
+import { prepareProgramImport, importProgram, listProgramWeeks, getActiveProgram, mondayOf, parseProgramJson, readProgramFile } from './programs.js';
+import { getGym, getSportProfile } from './sport-profile.js';
+import { listWorkouts } from './workouts.js';
+import { machineHistory, isClosed } from './stats.js';
+import { confirmDialog } from './dom.js';
 import { getProgram } from '../storage.js';
 import { getDemoProgram } from './workouts.js';
 import { el as node, add, clear as wipe, btn } from './dom.js';
 import { loadCatalog } from './catalog.js';
 import { isPerSide } from './machine-rules.js';
 import { metricsText } from './cardio.js';
-import { PROFILE_STORAGE_KEY, isKnownProfile, isRealProfile } from './profiles.js';
+import { PROFILE_STORAGE_KEY, isKnownProfile, isRealProfile, getProfileInfo } from './profiles.js';
 
 const DAYS = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
 const dayNow = () => DAYS[(new Date().getDay() + 6) % 7];
@@ -173,6 +177,7 @@ parent.replaceChildren(node('div', 'eyebrow', 'Entraînement'), node('h2', '', '
 
 function resetPreview() {
   ++state.previewVersion;
+  state.remapped = null;
   state.preview = null; state.replacements = {}; previewView.hidden = true; replacementsView.hidden = true;
   save.disabled = true; noNotify();
 }
@@ -265,7 +270,41 @@ async function displayProgram() {
     if (valid()) showError(error);
   }
 }
-function sourceForImport() { return state.source || paste.value.trim(); }
+function sourceForImport() { return state.remapped || state.source || paste.value.trim(); }
+/** Source (fichier ou texte) → objet, sans rien enregistrer ; null si illisible (l'erreur détaillée vient ensuite). */
+async function objectOf(source) {
+  if (source && typeof source === 'object' && typeof source.text !== 'function') return source;
+  try { return typeof source === 'string' ? parseProgramJson(source) : await readProgramFile(source); } catch (_) { return null; }
+}
+/**
+ * Avertissements V2 (non bloquants, affichés avant l'import) : machines absentes de la salle du profil ou à éviter,
+ * charges très au-dessus des meilleures charges réelles, séances placées hors des jours disponibles.
+ */
+async function profileWarnings(profile, prepared) {
+  const out = [];
+  try {
+    const [gym, sport, sessions] = await Promise.all([getGym(profile), getSportProfile(profile), listWorkouts(profile)]);
+    const closed = sessions.filter(isClosed);
+    const avail = gym.available ? new Set(gym.available) : null, avoid = new Set(gym.avoid || []);
+    const name = id => state.names.get(id) || id;
+    const seen = new Set();
+    for (const day of prepared.program.days) {
+      if (sport.days.length && !sport.days.includes(day.id)) out.push('Séance prévue le ' + day.id + ', qui n’est pas dans tes jours disponibles.');
+      for (const a of day.activities) {
+        if (a.type !== 'strength' || seen.has(a.machineId)) continue;
+        seen.add(a.machineId);
+        if (avoid.has(a.machineId)) out.push(name(a.machineId) + ' fait partie de tes machines à éviter.');
+        else if (avail && !avail.has(a.machineId)) out.push(name(a.machineId) + ' n’est pas dans tes machines disponibles.');
+        const top = Math.max(...a.sets.map(x => x.kg));
+        const hist = machineHistory(closed, a.machineId);
+        const best = hist.length ? Math.max(...hist.map(h => h.topKg)) : 0;
+        if (best > 0 && top > best * 1.25 + 5) out.push(name(a.machineId) + ' : ' + top + ' kg prévus, nettement au-dessus de ta meilleure charge réelle (' + best + ' kg). Vérifie avant de l’importer.');
+        else if (!best && top > 150) out.push(name(a.machineId) + ' : ' + top + ' kg prévus alors que tu n’as encore jamais fait cette machine.');
+      }
+    }
+  } catch (_) { /* informations de profil indisponibles : aucun avertissement supplémentaire */ }
+  return out;
+}
 function replacementValues() {
   const out = {};
   for (const row of replacementsView.querySelectorAll('select[data-from]')) {
@@ -345,14 +384,27 @@ async function previewImport() {
     request === state.importVersion && previewVersion === state.previewVersion;
   state.busy = true; verify.disabled = true; save.disabled = true;
   try {
-    const prepared = await prepareProgramImport(profile, source, { knownMachineIds: state.known });
+    // Programme écrit pour un autre identifiant (une seule clé) : jamais importé sans accord explicite.
+    state.remapped = null;
+    let input = source;
+    const obj = await objectOf(source);
+    const progs = obj && obj.programs && typeof obj.programs === 'object' && !Array.isArray(obj.programs) ? obj.programs : null;
+    if (progs && !(profile in progs) && Object.keys(progs).length === 1) {
+      const key = Object.keys(progs)[0];
+      const ok = await confirmDialog('Ce programme est écrit pour « ' + key + ' » et non pour ton profil (' + (getProfileInfo(profile)?.name || profile) + '). L’importer quand même pour ton profil ?', { title: 'Profil du programme', ok: 'L’importer pour mon profil' });
+      if (!valid()) return;
+      if (ok) { state.remapped = { ...obj, programs: { [profile]: progs[key] } }; input = state.remapped; }
+    }
+    const prepared = await prepareProgramImport(profile, input, { knownMachineIds: state.known });
     if (!valid()) return;
     state.preview = prepared;
     state.replacements = {};
     drawReplacements(prepared);
     drawPreview(prepared);
+    const extra = await profileWarnings(profile, prepared);
+    if (!valid()) return;
     if (prepared.unknownMachines.length) notify('Machines inconnues : choisis leur remplacement dans le catalogue.', 'info');
-    else { save.disabled = false; notify('Programme vérifié : tu peux l’importer.', 'success', prepared.warnings); }
+    else { save.disabled = false; notify('Programme vérifié : tu peux l’importer.' + (extra.length ? ' Points à vérifier :' : ''), extra.length ? 'info' : 'success', [...extra, ...prepared.warnings]); }
   } catch (error) {
     if (valid()) { resetPreview(); showError(error); }
   } finally {
@@ -366,6 +418,16 @@ async function saveImport() {
   if (!state.preview || !state.catalogueReady || state.busy) return;
   const profile = state.profile;
   const generation = state.profileVersion;
+  // Un programme existant n'est jamais remplacé sans confirmation explicite (les séances enregistrées sont conservées).
+  if (isRealProfile(profile)) {
+    const weekStart = state.preview.weekStart;
+    const existing = await getProgram(profile, weekStart).catch(() => null);
+    if (!sameProfile(profile, generation) || !state.preview) return;
+    if (existing && !(await confirmDialog('Un programme existe déjà pour la semaine du ' + weekStart + '. Le remplacer par celui-ci ? Tes séances déjà enregistrées sont conservées.', { title: 'Remplacer le programme', ok: 'Remplacer', danger: true }))) {
+      notify('Import annulé : le programme existant est conservé.', 'info'); return;
+    }
+    if (!sameProfile(profile, generation) || !state.preview) return;
+  }
   const request = ++state.importVersion;
   const source = sourceForImport();
   const replacements = { ...state.replacements };
@@ -386,7 +448,8 @@ async function saveImport() {
     importCard.open = false;
     state.preview = null; state.replacements = {};
     previewView.hidden = true; replacementsView.hidden = true;
-    notify('Programme de ' + profile + ' enregistré pour la semaine du ' + prepared.weekStart + '.', 'success');
+    notify('Programme de ' + (getProfileInfo(profile)?.name || profile) + ' enregistré pour la semaine du ' + prepared.weekStart + '.', 'success');
+    document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile } })); // accueil et bilan à jour tout de suite
   } catch (error) {
     if (valid()) showError(error);
   } finally {

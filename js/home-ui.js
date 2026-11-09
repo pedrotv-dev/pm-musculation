@@ -44,6 +44,8 @@ function progressSection(r) {
   return box;
 }
 
+/** Séance libre (V2) : sans programme, machines ajoutées pendant la séance. */
+const freeButton = profile => btn('Séance libre (sans programme)', 'pm-link', () => emit('pm:start-workout', { profileId: profile, free: true }));
 async function renderHome() {
   const profile = root.dataset.pmProfile;
   const mine = ++rev;
@@ -73,8 +75,10 @@ async function renderHome() {
     page.append(card);
   } else if (!program) {
     page.append(add(el('article', 'panel'), el('h3', '', 'Aucun programme cette semaine'),
-      el('p', 'pm-muted', 'Importe le programme de la semaine pour démarrer une séance.'),
-      btn('Importer un programme', 'pm-validate', () => go('programme'))));
+      el('p', 'pm-muted', 'Prépare-le avec ChatGPT (Profil → Préparer mon programme), importe-le, ou fais une séance libre.'),
+      btn('Importer un programme', 'pm-validate', () => go('programme')),
+      btn('Préparer mon programme avec ChatGPT', 'pm-secondary', () => go('profil')),
+      freeButton(profile)));
   } else {
     const today = dayIdOf(new Date());
     const idx = DAYS.indexOf(today);
@@ -100,6 +104,7 @@ async function renderHome() {
       card.append(row);
       if (doneToday) card.append(el('p', 'pm-muted', 'Déjà enregistrée aujourd’hui (' + (doneToday.status === 'completed' ? 'complète' : 'partielle') + ').'));
       card.append(btn('Choisir une autre journée', 'pm-link', () => go('programme')));
+      card.append(freeButton(profile));
     }
     page.append(card);
   }
