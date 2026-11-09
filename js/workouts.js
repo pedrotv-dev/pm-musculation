@@ -194,6 +194,9 @@ function mutate(profileId, sessionId, change, { now, allowPaused = false, allowC
     if (!allowClosed && isClosed(s)) throw new WorkoutError('Cette séance est terminée.', 'SESSION_CLOSED');
     if (!allowPaused && s.status === 'paused') throw new WorkoutError('Séance en pause : la reprendre d\'abord.', 'SESSION_PAUSED');
     change(s);
+    // Révision PERSISTANTE de la séance (FIX6) : +1 à chaque mutation, dans la même transaction. Une confirmation
+    // (clôture, arrêt) peut ainsi exiger l'état exact qu'elle a montré (option `expectRev`) ; absente = 0 (anciennes séances).
+    s.rev = (Number.isInteger(s.rev) ? s.rev : 0) + 1;
     if (!keepUpdatedAt) s.updatedAt = isoOf(now);
     s.summary = getWorkoutSummary(s);
     return s;
@@ -449,12 +452,16 @@ export function updateSet(profileId, sessionId, activityKey, setId, patch = {}, 
     // Concurrence (autre onglet, autre fenêtre) : `expect` = valeurs sur lesquelles l'utilisateur s'est appuyé pour
     // modifier un champ. Vérifiées DANS la transaction : si la base a changé entre-temps (valeur différente de l'attendue
     // ET de la nouvelle), conflit explicite plutôt qu'écrasement silencieux. Facultatif : appels existants inchangés.
+    // Pour un champ NON modifié (ex. validation « done » seule), la valeur attendue doit être EXACTEMENT celle enregistrée :
+    // on ne valide jamais une valeur que l'utilisateur n'a pas vue (écrite entre-temps par un autre onglet).
     if (patch.expect !== undefined) {
       if (!isObj(patch.expect)) throw new WorkoutError('Modification invalide.', 'INVALID_SET');
-      for (const field of ['kg', 'reps']) {
+      for (const field of ['kg', 'reps', 'done']) {
         const expected = patch.expect[field];
-        if (expected === undefined || patch[field] === undefined) continue;
-        if (set[field] !== expected && set[field] !== patch[field]) {
+        if (expected === undefined) continue;
+        // « done » : précondition d'état toujours STRICTE (valider une série déjà validée ailleurs = conflit)
+        const strict = field === 'done' || patch[field] === undefined;
+        if (strict ? set[field] !== expected : (set[field] !== expected && set[field] !== patch[field])) {
           throw new WorkoutError('Cette série a été modifiée ailleurs (autre onglet ou fenêtre) : la valeur enregistrée est conservée et affichée. Vérifie-la, puis ressaisis si besoin.',
             'SET_CONFLICT', { field, current: set[field] });
         }
@@ -590,11 +597,19 @@ export function returnToPostponed(profileId, sessionId, activityKey, options) {
  * - mode 'partial' : cloture avec ce qui a ete fait.
  * @returns {Promise<session>} avec `endedAt`, `summary`
  */
-export function finishWorkout(profileId, sessionId, mode = 'completed', { now = new Date() } = {}) {
+/** Refus si la séance a changé depuis la révision `expectRev` qu'une confirmation a montrée (vérifié dans la transaction). */
+function checkRev(s, expectRev) {
+  if (expectRev === undefined) return;
+  if ((Number.isInteger(s.rev) ? s.rev : 0) !== expectRev) {
+    throw new WorkoutError('La séance a été modifiée entre-temps (autre onglet ou fenêtre) : rien n’a été clos. Vérifie puis confirme à nouveau.', 'SESSION_CHANGED');
+  }
+}
+export function finishWorkout(profileId, sessionId, mode = 'completed', { now = new Date(), expectRev } = {}) {
   if (mode !== 'completed' && mode !== 'partial') {
     return Promise.reject(new WorkoutError('Choisir « completed » ou « partial ».', 'INVALID_ARGUMENT'));
   }
   return mutate(profileId, sessionId, s => {
+    checkRev(s, expectRev);
     if (mode === 'completed') {
       const pending = s.activities.filter(a => a.status !== 'done').map(a => a.key);
       if (pending.length) {
@@ -616,12 +631,13 @@ export function finishWorkout(profileId, sessionId, mode = 'completed', { now = 
 }
 
 /** Annule une seance demarree par erreur. Refuse si une serie ou activite est deja validee (code HAS_DATA). */
-export function discardWorkout(profileId, sessionId) {
+export function discardWorkout(profileId, sessionId, { expectRev } = {}) {
   try { writable(profileId); nonEmpty(sessionId, 'Identifiant de séance'); }
   catch (error) { return Promise.reject(error); }
   // verification et suppression dans la meme transaction : une serie validee ailleurs n'est jamais perdue
   return backend(profileId).removeIf(profileId, sessionId, s => {
     if (!s || s.profileId !== profileId) throw new WorkoutError('Séance introuvable.', 'NOT_FOUND');
+    checkRev(s, expectRev);
     if (isClosed(s) || s.activities.some(a => a.status !== 'pending' || a.sets.some(x => x.done))) {
       throw new WorkoutError('Cette séance contient des résultats : la terminer en partielle.', 'HAS_DATA');
     }

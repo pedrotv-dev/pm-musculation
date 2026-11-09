@@ -188,7 +188,12 @@ function writeSet(w, v, { silent = true, done = false, after } = {}) {
   Object.assign(w.base, patch); // évite les doubles écritures ; rétablie en cas d'échec
   const body = { ...patch };
   if (Object.keys(expect).length) body.expect = expect;
-  if (done) body.done = true;
+  if (done) {
+    // « done » n'est enregistré que si la base contient EXACTEMENT les valeurs que l'utilisateur valide (charge,
+    // répétitions) et que la série n'est pas déjà validée : vérifié par le moteur DANS la transaction (SET_CONFLICT sinon)
+    body.done = true;
+    body.expect = { kg: patch.kg !== undefined ? expect.kg : w.base.kg, reps: patch.reps !== undefined ? expect.reps : w.base.reps, done: false };
+  }
   w.pending++;
   let counted = true;
   const run = (async () => {
@@ -434,7 +439,8 @@ function renderSets(card, a) {
       if (!v) return;
       await W.write(v, { silent: !final || formFocused() });
     };
-    const schedule = () => { if (disposed) return; clearTimeout(timer); timer = setTimeout(() => save(), 350); };
+    // statut recalculé immédiatement (clavier, − / +) : jamais « Sauvegardé » pour une valeur pas encore enregistrée
+    const schedule = () => { if (disposed) return; clearTimeout(timer); timer = setTimeout(() => save(), 350); saveStatus('✓ Sauvegardé'); };
     S.disposers.add(flush => { const pending = timer !== null; clearTimeout(timer); timer = null; if (flush && pending) save(); disposed = true; });
     for (const i of [kgF.input, repsF.input]) {
       i.addEventListener('input', schedule);
@@ -809,6 +815,7 @@ function renderRecap() {
         markFailed(W); // valeur enregistrée affichée, échec éventuel toujours signalé
         const save = () => { const v = readSet(kg.input, reps.input); if (v) W.write(v, { silent: true }); };
         kg.input.addEventListener('change', save); reps.input.addEventListener('change', save);
+        for (const i of [kg.input, reps.input]) i.addEventListener('input', () => saveStatus('✓ Sauvegardé')); // statut immédiat
         row.append(el('span', 'pm-set-mark', set.done ? '✓' : '○'), kg.wrap, reps.wrap);
         if (!set.done) row.append(btn('Valider', 'pm-icon-btn pm-text-btn', async () => {
           const seq = S.conflictSeq;
@@ -836,37 +843,62 @@ function renderRecap() {
   return box;
 }
 
+/**
+ * Révision de la séance telle que CET onglet la connaît (dernier état reçu de ses propres écritures). À appeler dans
+ * une opération de la file `op()` : les écritures précédentes de l'onglet y sont alors toutes appliquées.
+ */
+const ownRev = () => (Number.isInteger(S.session?.rev) ? S.session.rev : 0);
+/** Fin de séance refusée par le moteur (séance modifiée ailleurs) : on montre l'état réel, rien n'est clos. */
+async function reloadAfterChange(t, error) {
+  try { const fresh = await getWorkout(t.profile, t.id); if (fresh && isLive(t)) { S.session = fresh; render(); } } catch (_) { /* message seul */ }
+  if (isLive(t)) setStatus(error.message, 'error');
+}
 async function finish(complete) {
   if (S.busy) return;
   S.busy = true;
   const t = targetNow(), profile = S.profile;
   const seq = S.conflictSeq;
+  // Confirmation valable seulement pour la séance, le contexte, la génération de conflits ET la révision qu'elle a montrés
+  const stillValid = () => isLive(t) && S.conflictSeq === seq;
+  const interrupted = () => setStatus('Fin de séance interrompue : une série a été modifiée ailleurs. Vérifie le récapitulatif, puis termine à nouveau.', 'error');
   try {
     if (!(await resolveUnsaved(t, 'terminer la séance'))) return; // jamais de clôture avec une valeur non enregistrée
     if (!isLive(t)) return;
-    if (S.conflictSeq !== seq) { setStatus('Fin de séance interrompue : une série a été modifiée ailleurs. Vérifie le récapitulatif, puis termine à nouveau.', 'error'); return; }
+    if (S.conflictSeq !== seq) { interrupted(); return; }
     const s = S.session;
     const notDone = s.activities.filter(a => a.status !== 'done');
     if (!complete && !(await confirmDialog(
       notDone.length + ' activité(s) ne sont pas terminées (' + notDone.map(nameOf).slice(0, 4).join(', ') +
       '). Terminer en séance PARTIELLE ? Tous les résultats enregistrés sont conservés.', { title: 'Séance partielle', ok: 'Terminer en partielle' }))) return;
     if (!isLive(t)) return; // la séance affichée a changé pendant la confirmation : rien n'est terminé
+    if (S.conflictSeq !== seq) { interrupted(); return; } // conflit pendant la confirmation : elle est périmée
     if (!(await resolveUnsaved(t, 'terminer la séance'))) return; // une saisie faite pendant la confirmation
-    const result = await op(() => (isLive(t) ? finishWorkout(profile, t.id, complete ? 'completed' : 'partial') : STALE));
-    if (result === STALE || !isLive(t)) return;
+    if (!stillValid()) { if (isLive(t)) interrupted(); return; }
+    // Révision attendue relevée DANS la file d'écritures, juste avant la transaction : toutes les écritures de CET onglet
+    // sont alors appliquées (S.session à jour) ; une modification venue d'un autre onglet n'y figure pas → SESSION_CHANGED.
+    const result = await op(() => (stillValid() ? finishWorkout(profile, t.id, complete ? 'completed' : 'partial', { expectRev: ownRev() }) : STALE));
+    if (result === STALE) { if (isLive(t)) interrupted(); return; }
+    if (!isLive(t)) return;
     S.session = result;
     emit('pm:workout-changed', { profile, final: true }); // séance terminée : les autres écrans doivent se mettre à jour
     renderDone(result);
   } catch (error) {
-    if (error?.code === 'INCOMPLETE') { await commitPartial(t); }
+    if (error?.code === 'INCOMPLETE') { await commitPartial(t, seq); }
+    else if (error?.code === 'SESSION_CHANGED') { await reloadAfterChange(t, error); } // révision changée : rien n'est clos
     else if (isLive(t)) report(error);
   } finally { S.busy = false; }
 }
-async function commitPartial(t) {
+async function commitPartial(t, seq = S.conflictSeq) {
   if (!isLive(t)) return;
   if (!(await resolveUnsaved(t, 'terminer la séance'))) return;
-  const result = await op(() => (isLive(t) ? finishWorkout(t.profile, t.id, 'partial') : STALE));
-  if (result !== STALE && isLive(t)) { S.session = result; renderDone(result); emit('pm:workout-changed', { profile: t.profile, final: true }); }
+  if (!isLive(t) || S.conflictSeq !== seq) return;
+  try {
+    const result = await op(() => (isLive(t) && S.conflictSeq === seq ? finishWorkout(t.profile, t.id, 'partial', { expectRev: ownRev() }) : STALE));
+    if (result !== STALE && isLive(t)) { S.session = result; renderDone(result); emit('pm:workout-changed', { profile: t.profile, final: true }); }
+  } catch (error) {
+    if (error?.code === 'SESSION_CHANGED') await reloadAfterChange(t, error);
+    else if (isLive(t)) report(error);
+  }
 }
 function renderDone(session) {
   clearInterval(S.clock); S.clock = null;
@@ -973,7 +1005,7 @@ function render() {
       panel.append(btn('Annuler cette séance (vide)', 'pm-link', async () => {
         if (!(await confirmDialog('Annuler cette séance ? Rien n’a été validé.', { ok: 'Annuler la séance', danger: true }))) return;
         if (!isLive(T)) return; // cible capturée au rendu : jamais S.profile relu après la confirmation
-        try { const r = await op(() => (isLive(T) ? discardWorkout(T.profile, T.id) : STALE)); if (r !== STALE && isLive(T)) closeWorkout({ goTo: 'accueil' }); }
+        try { const r = await op(() => (isLive(T) ? discardWorkout(T.profile, T.id, { expectRev: ownRev() }) : STALE)); if (r !== STALE && isLive(T)) closeWorkout({ goTo: 'accueil' }); }
         catch (e) { if (isLive(T)) report(e); }
       }));
     }
@@ -1040,13 +1072,16 @@ async function resumeExisting(detail = {}) {
 
 /** Fin « partielle » depuis l'accueil, sans rouvrir l'ecran de seance. */
 async function stopPartial() {
-  // Identité exacte capturée AVANT toute attente : profil, séance, génération du contexte (S.rev change à chaque
-  // changement de profil et à chaque ouverture / reprise / fermeture de séance). Un aller-retour Pierre → Manon → Pierre
-  // ou la reprise de la séance révoque donc cette confirmation.
+  // Identité exacte capturée AVANT toute attente : profil, génération du contexte (S.rev change à chaque changement de
+  // profil et à chaque ouverture / reprise / fermeture de séance) et RÉVISION PERSISTANTE de la séance montrée par la
+  // confirmation. La clôture n'est appliquée par le moteur que si la séance est toujours à cette révision (vérifié dans
+  // la transaction) : une modification faite entre-temps (autre onglet) la fait refuser, et une nouvelle confirmation
+  // fondée sur l'état actualisé est demandée.
   const profile = S.profile, rev = S.rev;
   const still = () => S.rev === rev && S.profile === profile && root.dataset.pmProfile === profile && !S.session;
   const session = await getResumableWorkout(profile).catch(() => null);
   if (!session || !still()) return;
+  const shownRev = Number.isInteger(session.rev) ? session.rev : 0;
   const hasData = session.activities.some(a => a.status !== 'pending' || a.sets.some(x => x.done));
   const ok = await confirmDialog(hasData
     ? 'Terminer cette séance comme PARTIELLE ? Les résultats enregistrés sont conservés.'
@@ -1054,13 +1089,19 @@ async function stopPartial() {
   if (!ok) return;
   if (!still()) { toast('Confirmation périmée (profil ou séance changés entre-temps) : rien n’a été modifié.'); return; }
   try {
-    const current = await getResumableWorkout(profile).catch(() => null); // revérifiée juste avant la transaction
-    if (!still() || !current || current.id !== session.id) { toast('Confirmation périmée : rien n’a été modifié.'); return; }
-    if (hasData) await finishWorkout(profile, session.id, 'partial');
+    if (hasData) await finishWorkout(profile, session.id, 'partial', { expectRev: shownRev });
     else if (profile === 'demo') await deleteWorkout(profile, session.id);
-    else await discardWorkout(profile, session.id);
+    else await discardWorkout(profile, session.id, { expectRev: shownRev });
     emit('pm:workout-changed', { profile });
-  } catch (error) { toast(error?.message || 'Impossible d’arrêter la séance.'); }
+  } catch (error) {
+    if (error?.code === 'SESSION_CHANGED' || error?.code === 'HAS_DATA') {
+      toast(error.message);
+      emit('pm:workout-changed', { profile });
+      if (still()) stopPartial(); // nouvelle confirmation, fondée sur l'état actualisé
+      return;
+    }
+    toast(error?.message || 'Impossible d’arrêter la séance.');
+  }
 }
 
 function changeProfile(id) {

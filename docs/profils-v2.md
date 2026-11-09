@@ -150,3 +150,16 @@ Les changements sont annoncés par l'événement `document` → `pm:profiles-cha
 
   Il n'y a jamais d'abandon silencieux, et la confirmation de séance partielle ne promet plus que les résultats **enregistrés**.
 
+## Préconditions transactionnelles (FIX6)
+
+- **Révision persistante de séance.** Chaque séance porte `rev`, incrémenté par le moteur dans la transaction de chaque mutation ; il vaut 0 pour une ancienne séance.
+  - `finishWorkout(…, { expectRev })` et `discardWorkout(…, { expectRev })` refusent la clôture ou l'annulation si la séance a changé depuis la confirmation qui a montré cette révision (`SESSION_CHANGED`). Rien n'est clos et aucune donnée n'est perdue.
+  - Depuis l'accueil, une nouvelle confirmation, fondée sur l'état actualisé, est alors demandée.
+  - Depuis l'écran de séance, l'état réel est réaffiché.
+- **Validation d'une série.** `done` est envoyé avec `expect: { kg, reps, done: false }`, soit les valeurs que l'utilisateur valide. Le moteur les vérifie dans la transaction : une valeur écrite entre-temps par un autre onglet, ou une série déjà validée, déclenche `SET_CONFLICT`. Dans ce cas :
+  - rien n'est validé ;
+  - aucun événement n'est émis, donc ni XP ni chronomètre ;
+  - l'état confirmé est affiché, et un nouveau clic est exigé.
+- **Statut.** Il est recalculé dès qu'un champ change (clavier, boutons − / +, récapitulatif), sans attendre le délai d'enregistrement.
+- **Fin de séance.** La confirmation est périmée si un conflit survient pendant son attente. La génération de conflits, la cible et la révision sont revérifiées avant l'ouverture de la confirmation, après son acceptation, après chaque attente, puis juste avant la clôture.
+
