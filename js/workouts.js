@@ -459,11 +459,12 @@ export function updateSet(profileId, sessionId, activityKey, setId, patch = {}, 
     // on ne valide jamais une valeur que l'utilisateur n'a pas vue (écrite entre-temps par un autre onglet).
     if (patch.expect !== undefined) {
       if (!isObj(patch.expect)) throw new WorkoutError('Modification invalide.', 'INVALID_SET');
-      for (const field of ['kg', 'reps', 'done']) {
+      for (const field of ['kg', 'reps', 'done', 'doneAt']) {
         const expected = patch.expect[field];
         if (expected === undefined) continue;
-        // « done » : précondition d'état toujours STRICTE (valider une série déjà validée ailleurs = conflit)
-        const strict = field === 'done' || patch[field] === undefined;
+        // « done » et « doneAt » : préconditions d'état toujours STRICTES (valider une série déjà validée ailleurs = conflit ;
+        // « doneAt » distingue une validation d'une revalidation faite ailleurs avec les mêmes valeurs)
+        const strict = field === 'done' || field === 'doneAt' || patch[field] === undefined;
         if (strict ? set[field] !== expected : (set[field] !== expected && set[field] !== patch[field])) {
           throw new WorkoutError('Cette série a été modifiée ailleurs (autre onglet ou fenêtre) : la valeur enregistrée est conservée et affichée. Vérifie-la, puis ressaisis si besoin.',
             'SET_CONFLICT', { field, current: set[field] });
@@ -518,7 +519,7 @@ export function addSet(profileId, sessionId, activityKey, { kg, reps } = {}, opt
 function checkSet(set, expectSet) {
   if (expectSet === undefined) return;
   if (!isObj(expectSet)) throw new WorkoutError('Modification invalide.', 'INVALID_SET');
-  for (const field of ['kg', 'reps', 'done']) {
+  for (const field of ['kg', 'reps', 'done', 'doneAt']) {
     if (expectSet[field] !== undefined && set[field] !== expectSet[field]) {
       throw new WorkoutError('Cette série a été modifiée ailleurs (autre onglet, fenêtre ou restauration) : rien n’a été retiré. Vérifie la valeur enregistrée affichée, puis recommence si besoin.',
         'SET_CONFLICT', { field, current: set[field] });
@@ -757,6 +758,18 @@ export function setCursor(profileId, sessionId, activityKey, options) {
 export function setWorkoutFeedback(profileId, sessionId, { feeling, note } = {}, options) {
   return mutate(profileId, sessionId, s => {
     const f = s.feedback || { feeling: null, note: '' };
+    // `options.expectFeedback` : valeurs sur lesquelles l'utilisateur s'est appuyé ({ note?, feeling? }) ; vérifiées dans la
+    // transaction : une remarque ou un ressenti modifiés ailleurs (autre onglet, restauration) ne sont jamais écrasés.
+    const ex = options && options.expectFeedback;
+    if (ex !== undefined) {
+      const cur = { note: f.note || '', feeling: f.feeling ?? null };
+      for (const k of ['note', 'feeling']) {
+        if (ex[k] !== undefined && cur[k] !== ex[k]) {
+          throw new WorkoutError('Ressenti ou remarque modifiés ailleurs (autre onglet ou restauration) : la valeur enregistrée est conservée. Vérifie-la, puis enregistre à nouveau si besoin.',
+            'FEEDBACK_CONFLICT', { field: k, current: cur[k] });
+        }
+      }
+    }
     if (feeling !== undefined) {
       if (feeling !== null && !(Number.isInteger(feeling) && feeling >= 1 && feeling <= 5)) {
         throw new WorkoutError('Ressenti : de 1 à 5.', 'INVALID_ARGUMENT');

@@ -128,7 +128,7 @@ const consentNow = () => Object.freeze({ expectRev: S.seenRev, expectGen: S.seen
 /** Valeurs enregistrées connues de la série (dernier état reçu du moteur), pour la précondition `expectSet`. */
 function setNow(key, setId) {
   const set = S.session && act(S.session, key)?.sets.find(x => x.id === setId);
-  return set ? { kg: set.kg, reps: set.reps, done: set.done } : null;
+  return set ? { kg: set.kg, reps: set.reps, done: set.done, doneAt: set.doneAt ?? null } : null;
 }
 function advanceSeen(next) {
   if (genOf(next) === S.seenGen && (revOf(next) === S.seenRev + 1 || revOf(next) === S.seenRev)) S.seenRev = revOf(next);
@@ -182,6 +182,21 @@ function reconcileWriter(w, next) {
   }
   return changed;
 }
+/**
+ * Relecture APRÈS une écriture confirmée (QA9) : la confirmation peut arriver alors qu'un autre onglet a déjà écrit une
+ * valeur plus récente. Avant toute annonce « Sauvegardé », la séance est relue : un état plus récent (révision supérieure
+ * ou autre incarnation) devient la référence et les champs non modifiés localement sont réaffichés. L'état présenté
+ * (consentement) n'avance pas : une clôture exigera de nouveau l'état réellement affiché.
+ * @returns {Promise<boolean>} true si un champ affiché a été actualisé.
+ */
+async function confirmFresh(t) {
+  let fresh = null;
+  try { fresh = await getWorkout(t.profile, t.id); } catch (_) { return false; }
+  if (!fresh || !isLive(t) || !S.session) return false;
+  if (genOf(fresh) === genOf(S.session) && revOf(fresh) <= revOf(S.session)) return false;
+  S.session = fresh;
+  return reconcileAll(fresh);
+}
 function reconcileAll(next) {
   let changed = false;
   for (const w of S.writers.values()) if (reconcileWriter(w, next)) changed = true;
@@ -223,8 +238,8 @@ function setWriterFor(t, a, set, label) {
 const savedFeedback = s => ({ note: s?.feedback?.note || '', feeling: s?.feedback?.feeling ?? null });
 function feedbackWriterFor(t, s) {
   const key = [t.profile, t.rev, t.id].join('|');
-  if (!S.fb || S.fb.key !== key) S.fb = { key, t, base: savedFeedback(s), shown: savedFeedback(s), pending: 0, pend: { note: 0, feeling: 0 }, failed: new Set(), note: () => null, feelings: () => null };
-  else if (!S.fb.pending && !S.fb.failed.size && !feedbackDirty(S.fb)) { S.fb.base = savedFeedback(s); S.fb.shown = { ...S.fb.base }; }
+  if (!S.fb || S.fb.key !== key) S.fb = { key, t, gen: genOf(s), base: savedFeedback(s), shown: savedFeedback(s), pending: 0, pend: { note: 0, feeling: 0 }, failed: new Set(), note: () => null, feelings: () => null };
+  else if (!S.fb.pending && !S.fb.failed.size && !feedbackDirty(S.fb)) { S.fb.base = savedFeedback(s); S.fb.shown = { ...S.fb.base }; S.fb.gen = genOf(s); }
   return S.fb;
 }
 const feedbackShown = f => f.shown;
@@ -253,16 +268,31 @@ function writeFeedback(f, patch) {
   const done = () => { f.pending--; for (const k of keys) f.pend[k]--; };
   const run = (async () => {
     try {
-      const next = await commitTo(t, (p, id) => setWorkoutFeedback(p, id, patch), { silent: true, rethrow: true });
+      // Préconditions (QA9) : valeurs enregistrées sur lesquelles la saisie s'appuie, et incarnation de la séance ; une
+      // remarque restaurée ou modifiée ailleurs n'est jamais écrasée par un ancien récapitulatif.
+      const expectFeedback = {}; for (const k of keys) expectFeedback[k] = f.base[k];
+      const next = await commitTo(t, (p, id) => setWorkoutFeedback(p, id, patch, { expectFeedback, expectGen: f.gen }), { silent: true, rethrow: true });
       done();
       if (next) for (const k of keys) { f.failed.delete(k); if (!f.pend[k]) f.base[k] = savedFeedback(next)[k]; }
       markFeedback(f);
       // l'état complet renvoyé peut contenir l'AUTRE champ modifié ailleurs : il est réaffiché avant toute annonce (FIX9)
       const refreshed = next ? reconcileFeedback(f, next) : false;
-      if (next && isLive(t)) saveStatus(refreshed ? REFRESHED_OK : '✓ Sauvegardé');
+      const later = next && isLive(t) ? await confirmFresh(t) : false;
+      if (next && isLive(t)) saveStatus(refreshed || later ? REFRESHED_OK : '✓ Sauvegardé');
       return next;
     } catch (error) {
       done();
+      if (error?.code === 'FEEDBACK_CONFLICT' || error?.code === 'SESSION_CHANGED') {
+        // rien n'est écrit : la valeur enregistrée devient la référence ; la saisie locale reste affichée et signalée
+        try {
+          const fresh = await getWorkout(t.profile, t.id);
+          if (fresh && isLive(t)) { S.session = fresh; f.base = savedFeedback(fresh); f.gen = genOf(fresh); }
+        } catch (_) { /* relecture impossible : la saisie reste signalée */ }
+        for (const k of keys) f.failed.add(k);
+        markFeedback(f);
+        if (isLive(t)) { saveStatus(null); setStatus(error.message + ' Ta saisie est conservée à l’écran, non enregistrée.', 'error'); }
+        return null;
+      }
       for (const k of Object.keys(patch)) f.failed.add(k); // la saisie reste affichée et signalée
       markFeedback(f);
       if (isLive(t)) saveStatus(null);
@@ -292,7 +322,7 @@ function reconcileFeedback(f, next) {
     const n = f.note();
     const local = k === 'note' ? (n && n.isConnected ? n.value : f.shown.note) : f.shown.feeling;
     if (local !== f.base[k]) continue; // saisie locale non enregistrée : jamais écrasée
-    f.base[k] = saved[k]; f.shown[k] = saved[k];
+    f.base[k] = saved[k]; f.shown[k] = saved[k]; f.gen = genOf(next);
     if (k === 'note') { if (n && n.isConnected) n.value = saved.note; } else showFeeling(f);
     changed = true;
   }
@@ -359,7 +389,11 @@ function writeSet(w, v, { silent = true, done = false, after } = {}) {
       if (done && next) w.failed.clear(); // validation explicite des valeurs enregistrées : l'échec est acquitté
       w.pending--; counted = false;
       markFailed(w);
-      if (next && isLive(t)) saveStatus(reconcileWriter(w, next) ? REFRESHED_OK : '✓ Sauvegardé');
+      if (next && isLive(t)) {
+        const changed = reconcileWriter(w, next);
+        const later = await confirmFresh(t); // valeur plus récente écrite ailleurs entre-temps ?
+        if (isLive(t)) saveStatus(changed || later ? REFRESHED_OK : '✓ Sauvegardé');
+      }
       return next;
     } catch (error) {
       w.pending--; counted = false;
@@ -695,7 +729,7 @@ function renderSets(card, a) {
       // Préconditions capturées quand le bouton est PRÉSENTÉ (FIX9) : incarnation de la séance affichée et série affichée
       // (validée, mêmes valeurs). Jamais l'incarnation lue après coup : une séance restaurée entre-temps (nouvelle
       // incarnation, même identifiant, même révision, mêmes valeurs) n'est jamais dévalidée par cet ancien bouton.
-      const shownReopen = Object.freeze({ expectGen: genOf(S.session), set: { kg: set.kg, reps: set.reps, done: true } });
+      const shownReopen = Object.freeze({ expectGen: genOf(S.session), set: { kg: set.kg, reps: set.reps, done: true, doneAt: set.doneAt ?? null } }); // doneAt : une revalidation faite ailleurs est une autre validation (QA9)
       tools.append(btn('↺', 'pm-icon-btn', async () => {
         await flushAll();
         if (!isLive(T)) return;
@@ -740,7 +774,7 @@ function offerUndo(a, setId) {
     actionLabel: 'Annuler', duration: 5000,
     onAction: async () => {
       if (!valid(S.profile, rev) || S.session?.id !== id || !validated) return;
-      if (!(await guardedCommit(T, (p, sid) => updateSet(p, sid, a.key, setId, { done: false, expect: { kg: validated.kg, reps: validated.reps, done: true } }, { expectGen: gen }), STALE_ACTION))) return;
+      if (!(await guardedCommit(T, (p, sid) => updateSet(p, sid, a.key, setId, { done: false, expect: { kg: validated.kg, reps: validated.reps, done: true, doneAt: validated.doneAt } }, { expectGen: gen }), STALE_ACTION))) return;
       fx('set-undone'); emit('pm:workout-set-undone', { profile: S.profile, sessionId: id, activityKey: a.key });
     }
   });
