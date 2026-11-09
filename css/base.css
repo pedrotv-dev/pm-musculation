@@ -214,3 +214,17 @@ body { background:radial-gradient(ellipse 85% 42% at 50% -12%,rgba(20,230,199,.0
 .pm-has-ico { display:inline-flex; align-items:center; justify-content:center; gap:8px; }
 .pm-validate.pm-has-ico { display:flex; width:100%; }
 .pm-validate.pm-has-ico .pm-ico { width:22px; height:22px; stroke-width:2.2; }
+
+/* Création d'un profil local (écran de choix) : composants existants, aucun nouveau style d'ensemble */
+#user-profiles { margin-top:14px; }
+.choice.pm-user .initial { background:rgba(var(--choice-rgb),.19); color:var(--choice-accent); }
+.choice.pm-user { border-color:rgba(var(--choice-rgb),.45); }
+.choice.pm-user strong { max-width:100%; overflow-wrap:anywhere; text-align:center; }
+.pm-create-profile { width:100%; margin-top:14px; }
+.pm-create-form { margin-top:14px; padding:16px; border:1px solid var(--stroke); border-radius:var(--radius-16); background:var(--surface); display:flex; flex-direction:column; gap:10px; }
+.pm-create-label { font-weight:800; }
+.pm-create-form .pm-input { text-align:left; font-size:17px; }
+.pm-create-error { color:#ff8a8a; font-size:14px; margin:0; }
+.pm-create-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.pm-create-actions .primary { margin-top:0; }
+.pm-create-note { color:var(--muted); font-size:12px; margin:0; text-align:center; }

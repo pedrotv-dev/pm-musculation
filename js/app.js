@@ -3,7 +3,7 @@
  * Premier module chargé : il fixe `data-pm-profile` sur <html> avant les autres modules.
  * Événements émis : pm:profile-changed { profile | null }.
  */
-import { PROFILE_STORAGE_KEY, isKnownProfile, isLegacyProfile, getProfileInfo, initProfiles } from './profiles.js';
+import { PROFILE_STORAGE_KEY, PROFILE_COLORS, NAME_MAX, isKnownProfile, isLegacyProfile, getProfileInfo, initProfiles, listProfiles, createProfile } from './profiles.js';
 
 const root = document.documentElement;
 const $ = selector => document.querySelector(selector);
@@ -82,6 +82,67 @@ try { saved = localStorage.getItem(PROFILE_STORAGE_KEY); }
 catch (error) { console.warn('Stockage de profil indisponible.', error); }
 if (saved && (isLegacyProfile(saved) || saved === 'demo')) chooseProfile(saved, false);
 else if (saved) profilesStarted.then(() => { if (!currentProfile && isKnownProfile(saved)) chooseProfile(saved, false); }); // profil du registre
+
+// ---------------------------------------------------------------- profils créés sur cet appareil
+// Tout reste dans IndexedDB (registre des profils) : aucun compte, aucun serveur, aucune synchronisation.
+
+/** Affiche les profils du registre (hors Pierre et Manon, déjà présents) sur l'écran de choix. */
+async function renderUserProfiles() {
+  const box = $('#user-profiles');
+  let list = [];
+  try { list = (await listProfiles()).filter(p => !p.legacy); } catch (_) { list = []; }
+  box.replaceChildren(...list.map(p => {
+    const info = getProfileInfo(p.id) || {};
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'choice pm-user'; b.dataset.userProfile = p.id;
+    b.style.setProperty('--choice-rgb', info.rgb || '20, 230, 199'); b.style.setProperty('--choice-accent', info.accent || '#14e6c7');
+    const initial = Object.assign(document.createElement('span'), { className: 'initial', textContent: (p.name || '?').trim().charAt(0).toUpperCase() });
+    initial.setAttribute('aria-hidden', 'true');
+    b.append(initial, Object.assign(document.createElement('strong'), { textContent: p.name }), Object.assign(document.createElement('span'), { textContent: p.goal || 'Profil de cet appareil' }));
+    b.addEventListener('click', () => chooseProfile(p.id));
+    return b;
+  }));
+  box.hidden = !list.length;
+}
+/** Couleur d'un nouveau profil : la moins utilisée (hors bleu et violet de Pierre et Manon). */
+async function nextColor() {
+  const order = ['turquoise', 'sauge', 'ambre', 'bleu', 'violet'].filter(c => PROFILE_COLORS[c]);
+  const used = new Map(order.map(c => [c, 0]));
+  try { for (const p of await listProfiles()) if (!p.legacy && used.has(p.color)) used.set(p.color, used.get(p.color) + 1); } catch (_) { /* registre illisible */ }
+  return order.reduce((best, c) => (used.get(c) < used.get(best) ? c : best), order[0]);
+}
+const form = $('#create-profile-form'), nameInput = $('#new-profile-name'), formError = $('#create-profile-error');
+const submitBtn = $('#create-profile-submit'), cancelBtn = $('#create-profile-cancel'), openBtn = $('#create-profile');
+let creating = false;
+nameInput.maxLength = NAME_MAX;
+const showError = message => { formError.textContent = message; formError.hidden = !message; if (message) nameInput.setAttribute('aria-invalid', 'true'); else nameInput.removeAttribute('aria-invalid'); };
+function openForm() { form.hidden = false; openBtn.hidden = true; showError(''); nameInput.focus(); }
+function closeForm() { if (creating) return; form.hidden = true; openBtn.hidden = false; nameInput.value = ''; showError(''); }
+openBtn.addEventListener('click', openForm);
+cancelBtn.addEventListener('click', closeForm);
+nameInput.addEventListener('input', () => { if (!formError.hidden) showError(''); });
+form.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (creating) return; // double appui : une seule création
+  const name = nameInput.value.replace(/\s+/g, ' ').trim();
+  if (!name) { showError('Indique un prénom ou un pseudo.'); nameInput.focus(); return; }
+  creating = true; submitBtn.disabled = true; cancelBtn.disabled = true; submitBtn.textContent = 'Création…';
+  try {
+    const profile = await createProfile({ name, color: await nextColor() }); // résolu APRÈS la validation de l'écriture IndexedDB
+    creating = false;
+    closeForm();
+    await renderUserProfiles();
+    chooseProfile(profile.id); // ouvert, et mémorisé comme dernier profil utilisé
+  } catch (error) {
+    console.warn('Création du profil impossible.', error);
+    const known = /^(Le nom|Nom trop long)/.test(String(error?.message)); // validation du nom : message exact
+    showError(known ? error.message : 'Le profil n’a pas pu être enregistré sur ce téléphone. Ton nom est conservé : réessaie.');
+  } finally {
+    creating = false; submitBtn.disabled = false; cancelBtn.disabled = false; submitBtn.textContent = 'Créer';
+  }
+});
+profilesStarted.then(() => renderUserProfiles());
+document.addEventListener('pm:profiles-changed', () => { renderUserProfiles(); });
 
 // Interface future (écrans ASCENT/KORV) : sélection d'un profil par événement, même chemin que les boutons actuels.
 document.addEventListener('pm:select-profile', e => { const p = e.detail && e.detail.profile; if (isKnownProfile(p)) chooseProfile(p); });
