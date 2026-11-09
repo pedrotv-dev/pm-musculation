@@ -38,7 +38,7 @@ panel.setAttribute('aria-label', 'Suivi de la séance');
 main.append(panel);
 
 const S = { profile: null, session: null, selected: null, view: 'activity', rev: 0, queue: Promise.resolve(),
-  catalog: { byId: new Map(), strength: [], list: [], images: new Set() }, history: [], finished: false, keepAwake: true, leaving: false, flushers: new Set(), disposers: new Set(), renderRev: 0, drafts: new Map(), draftSerial: 0, pendingSaves: new Set(), clock: null, undo: null, busy: false };
+  catalog: { byId: new Map(), strength: [], list: [], images: new Set() }, history: [], finished: false, keepAwake: true, leaving: false, flushers: new Set(), disposers: new Set(), renderRev: 0, writers: new Map(), pendingSaves: new Set(), clock: null, undo: null, busy: false };
 const valid = (profile, rev) => S.profile === profile && root.dataset.pmProfile === profile && S.rev === rev;
 const act = (session, key) => session.activities.find(a => a.key === key);
 const nameOf = a => a.type === 'strength' ? (S.catalog.byId.get(a.machineId)?.name || a.machineId)
@@ -82,7 +82,7 @@ const isLive = t => !!t && valid(t.profile, t.rev) && S.session?.id === t.id;
 function disposeView(flush) {
   const list = [...S.disposers];
   S.disposers.clear(); S.flushers.clear();
-  if (!flush) S.drafts.clear(); // changement de séance ou de profil : aucun brouillon d'un autre contexte n'est réutilisé
+  if (!flush) S.writers.clear(); // changement de séance ou de profil : aucun état d'écriture d'un autre contexte n'est réutilisé
   for (const d of list) { try { d(flush); } catch (e) { console.error('PM séance :', e); } }
 }
 
@@ -99,7 +99,7 @@ async function commitTo(t, call, { silent = false, after, rethrow = false } = {}
     if (next && next.id === id) S.session = next;
     if (after) after(next);
     if (!silent) render(); // l'écran est reconstruit d'abord : sinon le message de sauvegarde serait effacé
-    setStatus('✓ Sauvegardé', 'ok');
+    saveStatus('✓ Sauvegardé'); // jamais « Sauvegardé » si une valeur affichée n'est pas enregistrée
     emit('pm:workout-changed', { profile });
     return next;
   } catch (error) {
@@ -119,56 +119,90 @@ async function reloadAfterConflict(t, error) {
 }
 
 /**
- * Écritures de la charge et des répétitions d'UNE série, pour un écran donné (cible `t` immuable).
- * - `base` : valeurs sur lesquelles s'appuie l'écran (confirmées, ou demandées et pas encore confirmées) ; seuls les
- *   champs qui en diffèrent sont envoyés, avec `expect` (= base) : une valeur modifiée ailleurs n'est jamais écrasée
- *   (SET_CONFLICT), une validation sans nouvelle saisie n'envoie que `done`.
- * - Échec : rien n'est écrit ; la référence redevient la valeur confirmée, le champ est signalé (aria-invalid) et sa
- *   valeur sera renvoyée à la prochaine modification ou validation (même valeur comprise). Jamais « Sauvegardé » tant
- *   qu'un champ affiché n'est pas enregistré.
- * - Chaque écriture est suivie dans S.pendingSaves : flushAll() attend aussi les écritures DÉJÀ lancées.
+ * État d'écriture de la charge et des répétitions d'UNE série, PARTAGÉ par tous les rendus d'un même contexte
+ * (profil, ouverture S.rev, séance, activité, série) : il survit aux reconstructions de l'écran (nouveau rendu,
+ * récapitulatif) et disparaît à chaque changement de séance ou de profil.
+ * - `base`    : référence de l'écran = dernière valeur confirmée, ou demandée et encore en cours d'écriture ; seuls les
+ *               champs qui en diffèrent sont envoyés, avec `expect` (= base) : jamais d'écrasement silencieux (SET_CONFLICT).
+ * - `shown`   : dernière valeur saisie ; réaffichée par un nouveau rendu tant qu'une écriture est en cours ou a échoué.
+ * - `pending` : écritures en cours ; `failed` : champs dont la dernière écriture a échoué (signalés à chaque rendu).
+ * Échec : rien n'est écrit ; la référence redevient la valeur enregistrée et le champ reste signalé jusqu'à une
+ * écriture réussie (même valeur comprise) ou une validation explicite des valeurs enregistrées.
+ * Chaque écriture est suivie dans S.pendingSaves : flushAll() attend aussi les écritures DÉJÀ lancées.
  */
-function setWriter(t, activityKey, setId, base, inputs, { draftKey = null } = {}) {
-  const failed = new Set();
-  const mark = (field, on) => { const i = inputs()[field]; if (!i) return; if (on) i.setAttribute('aria-invalid', 'true'); else i.removeAttribute('aria-invalid'); };
-  const settle = () => { // champ revenu à la valeur de référence : plus rien d'« en attente » pour lui
-    const shown = readSet(inputs().kg, inputs().reps);
-    for (const f of [...failed]) if (shown && shown[f] === base[f]) { failed.delete(f); mark(f, false); }
-    if (failed.size && isLive(t)) setStatus('Non enregistré : ' + [...failed].map(f => f === 'kg' ? 'charge' : 'répétitions').join(' et ') + '. Modifie le champ ou valide pour réessayer.', 'error');
-  };
-  function write(v, { silent = true, done = false, after } = {}) {
-    const patch = {}, expect = {};
-    for (const f of ['kg', 'reps']) if (v[f] !== base[f]) { patch[f] = v[f]; expect[f] = base[f]; }
-    if (!Object.keys(patch).length && !done) return Promise.resolve(null);
-    Object.assign(base, patch); // évite les doubles écritures ; rétablie en cas d'échec
-    const entry = draftKey ? { kg: base.kg, reps: base.reps, serial: ++S.draftSerial } : null;
-    if (draftKey) S.drafts.set(draftKey, entry); // valeur demandée, affichée par tout rendu de CE contexte jusqu'à confirmation
-    const body = { ...patch };
-    if (Object.keys(expect).length) body.expect = expect;
-    if (done) body.done = true;
-    const run = (async () => {
-      try {
-        const next = await commitTo(t, (p, id) => updateSet(p, id, activityKey, setId, body), { silent, after, rethrow: true });
-        for (const f of Object.keys(patch)) { failed.delete(f); mark(f, false); }
-        settle();
-        return next;
-      } catch (error) {
-        const confirmed = isLive(t) ? act(S.session, activityKey)?.sets.find(x => x.id === setId) : null;
-        for (const f of Object.keys(patch)) { base[f] = confirmed ? confirmed[f] : expect[f]; failed.add(f); mark(f, true); }
-        if (draftKey && S.drafts.get(draftKey) === entry) S.drafts.delete(draftKey); // refusée : plus jamais réaffichée
-        if (error?.code === 'SET_CONFLICT') await reloadAfterConflict(t, error); // affiche la valeur enregistrée ailleurs
-        else settle();
-        return null;
-      } finally {
-        if (draftKey && S.drafts.get(draftKey) === entry) S.drafts.delete(draftKey); // confirmée, refusée ou abandonnée
-      }
-    })();
-    const tracked = { run, t };
-    S.pendingSaves.add(tracked);
-    run.finally(() => S.pendingSaves.delete(tracked));
-    return run;
+function setWriterFor(t, a, set, label) {
+  const key = [t.profile, t.rev, t.id, a.key, set.id].join('|');
+  let w = S.writers.get(key);
+  if (!w) {
+    w = { key, t, activityKey: a.key, setId: set.id, label, pending: 0, failed: new Set(), inputs: () => ({}),
+      base: { kg: set.kg, reps: set.reps }, shown: { kg: set.kg, reps: set.reps } };
+    w.write = (v, options) => writeSet(w, v, options);
+    S.writers.set(key, w);
+  } else if (!w.pending && !w.failed.size) {
+    w.base = { kg: set.kg, reps: set.reps }; w.shown = { ...w.base }; // rien en attente : référence = valeur confirmée
   }
-  return { write, failed };
+  w.label = label;
+  return w;
+}
+/** Valeurs à afficher dans le cadre « Série en cours » : la saisie tant qu'elle n'est pas confirmée, sinon la référence. */
+const displayed = w => (w.pending || w.failed.size ? w.shown : w.base);
+function markFailed(w) {
+  const inputs = w.inputs();
+  for (const f of ['kg', 'reps']) {
+    const i = inputs[f]; if (!i) continue;
+    if (w.failed.has(f)) i.setAttribute('aria-invalid', 'true'); else i.removeAttribute('aria-invalid');
+  }
+}
+/**
+ * Message de sauvegarde EXACT pour l'écran affiché : erreur (avec la valeur réellement enregistrée) tant qu'une
+ * série a un champ non enregistré, sinon `okText` (rien si null). Recalculé à chaque rendu : jamais perdu.
+ */
+function saveStatus(okText) {
+  const failing = [...S.writers.values()].filter(w => w.failed.size && isLive(w.t));
+  if (!failing.length) { if (okText) setStatus(okText, 'ok'); return; }
+  const parts = failing.map(w => [...w.failed].map(f => (f === 'kg' ? 'charge' : 'répétitions')).join(' et ') + ' de la ' + w.label +
+    ' (enregistré : ' + fmtNum(w.base.kg) + ' kg × ' + w.base.reps + ')');
+  setStatus('Non enregistré : ' + parts.join(' ; ') + '. Modifie le champ ou valide la série pour réessayer.', 'error');
+}
+function writeSet(w, v, { silent = true, done = false, after } = {}) {
+  const t = w.t;
+  w.shown = { kg: v.kg, reps: v.reps };
+  const patch = {}, expect = {};
+  for (const f of ['kg', 'reps']) if (v[f] !== w.base[f]) { patch[f] = v[f]; expect[f] = w.base[f]; }
+  if (!Object.keys(patch).length && !done) return Promise.resolve(null);
+  Object.assign(w.base, patch); // évite les doubles écritures ; rétablie en cas d'échec
+  const body = { ...patch };
+  if (Object.keys(expect).length) body.expect = expect;
+  if (done) body.done = true;
+  w.pending++;
+  let counted = true;
+  const run = (async () => {
+    try {
+      const next = await commitTo(t, (p, id) => updateSet(p, id, w.activityKey, w.setId, body), { silent, after, rethrow: true });
+      for (const f of Object.keys(patch)) w.failed.delete(f);
+      if (done && next) w.failed.clear(); // validation explicite des valeurs enregistrées : l'échec est acquitté
+      w.pending--; counted = false;
+      markFailed(w);
+      if (next && isLive(t)) saveStatus('✓ Sauvegardé');
+      return next;
+    } catch (error) {
+      w.pending--; counted = false;
+      if (error?.code === 'SET_CONFLICT') {
+        S.writers.delete(w.key); // la valeur enregistrée ailleurs devient la référence au prochain rendu
+        await reloadAfterConflict(t, error);
+        return null;
+      }
+      const confirmed = isLive(t) ? act(S.session, w.activityKey)?.sets.find(x => x.id === w.setId) : null;
+      for (const f of Object.keys(patch)) { w.base[f] = confirmed ? confirmed[f] : expect[f]; w.failed.add(f); }
+      markFailed(w);
+      if (isLive(t)) saveStatus(null);
+      return null;
+    } finally { if (counted) w.pending--; }
+  })();
+  const tracked = { run, t };
+  S.pendingSaves.add(tracked);
+  run.finally(() => S.pendingSaves.delete(tracked));
+  return run;
 }
 
 // ---------------------------------------------------------------- ouverture / fermeture
@@ -337,26 +371,22 @@ function renderSets(card, a) {
     const tag = el('span', 'pm-current-tag', 'Série en cours');
     add(head, tag, el('span', 'pm-current-count', 'Série ' + (curIdx + 1) + ' / ' + a.sets.length + (current.side ? ' · côté ' + sideName(current).toLowerCase() : '')));
     let timer = null, disposed = false;
-    // Valeurs de départ des champs : la dernière valeur DEMANDÉE pour cette série tant que son enregistrement n'est pas
-    // confirmé (S.drafts), sinon la valeur confirmée. Un nouveau rendu ne réaffiche donc jamais une valeur dépassée, et
-    // `base` sert de référence : seuls les champs réellement modifiés sont envoyés (jamais l'autre champ, éventuellement
-    // obsolète, qui écraserait une valeur plus récente).
-    // brouillon attaché au profil, à la séance et au contexte d'ouverture (S.rev) : jamais réutilisé ailleurs
-    const dkey = [T.profile, T.rev, T.id, a.key, current.id].join('|');
-    const pending = S.drafts.get(dkey);
-    const base = { kg: pending ? pending.kg : current.kg, reps: pending ? pending.reps : current.reps };
+    // état d'écriture de cette série, partagé avec les autres rendus du même contexte (voir setWriterFor)
+    const W = setWriterFor(T, a, current, setLabel(a, curIdx) + ' (' + nameOf(a) + ')');
+    const start = displayed(W);
     const known = knownWeights(a);
-    const kgF = stepper({ id: 'pm-current-kg', label: 'Charge (kg)', value: base.kg, kind: 'kg',
+    const kgF = stepper({ id: 'pm-current-kg', label: 'Charge (kg)', value: start.kg, kind: 'kg',
       onStep: (input, dir) => { input.value = fmtNum(stepWeight(parseNum(input.value), known, dir)); schedule(); } });
-    const repsF = stepper({ id: 'pm-current-reps', label: 'Répétitions', value: base.reps, kind: 'reps',
-      onStep: (input, dir) => { const r = parseNum(input.value); input.value = String(Math.max(1, (Number.isInteger(r) ? r : base.reps) + dir)); schedule(); } });
-    const writer = setWriter(T, a.key, current.id, base, () => ({ kg: kgF.input, reps: repsF.input }), { draftKey: dkey });
+    const repsF = stepper({ id: 'pm-current-reps', label: 'Répétitions', value: start.reps, kind: 'reps',
+      onStep: (input, dir) => { const r = parseNum(input.value); input.value = String(Math.max(1, (Number.isInteger(r) ? r : start.reps) + dir)); schedule(); } });
+    W.inputs = () => ({ kg: kgF.input, reps: repsF.input });
+    markFailed(W); // un échec survit au nouveau rendu
     const save = async ({ final = false } = {}) => {
       clearTimeout(timer); timer = null;
       if (disposed) return; // rendu détruit : ce brouillon ne peut plus écrire
       const v = readSet(kgF.input, repsF.input);
       if (!v) return;
-      await writer.write(v, { silent: !final || formFocused() });
+      await W.write(v, { silent: !final || formFocused() });
     };
     const schedule = () => { if (disposed) return; clearTimeout(timer); timer = setTimeout(() => save(), 350); };
     S.disposers.add(flush => { const pending = timer !== null; clearTimeout(timer); timer = null; if (flush && pending) save(); disposed = true; });
@@ -374,20 +404,30 @@ function renderSets(card, a) {
     box.inputs = { kg: kgF.input, reps: repsF.input };
     // « Valider » fait partie du cadre : charge, répétitions et validation restent groupées (audit V1, C2)
     const idx = curIdx, next = { set: current };
+    const same = (v, ref) => !!v && v.kg === ref.kg && v.reps === ref.reps;
+    // Verrou de validation : champs, − / + et bouton désactivés dès le clic, jusqu'à la fin de la validation.
+    const lock = on => { for (const x of [kgF.input, repsF.input, validate, ...kgF.wrap.querySelectorAll('button'), ...repsF.wrap.querySelectorAll('button')]) x.disabled = on; };
     const validate = withIcon(btn('Valider la ' + setLabel(a, idx), 'pm-validate', async () => {
       if (S.busy) return;
-      const v = readSet(box.inputs.kg, box.inputs.reps);
-      if (!v) { setStatus('Renseigne une charge et des répétitions valides.', 'error'); toast('Charge ou répétitions invalides.'); return; }
+      if (!readSet(box.inputs.kg, box.inputs.reps)) { setStatus('Renseigne une charge et des répétitions valides.', 'error'); toast('Charge ou répétitions invalides.'); return; }
       S.busy = true;
+      lock(true);
       try {
-        await flushAll(); // brouillons ET écritures déjà lancées
-        if (writer.failed.size) { // une valeur affichée n'est pas enregistrée : pas de validation sur un état incertain
-          setStatus('Série non validée : ' + [...writer.failed].map(f => f === 'kg' ? 'la charge' : 'les répétitions').join(' et ') + ' affichée(s) ne sont pas enregistrée(s). Réessaie.', 'error');
+        // Règle : une saisie déjà engagée (avant ou malgré le verrou) est enregistrée, dans l'ordre, AVANT la validation ;
+        // la validation n'envoie ensuite que « done » : jamais une valeur capturée au clic, donc jamais l'écrasement d'une
+        // charge confirmée plus récente (ici, dans un autre onglet, ou par une écriture en attente).
+        for (let round = 0; round < 3; round++) {
+          await flushAll(); // brouillons ET écritures déjà lancées
+          if (!isLive(T)) return;
+          if (!W.pending && same(readSet(box.inputs.kg, box.inputs.reps), W.base)) break;
+        }
+        const shownNow = readSet(box.inputs.kg, box.inputs.reps);
+        if (W.pending || W.failed.size || !same(shownNow, W.base)) { // état incertain : pas de validation
+          saveStatus(null);
+          if (!W.failed.size) setStatus('Série non validée : la valeur affichée n’est pas encore enregistrée. Réessaie.', 'error');
           return;
         }
-        // validation : seuls les champs encore différents de la référence sont envoyés (normalement aucun) ; jamais une
-        // charge non saisie, donc jamais l'écrasement d'une valeur enregistrée ailleurs
-        const session = await writer.write(v, { silent: false, done: true, after: () => {
+        const session = await W.write({ ...W.base }, { silent: false, done: true, after: () => {
             fx('set-validated', { machineId: a.machineId });
             if (a.sets.every(x => x.done || x.id === next.set.id)) fx('activity-done', { kind: 'strength', machineId: a.machineId });
             emit('pm:workout-set-validated', {
@@ -396,7 +436,7 @@ function renderSets(card, a) {
             });
           } });
         if (session) offerUndo(a, next.set.id);
-      } finally { S.busy = false; }
+      } finally { S.busy = false; if (validate.isConnected) lock(false); }
     }), 'valider');
     validate.id = 'pm-validate-set';
     box.append(validate);
@@ -582,7 +622,9 @@ function renderMachine(a) {
 const STATUS_LABEL = a => a.status === 'done' ? 'Terminée' : a.status === 'skipped' ? 'Passée' : a.postponed ? 'Reportée' : 'À faire';
 
 async function showList() {
+  const t = targetNow();
   await flushAll();
+  if (!isLive(t)) return; // jamais la liste d'une autre séance ouverte entre-temps
   S.view = 'list'; render(); window.scrollTo(0, 0);
 }
 function renderList() {
@@ -646,7 +688,9 @@ async function addMachineDialog() {
 // ---------------------------------------------------------------- recapitulatif de fin
 
 async function showRecap() {
+  const t = targetNow();
   await flushAll();
+  if (!isLive(t)) return; // jamais le récapitulatif d'une autre séance ouverte entre-temps
   S.view = 'recap'; render(); window.scrollTo(0, 0);
 }
 const FEELINGS = [['1', 'Très dur'], ['2', 'Dur'], ['3', 'Correct'], ['4', 'Bien'], ['5', 'Très bien']];
@@ -709,14 +753,19 @@ function renderRecap() {
         const row = el('div', 'pm-recap-set' + (set.done ? '' : ' pm-undone'));
         const kg = inputField('kg', set.kg, { kind: 'kg' }), reps = inputField('reps', set.reps, { kind: 'reps' });
         // récapitulatif construit APRÈS flushAll (état enregistré) ; même règles d'écriture que la série en cours
-        const writer = setWriter(T, a.key, set.id, { kg: set.kg, reps: set.reps }, () => ({ kg: kg.input, reps: reps.input }));
-        const save = () => { const v = readSet(kg.input, reps.input); if (v) writer.write(v, { silent: true }); };
+        const W = setWriterFor(T, a, set, setLabel(a, idx) + ' (' + nameOf(a) + ')');
+        W.inputs = () => ({ kg: kg.input, reps: reps.input });
+        markFailed(W); // valeur enregistrée affichée, échec éventuel toujours signalé
+        const save = () => { const v = readSet(kg.input, reps.input); if (v) W.write(v, { silent: true }); };
         kg.input.addEventListener('change', save); reps.input.addEventListener('change', save);
         row.append(el('span', 'pm-set-mark', set.done ? '✓' : '○'), kg.wrap, reps.wrap);
         if (!set.done) row.append(btn('Valider', 'pm-icon-btn pm-text-btn', async () => {
           await flushAll();
-          if (writer.failed.size) { setStatus('Série non validée : valeur affichée non enregistrée. Réessaie.', 'error'); return; }
-          writer.write(readSet(kg.input, reps.input) || { kg: set.kg, reps: set.reps }, { silent: false, done: true });
+          if (!isLive(T)) return;
+          const v = readSet(kg.input, reps.input);
+          // valide les valeurs AFFICHÉES seulement si ce sont celles enregistrées ; n'envoie que « done »
+          if (W.pending || !v || v.kg !== W.base.kg || v.reps !== W.base.reps) { saveStatus(null); setStatus('Série non validée : valeur affichée non enregistrée. Réessaie.', 'error'); return; }
+          W.write({ ...W.base }, { silent: false, done: true });
         }));
         block.append(row);
         void idx;
@@ -740,6 +789,7 @@ async function finish(complete) {
   const t = targetNow(), profile = S.profile, s = S.session;
   try {
     await flushAll();
+    if (!isLive(t)) return;
     const notDone = s.activities.filter(a => a.status !== 'done');
     if (!complete && !(await confirmDialog(
       notDone.length + ' activité(s) ne sont pas terminées (' + notDone.map(nameOf).slice(0, 4).join(', ') +
@@ -823,6 +873,7 @@ function render() {
   const right = el('div', 'pm-bar-actions');
   add(right, clock, btn('Quitter', 'pm-icon-btn pm-text-btn', async () => {
     await flushAll();
+    if (!isLive(T)) return; // une autre séance (ou un autre profil) est affichée entre-temps : on ne la ferme pas
     toast('Séance conservée : tu pourras la reprendre depuis l’accueil.');
     closeWorkout({ goTo: 'accueil' });
   }));
@@ -857,7 +908,7 @@ function render() {
     if (postponed.length) panel.append(el('p', 'pm-postponed-note', '↷ ' + postponed.length + ' machine(s) reportée(s) : à faire avant la fin.'));
     const foot = el('div', 'pm-footer');
     add(foot, btn('Machines', 'pm-secondary', showList), btn('Pause', 'pm-secondary', async () => {
-      await flushAll(); commitTo(T, (p, id) => pauseWorkout(p, id));
+      await flushAll(); if (isLive(T)) commitTo(T, (p, id) => pauseWorkout(p, id));
     }), btn('Terminer', 'pm-secondary', showRecap));
     panel.append(foot);
     if (!s.activities.some(a => a.status !== 'pending') && S.profile !== 'demo') {
@@ -872,6 +923,7 @@ function render() {
   const status = el('div', 'pm-save-state', 'Sauvegarde automatique après chaque modification.');
   status.id = 'pm-save-state'; status.setAttribute('role', 'status');
   panel.append(status);
+  saveStatus(null); // un échec d'enregistrement reste signalé après chaque reconstruction (récapitulatif compris)
 }
 
 // ---------------------------------------------------------------- demarrage / reprise
@@ -958,11 +1010,13 @@ function changeProfile(id) {
 async function confirmLeave() {
   if (S.leaving) return;
   S.leaving = true;
+  const t = targetNow();
   const ok = await confirmDialog('Quitter l’écran de séance ? Elle est conservée : tu pourras la reprendre depuis l’accueil.',
     { title: 'Quitter la séance', ok: 'Quitter', cancel: 'Rester' });
   S.leaving = false;
-  if (!ok || !S.session) return;
+  if (!ok || !isLive(t)) return;
   await flushAll();
+  if (!isLive(t)) return; // la séance affichée a changé pendant l'attente : on ne la ferme pas
   toast('Séance conservée : reprends-la depuis l’accueil.');
   closeWorkout({ goTo: 'accueil' });
 }

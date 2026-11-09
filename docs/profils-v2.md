@@ -123,3 +123,16 @@ Les changements sont annoncés par l'événement `document` → `pm:profiles-cha
   - La même valeur peut être renvoyée : en modifiant le champ, un autre champ, ou en validant.
   - L'écran n'affiche jamais « Sauvegardé » tant qu'une valeur affichée n'est pas enregistrée, et une série n'est pas validée dans cet état.
 
+## État d'écriture des séries et sorties asynchrones (FIX4)
+
+- **État partagé par série.** Chaque série a un état d'écriture partagé par tous les rendus d'un même contexte (profil, ouverture, séance, activité, série). Il comprend :
+  - la référence (valeur confirmée, ou demandée et en cours d'écriture) ;
+  - la dernière saisie ;
+  - les écritures en cours ;
+  - les champs en échec.
+
+  Un nouveau rendu ou le récapitulatif ne perd donc ni une saisie, ni un échec. Cet état remplace les brouillons de FIX3.
+- **Validation d'une série.** Les champs, les boutons − / + et le bouton « Valider » sont verrouillés dès le clic. Une saisie déjà engagée est enregistrée, dans l'ordre, avant la validation. La validation n'envoie ensuite que `done` : jamais une valeur capturée au clic. Si l'état reste incertain (écriture en cours, valeur affichée différente de la valeur enregistrée, échec), la série n'est pas validée.
+- **« Sauvegardé ».** Ce message n'est affiché que si aucune série de l'écran n'a de champ non enregistré. Sinon, le statut indique la valeur réellement enregistrée (« Non enregistré : charge de la série 1 (…) (enregistré : 40 kg × 10) »). Il est recalculé à chaque rendu, récapitulatif compris, jusqu'à une écriture réussie ou une validation explicite des valeurs enregistrées.
+- **Sorties asynchrones.** Quitter, Pause, Terminer (récapitulatif), Machines, le retour arrière et la fin de séance revérifient leur cible après l'attente. Un ancien rappel ne ferme ni n'ouvre jamais l'écran d'une autre séance ou d'un autre profil.
+
