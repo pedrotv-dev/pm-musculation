@@ -27,7 +27,7 @@ const seed = () => page.evaluate(async program => {
   await P.importProgram('pierre', program);
   let s = await W.startWorkout('pierre', { dayId: 'mardi', weekStart: program.weekStart });
   const a = s.activities.find(x => x.type === 'strength');
-  s = await W.logSet('pierre', s.id, a.key, a.sets[0].id, { kg: 42, reps: 9 });
+  s = await W.logSet('pierre', s.id, a.key, a.sets[0].id, { kg: 40, reps: 9 });
   s = await W.logSet('pierre', s.id, a.key, a.sets[1].id, { kg: 43, reps: 8 });
   s = await W.finishWorkout('pierre', s.id, 'partial');
   await S.saveSession('manon', JSON.parse(JSON.stringify({ ...s, profileId: 'manon' })));
@@ -43,6 +43,21 @@ const openDetail = async profile => {
   await page.locator('.pm-history-card').first().click();
   await page.waitForSelector('.pm-hist-set input');
 };
+/**
+ * Retarde les lectures de l'historique comme le ferait un autre onglet en train d'écrire : une transaction d'écriture
+ * gardée active sur `sessions` (connexion distincte). Les lectures de l'application attendent sa fin. `release()` la libère.
+ */
+const holdSessions = () => page.evaluate(() => new Promise((ready, fail) => {
+  const r = indexedDB.open('pm-musculation-v2');
+  r.onerror = () => fail(r.error);
+  r.onsuccess = () => {
+    const db = r.result, store = db.transaction(['sessions'], 'readwrite').objectStore('sessions');
+    window.__hold = true;
+    const spin = () => { if (window.__hold) store.get(['~test', '~test']).onsuccess = spin; else db.close(); };
+    spin(); ready();
+  };
+}));
+const release = () => page.evaluate(() => { window.__hold = false; });
 const switchTo = profile => page.evaluate(p => document.dispatchEvent(new CustomEvent('pm:select-profile', { detail: { profile: p } })), profile);
 
 console.log('V2-PROF1 · historique : cible des opérations différées');
@@ -137,6 +152,55 @@ await step('rafraîchissement pendant une saisie : rien n’est perdu, la valeur
     return s.activities.some(a => (a.sets || []).some(x => x.kg === 66));
   }, id);
   assert.equal(await sessionOf('manon', id), manon0);
+});
+
+await step('FIX2 · changement de profil pendant un chargement retardé : l’ancienne carte de Pierre est inutilisable, aucune correction chez Manon', async () => {
+  await fresh();
+  assert.match(pierre0, /^40x9,/);
+  await page.click('[data-select-profile="pierre"]');
+  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+  await page.waitForSelector('.pm-history-card');
+  await page.evaluate(() => { window.__oldCard = document.querySelector('.pm-history-card'); }); // référence à l'ancienne carte
+  await holdSessions();                                        // le prochain chargement de l'historique est retardé
+  await switchTo('manon');
+  await page.waitForFunction(() => document.documentElement.dataset.pmProfile === 'manon');
+  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]'); // chargement de Manon : en attente
+  const visibleOldCards = await page.locator('[data-page="historique"] .pm-history-card').count();
+  // clic sur l'ancienne carte (affichée ou non) AVANT la fin du chargement, puis correction 40 → 55
+  const opened = await page.evaluate(() => {
+    const card = document.querySelector('[data-page="historique"] .pm-history-card') || window.__oldCard;
+    card.click();
+    const kg = document.querySelector('.pm-hist-set input[aria-label^="Charge série 1"]');
+    if (!kg) return false;
+    kg.value = '55'; kg.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  });
+  await release();
+  await page.waitForTimeout(800);
+  assert.equal(await sessionOf('manon', id), manon0, 'Manon intacte (cartes visibles : ' + visibleOldCards + ', détail ouvert : ' + opened + ')');
+  assert.equal(await sessionOf('pierre', id), pierre0, 'Pierre intact : rien n’a été demandé sur son écran');
+  assert.equal(visibleOldCards, 0, 'aucune ancienne carte affichée pendant le chargement de Manon');
+  // l'historique de Manon s'affiche ensuite normalement
+  await page.waitForSelector('[data-page="historique"] .pm-history-card');
+});
+
+await step('FIX2 · chargements terminés dans le désordre (Pierre → Manon → Pierre) : liste et corrections de Pierre seulement', async () => {
+  await fresh();
+  await page.click('[data-select-profile="pierre"]');
+  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+  await page.waitForSelector('.pm-history-card');
+  await holdSessions();
+  await switchTo('manon');
+  await page.evaluate(() => { document.querySelector('.nav-btn[data-go="seances"]').click(); document.querySelector('.pm-subtab[data-go="historique"]').click(); });
+  await switchTo('pierre');
+  await page.evaluate(() => { document.querySelector('.nav-btn[data-go="seances"]').click(); document.querySelector('.pm-subtab[data-go="historique"]').click(); });
+  await release();
+  await page.waitForSelector('[data-page="historique"] .pm-history-card');
+  await page.locator('.pm-history-card').first().click();
+  const kg = page.locator('.pm-hist-set input[aria-label^="Charge série 1"]').first();
+  await kg.fill('57'); await kg.press('Tab');
+  await page.waitForFunction(async id => (await (await import('./storage.js')).getSession('pierre', id)).activities.some(a => (a.sets || []).some(x => x.kg === 57)), id);
+  assert.equal(await sessionOf('manon', id), manon0, 'Manon intacte');
 });
 
 await step('aucune erreur JavaScript', async () => { assert.deepEqual([...allErrors, ...errors], []); });

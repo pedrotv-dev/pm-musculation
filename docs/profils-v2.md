@@ -96,3 +96,17 @@ Les changements sont annoncés par l'événement `document` → `pm:profiles-cha
 - `profile()` et `S.detail` ne sont jamais relus après une attente.
 - **Après une confirmation** (retrait d'une série, suppression de la séance), l'action n'a lieu que si cette séance est toujours affichée. Si le profil ou la séance affichée a changé pendant la confirmation, rien n'est fait et un message le signale.
 - Une correction déjà demandée est enregistrée sur **sa** séance, même si le profil change ensuite. Une saisie en cours survit à un rafraîchissement.
+
+## Historique : propriétaire des séances chargées (FIX2)
+
+- Les séances chargées dans l'historique sont rattachées à leur **profil propriétaire**.
+- Au changement de profil, avant toute opération asynchrone :
+  - l'ancien historique est vidé et son affichage retiré ;
+  - tout chargement encore en cours devient périmé.
+- Une carte, un détail ou une correction n'agit que si son propriétaire est le profil actif. Une ancienne carte, même conservée en mémoire, ne s'ouvre plus.
+- Un détail n'est jamais construit avec la séance d'un autre profil.
+
+## Série en cours : valeurs affichées et corrections partielles (FIX2)
+
+- Tant que l'enregistrement d'une série n'est pas confirmé, les champs « Série en cours » affichent la dernière valeur **demandée** pour cette série. Un nouveau rendu ne réaffiche donc jamais une valeur dépassée.
+- Seuls les champs réellement modifiés sont envoyés (`updateSet` partiel), dans l'écran de séance comme dans le récapitulatif. Changer les répétitions ne renvoie jamais une ancienne charge.

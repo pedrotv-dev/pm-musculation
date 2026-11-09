@@ -14,7 +14,8 @@ import { el, btn, clear, add, dialog, confirmDialog, toast, fmtNum, parseNum, fo
 
 const root = document.documentElement;
 const page = document.querySelector('[data-page="historique"]');
-const S = { rows: [], catalog: { byId: new Map() }, mode: 'list', detail: null, month: null, day: null, rev: 0 };
+// `owner` : profil PROPRIÉTAIRE des séances chargées dans `rows` (null tant que rien n'est chargé pour le profil actif).
+const S = { rows: [], owner: null, catalog: { byId: new Map() }, mode: 'list', detail: null, month: null, day: null, rev: 0 };
 const STATUS = { completed: 'Complète', partial: 'Partielle', paused: 'En pause', in_progress: 'En cours' };
 const nameOf = a => a.type === 'strength' ? (S.catalog.byId.get(a.machineId)?.name || a.machineId) : a.name || (a.type === 'warmup' ? 'Échauffement' : 'Cardio');
 const chipClass = s => s === 'completed' ? 'done' : s === 'partial' ? 'postponed' : 'skipped';
@@ -38,8 +39,10 @@ function holdDetail() {
 function flushReload() {
   if (reloadPending && !holdDetail()) { reloadPending = false; load().catch(console.error); }
 }
+/** Les séances chargées appartiennent-elles au profil actif ? (jamais d'affichage ni d'action sinon) */
+const ownRows = () => S.owner !== null && S.owner === profile();
 function acceptSession(p, session) {
-  if (profile() !== p || !session) return;
+  if (profile() !== p || S.owner !== p || !session) return;
   S.rows = S.rows.map(row => row.id === session.id ? session : row);
   if (detailView?.profile === p && detailView.id === session.id && detailView.box.isConnected) detailView.update(session);
 }
@@ -53,6 +56,7 @@ async function load() {
   if (holdDetail()) { reloadPending = true; return; }
   S.catalog = catalog;
   S.rows = rows.slice().sort((a, b) => (b.date + b.startedAt).localeCompare(a.date + a.startedAt));
+  S.owner = p; // séances de CE profil (chargement le plus récent seulement : `mine === S.rev`)
   if (S.detail && !S.rows.find(r => r.id === S.detail)) { S.detail = null; S.mode = S.mode === 'detail' ? 'list' : S.mode; }
   render();
 }
@@ -63,13 +67,17 @@ function header() {
 }
 
 function sessionCard(s) {
+  const owner = S.owner; // propriétaire de cette carte : elle ne s'ouvre que tant qu'il est le profil actif
   const sum = s.summary || getWorkoutSummary(s);
   const card = el('button', 'pm-history-card');
   card.type = 'button';
   const top = el('div', 'pm-history-top');
   add(top, el('strong', '', (s.dayName || s.dayId)), el('span', 'pm-chip pm-chip-' + chipClass(s.status), STATUS[s.status] || s.status));
   card.append(top, el('p', 'pm-muted', formatDateFr(s.date) + ' · ' + formatMinutes(sum.durationMinutes) + ' · ' + sum.setsDone + ' séries · ' + fmtNum(sum.volumeKg) + ' kg'));
-  card.addEventListener('click', () => { S.detail = s.id; S.mode = 'detail'; render(); window.scrollTo(0, 0); });
+  card.addEventListener('click', () => {
+    if (!card.isConnected || owner !== S.owner || !ownRows()) return; // ancienne carte (autre profil, ancien chargement)
+    S.detail = s.id; S.mode = 'detail'; render(); window.scrollTo(0, 0);
+  });
   return card;
 }
 
@@ -124,13 +132,14 @@ function renderCalendar() {
 // ---------------------------------------------------------------- detail et corrections
 
 /** La séance de la cible `t` est-elle toujours celle affichée (même profil, détail ouvert sur elle) ? */
-const isShown = t => profile() === t.profile && S.mode === 'detail' && S.detail === t.id;
+const isShown = t => profile() === t.profile && S.owner === t.profile && S.mode === 'detail' && S.detail === t.id;
 /**
  * Correction de la séance CIBLE `t` ({profile, id}, capturée au rendu du détail) : jamais relue après une attente,
  * donc jamais appliquée au profil ou à la séance devenus actifs entre-temps.
  */
 async function fix(t, call, message) {
   const p = t.profile, id = t.id;
+  if (profile() !== p || S.owner !== p) return; // demande venue d'un écran périmé : rien n'est envoyé
   try {
     const next = await enqueueCorrection(() => call(p, id));
     acceptSession(p, next);
@@ -143,6 +152,7 @@ async function fix(t, call, message) {
 function bindSetField(input, field, set, target) {
   let requested = set[field], serial = 0, failed = false;
   const save = () => {
+    if (profile() !== target.profile || S.owner !== target.profile) return; // champ d'un écran périmé : rien n'est envoyé
     const value = parseNum(input.value);
     const valid = Number.isFinite(value) && value >= (field === 'kg' ? 0 : 1) && value <= 1000 &&
       (field === 'kg' || Number.isInteger(value));
@@ -184,10 +194,11 @@ function numInput(value, kind, label) {
   return input;
 }
 function renderDetail() {
-  const s = S.rows.find(r => r.id === S.detail);
+  // jamais un détail construit avec une séance d'un autre profil : séances du profil actif, propriétaire vérifié
+  const s = ownRows() ? S.rows.find(r => r.id === S.detail && (!r.profileId || r.profileId === S.owner)) : null;
   const box = el('div');
   if (!s) { box.append(btn('‹ Retour', 'pm-secondary', () => { S.mode = 'list'; render(); })); return box; }
-  const T = Object.freeze({ profile: profile(), id: s.id }); // cible immuable de toutes les actions de ce détail
+  const T = Object.freeze({ profile: S.owner, id: s.id }); // cible immuable : le PROPRIÉTAIRE de la séance affichée
   /** Après une confirmation : n'agit que si la séance confirmée est toujours affichée (sinon rien n'est fait). */
   const stillShown = () => { if (isShown(T)) return true; toast('Action annulée : la séance affichée a changé.'); return false; };
   const open = s.status === 'in_progress' || s.status === 'paused';
@@ -324,14 +335,20 @@ function render() {
   clear(page);
   page.dataset.view = S.mode; // lu par js/nav-history.js (bouton retour : détail → liste)
   page.append(header());
+  if (!ownRows()) return; // séances du profil actif pas encore chargées : rien d'un autre profil n'est affiché
   if (S.mode === 'detail') page.append(renderDetail()); else page.append(renderList());
 }
 
 // Optimisation : un onglet masqué ne relit pas la base ; il se met à jour à l'ouverture (clic sur son onglet)
 const reload = () => { if (!page.hidden) load().catch(console.error); };
 document.addEventListener('pm:profile-changed', () => {
+  // AVANT toute opération asynchrone : l'historique de l'ancien profil est invalidé et son DOM retiré (anciennes cartes
+  // et champs inutilisables), tout chargement encore en cours est périmé (S.rev).
+  ++S.rev;
+  S.rows = []; S.owner = null;
   S.mode = 'list'; S.detail = null; S.day = null;
   detailView = null; failedFields.clear(); reloadPending = false;
+  clear(page);
   reload();
 });
 document.addEventListener('pm:workout-changed', e => { if (!root.classList.contains('pm-workout-active') || (e.detail && e.detail.final)) reload(); });

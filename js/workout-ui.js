@@ -38,7 +38,7 @@ panel.setAttribute('aria-label', 'Suivi de la séance');
 main.append(panel);
 
 const S = { profile: null, session: null, selected: null, view: 'activity', rev: 0, queue: Promise.resolve(),
-  catalog: { byId: new Map(), strength: [], list: [], images: new Set() }, history: [], finished: false, keepAwake: true, leaving: false, flushers: new Set(), disposers: new Set(), renderRev: 0, clock: null, undo: null, busy: false };
+  catalog: { byId: new Map(), strength: [], list: [], images: new Set() }, history: [], finished: false, keepAwake: true, leaving: false, flushers: new Set(), disposers: new Set(), renderRev: 0, drafts: new Map(), draftSerial: 0, clock: null, undo: null, busy: false };
 const valid = (profile, rev) => S.profile === profile && root.dataset.pmProfile === profile && S.rev === rev;
 const act = (session, key) => session.activities.find(a => a.key === key);
 const nameOf = a => a.type === 'strength' ? (S.catalog.byId.get(a.machineId)?.name || a.machineId)
@@ -261,18 +261,32 @@ function renderSets(card, a) {
     const tag = el('span', 'pm-current-tag', 'Série en cours');
     add(head, tag, el('span', 'pm-current-count', 'Série ' + (curIdx + 1) + ' / ' + a.sets.length + (current.side ? ' · côté ' + sideName(current).toLowerCase() : '')));
     let timer = null, disposed = false;
+    // Valeurs de départ des champs : la dernière valeur DEMANDÉE pour cette série tant que son enregistrement n'est pas
+    // confirmé (S.drafts), sinon la valeur confirmée. Un nouveau rendu ne réaffiche donc jamais une valeur dépassée, et
+    // `base` sert de référence : seuls les champs réellement modifiés sont envoyés (jamais l'autre champ, éventuellement
+    // obsolète, qui écraserait une valeur plus récente).
+    const dkey = T.id + '|' + a.key + '|' + current.id;
+    const pending = S.drafts.get(dkey);
+    const base = { kg: pending ? pending.kg : current.kg, reps: pending ? pending.reps : current.reps };
     const known = knownWeights(a);
-    const kgF = stepper({ id: 'pm-current-kg', label: 'Charge (kg)', value: current.kg, kind: 'kg',
+    const kgF = stepper({ id: 'pm-current-kg', label: 'Charge (kg)', value: base.kg, kind: 'kg',
       onStep: (input, dir) => { input.value = fmtNum(stepWeight(parseNum(input.value), known, dir)); schedule(); } });
-    const repsF = stepper({ id: 'pm-current-reps', label: 'Répétitions', value: current.reps, kind: 'reps',
-      onStep: (input, dir) => { const r = parseNum(input.value); input.value = String(Math.max(1, (Number.isInteger(r) ? r : current.reps) + dir)); schedule(); } });
+    const repsF = stepper({ id: 'pm-current-reps', label: 'Répétitions', value: base.reps, kind: 'reps',
+      onStep: (input, dir) => { const r = parseNum(input.value); input.value = String(Math.max(1, (Number.isInteger(r) ? r : base.reps) + dir)); schedule(); } });
     const save = async ({ final = false } = {}) => {
       clearTimeout(timer); timer = null;
       if (disposed) return; // rendu détruit : ce brouillon ne peut plus écrire
       const v = readSet(kgF.input, repsF.input);
-      if (!v || (v.kg === current.kg && v.reps === current.reps)) return;
-      current.kg = v.kg; current.reps = v.reps; // évite les doubles écritures
-      await commitTo(T, (p, id) => updateSet(p, id, a.key, current.id, v), { silent: !final || formFocused() });
+      if (!v) return;
+      const patch = {};
+      if (v.kg !== base.kg) patch.kg = v.kg;
+      if (v.reps !== base.reps) patch.reps = v.reps;
+      if (!Object.keys(patch).length) return;
+      Object.assign(base, patch); // évite les doubles écritures
+      const entry = { kg: base.kg, reps: base.reps, serial: ++S.draftSerial };
+      S.drafts.set(dkey, entry); // valeur demandée, affichée par tout rendu jusqu'à confirmation
+      try { await commitTo(T, (p, id) => updateSet(p, id, a.key, current.id, patch), { silent: !final || formFocused() }); }
+      finally { if (S.drafts.get(dkey) === entry) S.drafts.delete(dkey); } // confirmée (S.session à jour) ou abandonnée
     };
     const schedule = () => { if (disposed) return; clearTimeout(timer); timer = setTimeout(() => save(), 350); };
     S.disposers.add(flush => { const pending = timer !== null; clearTimeout(timer); timer = null; if (flush && pending) save(); disposed = true; });
@@ -622,9 +636,13 @@ function renderRecap() {
         const kg = inputField('kg', set.kg, { kind: 'kg' }), reps = inputField('reps', set.reps, { kind: 'reps' });
         const save = () => {
           const v = readSet(kg.input, reps.input);
-          if (!v || (v.kg === set.kg && v.reps === set.reps)) return;
-          set.kg = v.kg; set.reps = v.reps;
-          commitTo(T, (p, id) => updateSet(p, id, a.key, set.id, v), { silent: true });
+          if (!v) return;
+          const patch = {}; // seulement le champ réellement modifié : l'autre n'écrase jamais une valeur plus récente
+          if (v.kg !== set.kg) patch.kg = v.kg;
+          if (v.reps !== set.reps) patch.reps = v.reps;
+          if (!Object.keys(patch).length) return;
+          Object.assign(set, patch);
+          commitTo(T, (p, id) => updateSet(p, id, a.key, set.id, patch), { silent: true });
         };
         kg.input.addEventListener('change', save); reps.input.addEventListener('change', save);
         row.append(el('span', 'pm-set-mark', set.done ? '✓' : '○'), kg.wrap, reps.wrap);
