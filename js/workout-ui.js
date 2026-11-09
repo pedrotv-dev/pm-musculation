@@ -149,10 +149,11 @@ async function reloadAfterConflict(t, error) {
  * affichée avec le message. @returns la séance enregistrée, ou null si refusé.
  */
 const REFUSALS = new Set(['SESSION_CHANGED', 'SET_CONFLICT', 'HAS_DATA', 'SET_NOT_FOUND', 'ACTIVITY_NOT_FOUND']);
-async function guardedCommit(t, call, options = {}) {
-  try { return await commitTo(t, call, { ...options, rethrow: true }); }
+const STALE_ACTION = 'Action périmée : la séance a changé depuis (autre onglet, fenêtre ou restauration). Rien n’a été modifié ; la séance enregistrée est affichée. Recommence si besoin.';
+async function guardedCommit(t, call, message) {
+  try { return await commitTo(t, call, { rethrow: true }); }
   catch (error) {
-    if (REFUSALS.has(error?.code) && isLive(t)) { S.conflictSeq++; await reloadAfterChange(t, error.message); }
+    if (REFUSALS.has(error?.code) && isLive(t)) { S.conflictSeq++; await reloadAfterChange(t, message || error.message); }
     return null;
   }
 }
@@ -222,7 +223,7 @@ function setWriterFor(t, a, set, label) {
 const savedFeedback = s => ({ note: s?.feedback?.note || '', feeling: s?.feedback?.feeling ?? null });
 function feedbackWriterFor(t, s) {
   const key = [t.profile, t.rev, t.id].join('|');
-  if (!S.fb || S.fb.key !== key) S.fb = { key, t, base: savedFeedback(s), shown: savedFeedback(s), pending: 0, failed: new Set(), note: () => null };
+  if (!S.fb || S.fb.key !== key) S.fb = { key, t, base: savedFeedback(s), shown: savedFeedback(s), pending: 0, pend: { note: 0, feeling: 0 }, failed: new Set(), note: () => null, feelings: () => null };
   else if (!S.fb.pending && !S.fb.failed.size && !feedbackDirty(S.fb)) { S.fb.base = savedFeedback(s); S.fb.shown = { ...S.fb.base }; }
   return S.fb;
 }
@@ -244,19 +245,24 @@ function markFeedback(f) {
 }
 function writeFeedback(f, patch) {
   const t = f.t;
-  if (!Object.keys(patch).length) return Promise.resolve(null);
+  const keys = Object.keys(patch);
+  if (!keys.length) return Promise.resolve(null);
   Object.assign(f.shown, patch);
   f.pending++;
+  for (const k of keys) f.pend[k]++;
+  const done = () => { f.pending--; for (const k of keys) f.pend[k]--; };
   const run = (async () => {
     try {
       const next = await commitTo(t, (p, id) => setWorkoutFeedback(p, id, patch), { silent: true, rethrow: true });
-      f.pending--;
-      if (next) for (const k of Object.keys(patch)) { f.failed.delete(k); f.base[k] = patch[k]; }
+      done();
+      if (next) for (const k of keys) { f.failed.delete(k); if (!f.pend[k]) f.base[k] = savedFeedback(next)[k]; }
       markFeedback(f);
-      if (next && isLive(t)) saveStatus('✓ Sauvegardé');
+      // l'état complet renvoyé peut contenir l'AUTRE champ modifié ailleurs : il est réaffiché avant toute annonce (FIX9)
+      const refreshed = next ? reconcileFeedback(f, next) : false;
+      if (next && isLive(t)) saveStatus(refreshed ? REFRESHED_OK : '✓ Sauvegardé');
       return next;
     } catch (error) {
-      f.pending--;
+      done();
       for (const k of Object.keys(patch)) f.failed.add(k); // la saisie reste affichée et signalée
       markFeedback(f);
       if (isLive(t)) saveStatus(null);
@@ -268,14 +274,29 @@ function writeFeedback(f, patch) {
   run.finally(() => S.pendingSaves.delete(tracked));
   return run;
 }
-/** Remarque ou ressenti modifiés ailleurs, non modifiés ici : l'affichage prend la valeur enregistrée (FIX8). */
+/**
+ * Remarque ou ressenti modifiés ailleurs (FIX8, par champ depuis FIX9) : un champ sans écriture en cours, sans échec et
+ * sans saisie locale non enregistrée prend la valeur enregistrée renvoyée par le moteur ; l'affichage est actualisé sans
+ * reconstruire l'écran (focus, curseur et saisie de l'autre champ préservés). @returns true si un champ a changé.
+ */
+function showFeeling(f) {
+  const box = f.feelings();
+  if (box && box.isConnected) box.querySelectorAll('.pm-feeling').forEach(x => x.classList.toggle('pm-on', x.dataset.v === String(f.shown.feeling)));
+}
 function reconcileFeedback(f, next) {
-  if (!next || next.id !== f.t.id || !isLive(f.t) || f.pending || f.failed.size || feedbackDirty(f)) return false;
+  if (!next || next.id !== f.t.id || !isLive(f.t)) return false;
   const saved = savedFeedback(next);
-  if (saved.note === f.base.note && saved.feeling === f.base.feeling) return false;
-  f.base = saved; f.shown = { ...saved };
-  const n = f.note(); if (n && n.isConnected) n.value = saved.note;
-  return true;
+  let changed = false;
+  for (const k of ['note', 'feeling']) {
+    if (f.pend[k] || f.failed.has(k) || saved[k] === f.base[k]) continue;
+    const n = f.note();
+    const local = k === 'note' ? (n && n.isConnected ? n.value : f.shown.note) : f.shown.feeling;
+    if (local !== f.base[k]) continue; // saisie locale non enregistrée : jamais écrasée
+    f.base[k] = saved[k]; f.shown[k] = saved[k];
+    if (k === 'note') { if (n && n.isConnected) n.value = saved.note; } else showFeeling(f);
+    changed = true;
+  }
+  return changed;
 }
 /** Valeurs à afficher dans le cadre « Série en cours » : la saisie tant qu'elle n'est pas confirmée, sinon la référence. */
 const displayed = w => (w.pending || w.failed.size ? w.shown : w.base);
@@ -671,13 +692,15 @@ function renderSets(card, a) {
     }
     const tools = el('div', 'pm-set-tools');
     if (set.done) {
+      // Préconditions capturées quand le bouton est PRÉSENTÉ (FIX9) : incarnation de la séance affichée et série affichée
+      // (validée, mêmes valeurs). Jamais l'incarnation lue après coup : une séance restaurée entre-temps (nouvelle
+      // incarnation, même identifiant, même révision, mêmes valeurs) n'est jamais dévalidée par cet ancien bouton.
+      const shownReopen = Object.freeze({ expectGen: genOf(S.session), set: { kg: set.kg, reps: set.reps, done: true } });
       tools.append(btn('↺', 'pm-icon-btn', async () => {
         await flushAll();
         if (!isLive(T)) return;
-        const known = setNow(a.key, set.id);
-        if (!known) return;
-        // rouvre la série seulement si elle est toujours celle affichée (validée, mêmes valeurs) : vérifié dans la transaction
-        if (await guardedCommit(T, (p, id) => updateSet(p, id, a.key, set.id, { done: false, expect: { kg: known.kg, reps: known.reps, done: true } }))) {
+        const pre = shownReopen;
+        if (await guardedCommit(T, (p, id) => updateSet(p, id, a.key, set.id, { done: false, expect: pre.set }, { expectGen: pre.expectGen }), STALE_ACTION)) {
           fx('set-undone'); emit('pm:workout-set-undone', { profile: S.profile, sessionId: S.session.id, activityKey: a.key });
         }
       }));
@@ -712,11 +735,12 @@ function offerUndo(a, setId) {
   if (S.undo) S.undo.dismiss();
   const rev = S.rev, id = S.session.id;
   const validated = setNow(a.key, setId); // état validé : l'annulation ne vaut que pour lui (FIX8)
+  const gen = genOf(S.session);            // incarnation validée (FIX9) : une séance restaurée depuis n'est jamais dévalidée
   S.undo = toast('Série validée ✓', {
     actionLabel: 'Annuler', duration: 5000,
     onAction: async () => {
       if (!valid(S.profile, rev) || S.session?.id !== id || !validated) return;
-      if (!(await guardedCommit(T, (p, sid) => updateSet(p, sid, a.key, setId, { done: false, expect: { kg: validated.kg, reps: validated.reps, done: true } })))) return;
+      if (!(await guardedCommit(T, (p, sid) => updateSet(p, sid, a.key, setId, { done: false, expect: { kg: validated.kg, reps: validated.reps, done: true } }, { expectGen: gen }), STALE_ACTION))) return;
       fx('set-undone'); emit('pm:workout-set-undone', { profile: S.profile, sessionId: id, activityKey: a.key });
     }
   });
@@ -928,12 +952,13 @@ function feedbackBlock(s) {
     const b = btn(v + ' · ' + label, 'pm-feeling' + (String(start.feeling) === v ? ' pm-on' : ''), () => {
       const feeling = Number(v) === F.shown.feeling ? null : Number(v);
       F.shown.feeling = feeling;
-      feelings.querySelectorAll('.pm-feeling').forEach(x => x.classList.toggle('pm-on', x.dataset.v === String(feeling)));
+      showFeeling(F);
       writeFeedback(F, { feeling });
     });
     b.dataset.v = v; feelings.append(b);
   });
   fb.append(feelings);
+  F.feelings = () => feelings;
   const note = el('textarea', 'pm-textarea-note');
   note.placeholder = 'Remarques, difficultés, douleurs…'; note.maxLength = 1000; note.value = start.note;
   note.setAttribute('aria-label', 'Remarques sur la séance');
