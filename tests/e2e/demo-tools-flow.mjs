@@ -2,6 +2,11 @@
 // à 320×568, 375×667 et 390×844.  node tests/e2e/demo-tools-flow.mjs
 import assert from 'node:assert/strict';
 import { serve, launch, watch, step, summary } from './lib.mjs';
+import { fixedClock } from '../helpers/fixed-clock.mjs';
+
+// La séance en cours de la Démo suit le programme du JOUR (capacité d'une montée de niveau) : jour de référence fixe
+// (vendredi), le temps continue de s'écouler. Résultat identique quel que soit le jour réel.
+const REFERENCE_DAY = process.env.DEMO_TEST_NOW || '2026-11-13T18:00:00';
 
 const SIZES = [[320, 568], [375, 667], [390, 844]];
 const srv = await serve();
@@ -12,6 +17,7 @@ const preview = '.pm-demo-preview';
 for (const [w, h] of SIZES) {
   console.log(`\n${w}×${h}`);
   const context = await browser.newContext({ viewport: { width: w, height: h } });
+  await context.addInitScript(fixedClock, REFERENCE_DAY);
   // journal des animations réellement lancées (js/effets.js passe par Element.animate)
   await context.addInitScript(() => {
     window.__anims = [];
