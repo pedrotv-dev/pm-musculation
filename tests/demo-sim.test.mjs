@@ -2,6 +2,13 @@
 // autorisation au moment de l'écriture, détection fiable des modifications concurrentes.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { installClock } from './helpers/fixed-clock.mjs';
+
+// La séance en cours de la Démo suit le programme du JOUR : la capacité d'une montée de niveau en dépend. Ces tests
+// se placent sur un jour de référence fixe (vendredi, programme le plus complet) : résultat identique quel que soit
+// le jour réel. Le comportement de chaque jour de la semaine est vérifié à part (test « chaque jour »).
+const REFERENCE_DAY = '2026-11-13T18:00:00'; // vendredi
+const setNow = installClock(REFERENCE_DAY);
 
 const events = [];
 globalThis.document = {
@@ -279,4 +286,31 @@ test('commitDemoSession : Démo uniquement, copie de travail obligatoire, refus 
   const before = await snapshot();
   await assert.rejects(() => W.commitDemoSession(s, ws.base, { authorize: () => { throw new Error('refusé'); } }), /refusé/);
   assert.equal(await snapshot(), before);
+});
+
+test('chaque jour de la semaine : montée de niveau soit appliquée (≤ 20 séries par machine), soit refusée sans rien modifier', async () => {
+  const seen = [];
+  try {
+    for (let d = 9; d <= 15; d++) { // du lundi 9 au dimanche 15 novembre 2026
+      setNow(`2026-11-${String(d).padStart(2, '0')}T18:00:00`);
+      await fresh();
+      const before = await snapshot(), start = await level();
+      try {
+        const r = await sim({ complete: true, record: true, levelUp: true });
+        assert.equal(r.applied, true); assert.equal(r.reward.leveledUp, true);
+        assert.ok(maxSets(r.session) <= MAX, 'limite de 20 séries respectée');
+        await W.finishWorkout('demo', r.session.id, 'completed');
+        assert.equal(await level(), start + 1);
+        seen.push(d + ':appliquée');
+      } catch (error) {
+        if (error?.name !== 'SimulationRefused') throw error;
+        assert.match(error.message, /Montée de niveau impossible.*20 séries par machine/);
+        assert.match(error.message, /Rien n’a été modifié/);
+        assert.equal(await snapshot(), before, 'refus : rien de modifié');
+        assert.equal(T.isSimulationRunning(), false);
+        seen.push(d + ':refusée');
+      }
+    }
+  } finally { setNow(REFERENCE_DAY); await fresh(); }
+  assert.equal(seen.length, 7, seen.join(' '));
 });
