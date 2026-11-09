@@ -123,8 +123,14 @@ function renderCalendar() {
 
 // ---------------------------------------------------------------- detail et corrections
 
-async function fix(call, message) {
-  const p = profile(), id = S.detail;
+/** La séance de la cible `t` est-elle toujours celle affichée (même profil, détail ouvert sur elle) ? */
+const isShown = t => profile() === t.profile && S.mode === 'detail' && S.detail === t.id;
+/**
+ * Correction de la séance CIBLE `t` ({profile, id}, capturée au rendu du détail) : jamais relue après une attente,
+ * donc jamais appliquée au profil ou à la séance devenus actifs entre-temps.
+ */
+async function fix(t, call, message) {
+  const p = t.profile, id = t.id;
   try {
     const next = await enqueueCorrection(() => call(p, id));
     acceptSession(p, next);
@@ -181,6 +187,9 @@ function renderDetail() {
   const s = S.rows.find(r => r.id === S.detail);
   const box = el('div');
   if (!s) { box.append(btn('‹ Retour', 'pm-secondary', () => { S.mode = 'list'; render(); })); return box; }
+  const T = Object.freeze({ profile: profile(), id: s.id }); // cible immuable de toutes les actions de ce détail
+  /** Après une confirmation : n'agit que si la séance confirmée est toujours affichée (sinon rien n'est fait). */
+  const stillShown = () => { if (isShown(T)) return true; toast('Action annulée : la séance affichée a changé.'); return false; };
   const open = s.status === 'in_progress' || s.status === 'paused';
   box.append(btn('‹ Retour à la liste', 'pm-secondary', () => { S.mode = 'list'; S.detail = null; render(); }));
   const head = el('article', 'panel');
@@ -221,12 +230,12 @@ function renderDetail() {
         const plan = a.planned?.sets?.[Math.min(plannedIndex(i, a.perSide), (a.planned.sets.length || 1) - 1)];
         const row = el('div', 'pm-hist-set' + (set.done ? '' : ' pm-undone'));
         const kg = numInput(set.kg, 'kg', 'Charge série ' + (i + 1)), reps = numInput(set.reps, 'reps', 'Répétitions série ' + (i + 1));
-        const target = { profile: profile(), id: s.id, activity: a.key, set: set.id };
+        const target = { profile: T.profile, id: T.id, activity: a.key, set: set.id };
         bindSetField(kg, 'kg', set, target); bindSetField(reps, 'reps', set, target);
-        const toggle = btn(set.done ? '✓' : '○', 'pm-icon-btn', () => fix((p, id) => correctSet(p, id, a.key, set.id, { done: !set.done })));
+        const toggle = btn(set.done ? '✓' : '○', 'pm-icon-btn', () => fix(T, (p, id) => correctSet(p, id, a.key, set.id, { done: !set.done })));
         toggle.title = set.done ? 'Marquer comme non faite' : 'Marquer comme faite'; toggle.setAttribute('aria-label', toggle.title);
         const del = btn('×', 'pm-icon-btn', async () => {
-          if (await confirmDialog('Retirer la série ' + (i + 1) + ' ?', { ok: 'Retirer', danger: true })) fix((p, id) => correctRemoveSet(p, id, a.key, set.id), 'Série retirée');
+          if (await confirmDialog('Retirer la série ' + (i + 1) + ' ?', { ok: 'Retirer', danger: true }) && stillShown()) fix(T, (p, id) => correctRemoveSet(p, id, a.key, set.id), 'Série retirée');
         });
         del.setAttribute('aria-label', 'Retirer la série ' + (i + 1));
         const mark = el('span', 'pm-set-mark', String(i + 1));
@@ -247,14 +256,14 @@ function renderDetail() {
         };
         updateRow(s); updates.push(updateRow);
       });
-      block.append(btn('+ Série', 'pm-secondary', () => fix((p, id) => correctAddSet(p, id, a.key, {}), 'Série ajoutée')));
+      block.append(btn('+ Série', 'pm-secondary', () => fix(T, (p, id) => correctAddSet(p, id, a.key, {}), 'Série ajoutée')));
     } else {
       const row = el('div', 'pm-hist-set');
       const dur = numInput(a.actual?.durationMinutes ?? a.planned?.durationMinutes ?? 0, 'kg', 'Durée en minutes');
       dur.addEventListener('change', () => {
         const v = parseNum(dur.value);
         if (!Number.isFinite(v) || v < 0 || v > 300) { toast('Durée invalide (0 à 300).'); load(); return; }
-        fix((p, id) => correctActivityDuration(p, id, a.key, v), 'Durée corrigée');
+        fix(T, (p, id) => correctActivityDuration(p, id, a.key, v), 'Durée corrigée');
       });
       row.append(dur, el('span', 'pm-unit', 'min' + (a.planned?.durationMinutes ? ' (prévu ' + a.planned.durationMinutes + ')' : '')));
       block.append(row);
@@ -268,7 +277,7 @@ function renderDetail() {
           const raw = input.value.trim();
           const n = raw === '' ? null : parseNum(raw);
           if (n !== null && (!Number.isFinite(n) || n < 0 || n > m.max || (m.integer && !Number.isInteger(n)))) { toast(m.label + ' invalide.'); load(); return; }
-          fix((p, id) => correctActivityMetrics(p, id, a.key, { [m.key]: n }), 'Corrigé ✓');
+          fix(T, (p, id) => correctActivityMetrics(p, id, a.key, { [m.key]: n }), 'Corrigé ✓');
         });
         const field = el('label', 'pm-hist-metric');
         field.append(el('span', 'pm-unit', m.label + (m.unit && (m.key !== 'speed' || a.name === 'Tapis de course') ? ' (' + m.unit + ')' : '')), input);
@@ -284,28 +293,28 @@ function renderDetail() {
   const fe = el('div', 'pm-feelings');
   [['1', 'Très dur'], ['2', 'Dur'], ['3', 'Correct'], ['4', 'Bien'], ['5', 'Très bien']].forEach(([v, l]) => {
     fe.append(btn(v + ' · ' + l, 'pm-feeling' + (String(s.feedback?.feeling) === v ? ' pm-on' : ''),
-      () => fix((p, id) => setWorkoutFeedback(p, id, { feeling: s.feedback?.feeling === Number(v) ? null : Number(v) }))));
+      () => fix(T, (p, id) => setWorkoutFeedback(p, id, { feeling: s.feedback?.feeling === Number(v) ? null : Number(v) }))));
   });
   fb.append(fe);
   const note = el('textarea', 'pm-textarea-note'); note.value = s.feedback?.note || ''; note.placeholder = 'Remarques…'; note.maxLength = 1000;
   note.setAttribute('aria-label', 'Remarques');
-  note.addEventListener('change', () => fix((p, id) => setWorkoutFeedback(p, id, { note: note.value }), 'Remarque enregistrée'));
+  note.addEventListener('change', () => fix(T, (p, id) => setWorkoutFeedback(p, id, { note: note.value }), 'Remarque enregistrée'));
   fb.append(note);
   box.append(fb);
 
   box.append(btn('Supprimer cette séance', 'pm-warning pm-block', async () => {
     const ok = await confirmDialog('Supprimer définitivement cette séance (' + (s.dayName || s.dayId) + ', ' + formatDateFr(s.date) +
       ') ? Cette action est irréversible. Pense à faire une sauvegarde si besoin.', { title: 'Supprimer la séance', ok: 'Supprimer', danger: true });
-    if (!ok) return;
+    if (!ok || !stillShown()) return; // profil ou séance changés pendant la confirmation : rien n'est supprimé
     try {
-      await deleteWorkout(profile(), s.id);
-      S.detail = null; S.mode = 'list';
-      document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile: profile() } }));
+      await deleteWorkout(T.profile, T.id);
+      if (isShown(T)) { S.detail = null; S.mode = 'list'; }
+      document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile: T.profile } }));
       toast('Séance supprimée');
-      await load();
+      if (profile() === T.profile) await load();
     } catch (error) { toast(error?.message || 'Suppression impossible.'); }
   }));
-  detailView = { profile: profile(), id: s.id, box, update: next => updates.forEach(update => update(next)) };
+  detailView = { profile: T.profile, id: T.id, box, update: next => updates.forEach(update => update(next)) };
   return box;
 }
 

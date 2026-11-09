@@ -89,3 +89,10 @@ Les changements sont annoncés par l'événement `document` → `pm:profiles-cha
 - À la destruction d'un rendu, les temporisateurs sont annulés.
   - Lors d'un nouveau rendu de la même séance, un brouillon en attente est enregistré tout de suite, vers sa propre cible.
   - Lors d'un changement de séance ou de profil, il est abandonné.
+
+## Historique : cible des corrections
+
+- Chaque action du détail d'une séance vise une **cible immuable** `{profil, séance}`, capturée au rendu du détail. Cela couvre les corrections de charges, de répétitions, de durée, de mesures et de ressenti, l'ajout ou le retrait d'une série et la suppression de la séance.
+- `profile()` et `S.detail` ne sont jamais relus après une attente.
+- **Après une confirmation** (retrait d'une série, suppression de la séance), l'action n'a lieu que si cette séance est toujours affichée. Si le profil ou la séance affichée a changé pendant la confirmation, rien n'est fait et un message le signale.
+- Une correction déjà demandée est enregistrée sur **sa** séance, même si le profil change ensuite. Une saisie en cours survit à un rafraîchissement.
