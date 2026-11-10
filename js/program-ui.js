@@ -4,7 +4,7 @@
  * Les sessions de demonstration sont uniquement des objets JavaScript en memoire.
  */
 import { prepareProgramImport, importProgram, listProgramWeeks, getActiveProgram, mondayOf, parseProgramJson, readProgramFile, estimateDayMinutes, getProgramStatus } from './programs.js';
-import { getGym, getSportProfile } from './sport-profile.js';
+import { getGym, getSportProfile, frequencyIssues } from './sport-profile.js';
 import { listWorkouts } from './workouts.js';
 import { machineHistory, isClosed } from './stats.js';
 import { confirmDialog } from './dom.js';
@@ -293,6 +293,7 @@ async function profileWarnings(profile, prepared) {
     const avail = gym.available ? new Set(gym.available) : null, avoid = new Set(gym.avoid || []);
     const name = id => state.names.get(id) || id;
     const seen = new Set();
+    out.push(...frequencyIssues(prepared.program.days.map(d => d.id), sport, { weekStart: prepared.weekStart, currentMonday: mondayOf() }));
     for (const day of prepared.program.days) {
       if (sport.days.length && !sport.days.includes(day.id)) out.push('Séance prévue le ' + day.id + ', qui n’est pas dans tes jours disponibles.');
       const est = estimateDayMinutes(day);
@@ -433,6 +434,14 @@ async function saveImport() {
     if (!sameProfile(profile, generation) || !state.preview) return;
     if (existing && !(await confirmDialog('Un programme existe déjà pour la semaine du ' + weekStart + '. Le remplacer par celui-ci ? Tes séances déjà enregistrées sont conservées.', { title: 'Remplacer le programme', ok: 'Remplacer', danger: true }))) {
       notify('Import annulé : le programme existant est conservé.', 'info'); return;
+    }
+    if (!sameProfile(profile, generation) || !state.preview) return;
+    // V2-EVOLUTION-1 : programme incomplet par rapport au profil sportif → refus par défaut, exception explicite possible
+    const sport = await getSportProfile(profile).catch(() => null);
+    const issues = sport ? frequencyIssues(state.preview.program.days.map(d => d.id), sport, { weekStart, currentMonday: mondayOf() }) : [];
+    if (!sameProfile(profile, generation) || !state.preview) return;
+    if (issues.length && !(await confirmDialog(issues.join(' ') + ' Le programme ne respecte pas ta fréquence. Refuser (et demander à ChatGPT un programme complet), ou l’importer quand même à titre d’exception ?', { title: 'Programme incomplet', ok: 'Importer quand même (exception)', cancel: 'Refuser ce programme' }))) {
+      notify('Import refusé : programme incomplet. Demande à ChatGPT les ' + sport.frequency + ' séances prévues.', 'info'); return;
     }
     if (!sameProfile(profile, generation) || !state.preview) return;
   }

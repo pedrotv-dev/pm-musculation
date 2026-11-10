@@ -17,7 +17,10 @@ import { isClosed, weekStartOf, addDays } from './stats.js';
  * Démo : pas de date de début (données fictives).
  */
 export const PROGRESSION_START = Object.freeze({ pierre: '2026-11-09', manon: '2026-11-09' });
-export const progressionStartFor = profileId => PROGRESSION_START[profileId] || null;
+/** V2-EVOLUTION-1 : début du jeu pour TOUS les vrais profils (un historique importé d'avant cette date ne crée ni XP, ni
+ * niveau, ni succès). Démo : aucune date (données fictives relatives à aujourd'hui). */
+export const GAME_START = '2026-11-09';
+export const progressionStartFor = profileId => PROGRESSION_START[profileId] || (profileId && profileId !== 'demo' ? GAME_START : null);
 
 export const XP = Object.freeze({ perSet: 10, perCardioMinute: 2, cardioCapMinutes: 60, completed: 60, partial: 25, record: 50 });
 

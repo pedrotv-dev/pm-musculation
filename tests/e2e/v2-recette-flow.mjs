@@ -357,6 +357,7 @@ await step('4.1 deuxième profil « Sam fictif » (endurance, perte de graisse) 
 
 await step('4.2 Sam : programme différent, séance faite ; aucune référence de charge venant d’Alex', async () => {
   await importReply(reply(weekB(sam, '2026-11-16')));
+  await page.click('.pm-modal:has-text("Programme incomplet") .pm-modal-btn:has-text("Importer quand même")'); // V2-EVOLUTION-1 : moins de séances que la fréquence du profil → exception explicite
   await page.waitForFunction(async id => !!(await (await import('./storage.js')).getProgram(id, '2026-11-16')), sam);
   await page.click('.nav-btn[data-go="accueil"]');
   await page.click(home + ' .pm-next-card .pm-play');

@@ -16,7 +16,7 @@ export const GOALS = Object.freeze(['Prise de muscle', 'Perte de graisse', 'Renf
 export const LEVELS = Object.freeze([['debutant', 'Débutant (moins de 6 mois de pratique)'], ['intermediaire', 'Intermédiaire (6 mois à 2 ans)'], ['confirme', 'Confirmé (plus de 2 ans)']]);
 export const DAYS = Object.freeze(['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']);
 export const DURATIONS = Object.freeze([30, 45, 60, 75, 90, 120]);
-export const INTENSITIES = Object.freeze([['moderee', 'Modérée — RPE 6-7 (3 à 4 répétitions en réserve)'], ['soutenue', 'Soutenue — RPE 7-8 (2 à 3 en réserve)'], ['elevee', 'Élevée — RPE 8-9 (1 à 2 en réserve)']]);
+export const INTENSITIES = Object.freeze([['moderee', 'Modérée — RPE 6-7 (3 à 4 répétitions en réserve)'], ['soutenue', 'Soutenue — RPE 7-8 (2 à 3 en réserve)'], ['elevee', 'Hard / élevée — RPE 8-9 (1 à 2 en réserve)']]);
 export const FATIGUE = Object.freeze([[1, 'Très en forme'], [2, 'En forme'], [3, 'Normale'], [4, 'Fatigué(e)'], [5, 'Très fatigué(e)']]);
 export const SLEEP = Object.freeze([['bon', 'Bon sommeil'], ['moyen', 'Sommeil moyen'], ['mauvais', 'Mauvais sommeil']]);
 export const MEASURES = Object.freeze([['heightCm', 'Taille', 'cm', 100, 250], ['waistCm', 'Tour de taille', 'cm', 30, 250], ['chestCm', 'Tour de poitrine', 'cm', 30, 250], ['hipsCm', 'Tour de hanches', 'cm', 30, 250], ['armCm', 'Tour de bras', 'cm', 10, 100], ['thighCm', 'Tour de cuisse', 'cm', 20, 150]]);
@@ -68,6 +68,21 @@ export function missingEssentials(sport) {
   if (!sport.frequency) out.push({ key: 'frequency', label: 'nombre de séances par semaine' });
   if (!sport.days.length) out.push({ key: 'days', label: 'jours disponibles' });
   if (!sport.durationMin) out.push({ key: 'durationMin', label: 'durée maximale par séance' });
+  return out;
+}
+/**
+ * V2-EVOLUTION-1 : écarts entre un programme importé et la fréquence / les jours du profil sportif. Appliqué seulement aux
+ * semaines en cours ou à venir (jamais aux anciens programmes historiques). @returns {string[]} messages (vide = conforme)
+ */
+export function frequencyIssues(dayIds, sport, { weekStart, currentMonday } = {}) {
+  if (weekStart && currentMonday && weekStart < currentMonday) return [];
+  const out = [];
+  const n = dayIds.length, f = sport && sport.frequency, avail = (sport && sport.days) || [];
+  if (f && n !== f) out.push('Ce programme contient ' + n + ' séance' + (n > 1 ? 's' : '') + ' alors que ton profil sportif en demande ' + f + ' par semaine' + (avail.length ? ' (' + avail.join(', ') + ')' : '') + '.');
+  if (f && avail.length === f) {
+    const missing = avail.filter(d => !dayIds.includes(d));
+    if (missing.length) out.push('Jours demandés sans séance : ' + missing.join(', ') + '.');
+  }
   return out;
 }
 /** Normalise et vérifie un profil sportif complet. @throws {Error} message lisible (français). */
