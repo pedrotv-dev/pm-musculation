@@ -1,0 +1,29 @@
+/* ASCENT · médailles de succès (livraison 4). Pictogrammes en masque : la couleur suit currentColor.
+   Une règle par succès de js/gamification.js (vérifié par tests/succes.test.mjs). */
+.pm-medal { position:relative; display:grid; place-items:center; flex:none; width:60px; height:60px; color:var(--turq); }
+.pm-medal-frame { position:absolute; inset:0; width:100%; height:100%; }
+.pm-medal-ico { position:relative; width:46%; height:46%; margin-top:-6%; background:currentColor;
+  -webkit-mask:var(--pm-medal) center/contain no-repeat; mask:var(--pm-medal) center/contain no-repeat; }
+.pm-medal-locked { color:var(--muted); opacity:.55; }
+.pm-medal-locked .pm-medal-frame { filter:grayscale(1); opacity:.6; }
+.pm-medal-lg { width:84px; height:84px; }
+.pm-medal-ico[data-badge="first-session"] { --pm-medal:url("../assets/ascent/succes-first-session.svg"); }
+.pm-medal-ico[data-badge="five-sessions"] { --pm-medal:url("../assets/ascent/succes-five-sessions.svg"); }
+.pm-medal-ico[data-badge="ten-sessions"] { --pm-medal:url("../assets/ascent/succes-ten-sessions.svg"); }
+.pm-medal-ico[data-badge="twentyfive-sessions"] { --pm-medal:url("../assets/ascent/succes-twentyfive-sessions.svg"); }
+.pm-medal-ico[data-badge="hundred-sets"] { --pm-medal:url("../assets/ascent/succes-hundred-sets.svg"); }
+.pm-medal-ico[data-badge="five-hundred-sets"] { --pm-medal:url("../assets/ascent/succes-five-hundred-sets.svg"); }
+.pm-medal-ico[data-badge="tonne"] { --pm-medal:url("../assets/ascent/succes-tonne.svg"); }
+.pm-medal-ico[data-badge="elephant"] { --pm-medal:url("../assets/ascent/succes-elephant.svg"); }
+.pm-medal-ico[data-badge="cargo"] { --pm-medal:url("../assets/ascent/succes-cargo.svg"); }
+.pm-medal-ico[data-badge="first-record"] { --pm-medal:url("../assets/ascent/succes-first-record.svg"); }
+.pm-medal-ico[data-badge="five-records"] { --pm-medal:url("../assets/ascent/succes-five-records.svg"); }
+.pm-medal-ico[data-badge="streak-2"] { --pm-medal:url("../assets/ascent/succes-streak-2.svg"); }
+.pm-medal-ico[data-badge="streak-4"] { --pm-medal:url("../assets/ascent/succes-streak-4.svg"); }
+.pm-medal-ico[data-badge="streak-8"] { --pm-medal:url("../assets/ascent/succes-streak-8.svg"); }
+.pm-medal-ico[data-badge="cardio-60"] { --pm-medal:url("../assets/ascent/succes-cardio-60.svg"); }
+.pm-medal-ico[data-badge="cardio-300"] { --pm-medal:url("../assets/ascent/succes-cardio-300.svg"); }
+.pm-medal-ico[data-badge="explorer"] { --pm-medal:url("../assets/ascent/succes-explorer.svg"); }
+.pm-medal-ico[data-badge="good-feeling"] { --pm-medal:url("../assets/ascent/succes-good-feeling.svg"); }
+.pm-badge-tile .pm-medal { margin:2px 0 0 -4px; }
+.pm-reward-badge .pm-medal { margin:0 0 2px; }
