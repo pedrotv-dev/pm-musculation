@@ -5,7 +5,7 @@
 // vérification de toutes les données ; second profil indépendant ; séance libre ; démo inchangée.
 // node tests/e2e/v2-complete-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, watch, step, summary } from './lib.mjs';
+import { serve, launch, watch, step, summary, createProfileUI, createProfileApi } from './lib.mjs';
 
 const srv = await serve();
 const { browser } = await launch();
@@ -41,9 +41,7 @@ console.log('V2-COMPLETE · recette globale');
 await step('1-2 · premier lancement, création du profil « Alex fictif » (ouvert automatiquement)', async () => {
   await page.goto(srv.url);
   await page.waitForSelector('#screen-select:not([hidden])');
-  await page.click('#create-profile');
-  await page.fill('#new-profile-name', 'Alex fictif');
-  await page.click('#create-profile-submit');
+  await createProfileUI(page, 'Alex fictif'); // inscription guidée complète (étape facultative passée)
   await page.waitForFunction(() => /^p-/.test(document.documentElement.dataset.pmProfile || ''));
   alex = await active();
   ({ today, week } = await db(async () => { const P = await import('./js/programs.js'); const d = new Date(); const p = n => String(n).padStart(2, '0'); return { today: d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()), week: P.mondayOf(d) }; }));
@@ -236,9 +234,7 @@ await step('conflit d’import : sauvegarde d’un profil déjà présent → An
 await step('second profil « Sam fictif » : indépendant (vide), séance libre, Alex inchangé', async () => {
   const alexBefore = await db(async id => { const d = await (await import('./storage.js')).exportProfileData(id); delete d.exportedAt; return JSON.stringify(d); }, alex);
   await toSelect();
-  await page.click('#create-profile');
-  await page.fill('#new-profile-name', 'Sam fictif');
-  await page.click('#create-profile-submit');
+  await createProfileApi(page, 'Sam fictif');
   await page.waitForFunction(id => /^p-/.test(document.documentElement.dataset.pmProfile || '') && document.documentElement.dataset.pmProfile !== id, alex);
   const sam = await active();
   await page.waitForSelector('[data-page="accueil"] h3:has-text("Aucun programme cette semaine"), [data-page="accueil"] h3:has-text("Par quoi veux-tu commencer")');

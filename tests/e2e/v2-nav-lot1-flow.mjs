@@ -35,11 +35,10 @@ await step('nouvel utilisateur : création du profil → 3 onglets (Accueil, Pro
   assert.equal(await noOverflow(), true);
 });
 
-await step('accueil sans programme (« Plus tard » sur le démarrage rapide) : une action principale « Préparer ma semaine » → Programme', async () => {
-  await page.click(home + ' .pm-quick-start button:has-text("Plus tard")'); // LOT 2 : démarrage rapide reporté
-  await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine")');
-  assert.equal(await page.locator(home + ' .pm-validate').count(), 1, 'une seule action principale');
-  await page.click(home + ' button:has-text("Préparer ma semaine")');
+await step('premier accueil (aucun programme, aucune séance) : 3 choix ; « Préparer mon programme avec ChatGPT » → Programme', async () => {
+  await page.waitForSelector(home + ' .pm-welcome-card h3:has-text("Par quoi veux-tu commencer")');
+  assert.equal(await page.locator(home + ' .pm-welcome-opt').count(), 3);
+  await page.click(home + ' .pm-welcome-card button:has-text("Préparer mon programme avec ChatGPT")');
   assert.equal(await visiblePage(), 'programme');
   await page.waitForSelector(coach + ' .pm-coach-missing');
   const order = await db(() => [...document.querySelectorAll('[data-page="programme"] .pm-coach-section, [data-page="programme"] .pm-import')].map(x => x.classList.contains('pm-import') ? 'import' : 'demande'));

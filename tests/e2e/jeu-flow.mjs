@@ -106,7 +106,7 @@ await step('passage de niveau : plein écran « Niveau supérieur » avec Korv, 
   const p = await c.newPage(); watch(p, errors);
   const prog = { schemaVersion: 1, weekStart: mondayISO(new Date(2026, 10, 10)), programs: { manon: { days: ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'].map(id => ({
     id, name: 'Jambes', activities: [{ type: 'strength', machineId: 'leg-press', shared: true, restSeconds: 30, sets: Array.from({ length: 15 }, () => ({ kg: 40, reps: 12 })) }] })) } } };
-  await p.goto(srv.url); await p.click('[data-select-profile="manon"]');
+  await p.goto(srv.url); await legacyInstall(p, ['manon']); await p.click('[data-select-profile="manon"]'); // ancienne installation fictive (Manon)
   await p.click('.nav-btn[data-go="programme"]'); await p.click('.pm-import summary');
   await p.fill('.pm-textarea', JSON.stringify(prog)); await p.click('.pm-action-verify');
   await p.waitForSelector('.pm-action-save:not([disabled])'); await p.click('.pm-action-save');
@@ -128,7 +128,7 @@ await step('avant le 9 novembre : niveau 1, 0 XP, et l\'annonce du début de la 
   const before = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await before.clock.install({ time: new Date(2026, 10, 7, 10, 0, 0) });
   const p = await before.newPage(); watch(p, errors);
-  await p.goto(srv.url); await p.click('[data-select-profile="manon"]');
+  await p.goto(srv.url); await legacyInstall(p, ['manon']); await p.click('[data-select-profile="manon"]'); // ancienne installation fictive (Manon)
   await p.waitForSelector('.pm-level-card');
   const t = await p.locator('.pm-level-card').innerText();
   assert.match(t, /Niveau 1/); assert.match(t, /0 \/ 200 XP/); assert.match(t, /démarre le lundi 9 novembre/);

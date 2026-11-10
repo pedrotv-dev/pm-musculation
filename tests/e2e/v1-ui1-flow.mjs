@@ -78,7 +78,7 @@ for (const [label, share, expected] of [
   const page = await context.newPage(); page.setDefaultTimeout(15000);
   const errors = watch(page);
   await step(`CSV · ${label} : message affiché juste`, async () => {
-    await page.goto(srv.url); await page.click('[data-select-profile="pierre"]');
+    await page.goto(srv.url); await legacyInstall(page, ['pierre']); await page.click('[data-select-profile="pierre"]'); // ancienne installation fictive
     await page.click('.pm-settings-btn[data-go="profil"]');
     const dl = share ? null : page.waitForEvent('download');
     await page.click('button:has-text("Exporter mes résultats")');

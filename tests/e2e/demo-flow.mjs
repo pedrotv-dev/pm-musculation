@@ -25,9 +25,11 @@ const dbRows = () => page.evaluate(async () => {
   });
 });
 
+let baseRows = 0;
 console.log('Parcours démo');
 await page.goto(srv.url);
   await legacyInstall(page); // V2-UX-FINALISATION : Pierre et Manon n'existent que sur une ancienne installation
+  baseRows = await dbRows(); // lignes de l'ancienne installation fictive (registre + données V1) : la démo n'en ajoute aucune
 await step('ouvrir la démo depuis le choix de profil', async () => {
   await page.click('[data-select-profile="demo"]');
   await page.waitForSelector('.pm-home-card');
@@ -89,7 +91,7 @@ await step('démarrer une nouvelle fausse séance depuis le programme', async ()
   await page.waitForSelector('.pm-home-card');
 });
 await step('aucune donnée écrite dans IndexedDB par la démo', async () => {
-  assert.ok((await dbRows()) <= 0, 'lignes IndexedDB : ' + (await dbRows()));
+  assert.ok((await dbRows()) <= baseRows, 'lignes IndexedDB : ' + (await dbRows()) + ' (avant la démo : ' + baseRows + ')');
 });
 await step('réinitialiser la démo', async () => {
   await page.click('.pm-settings-btn[data-go="profil"]');
