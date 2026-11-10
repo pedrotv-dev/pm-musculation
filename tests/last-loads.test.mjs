@@ -228,3 +228,13 @@ test('séance où seul l’échauffement a été validé : pas retenue comme ré
   assert.deepEqual([L.lastPerformance(hist, 'leg-press').sessionId, L.lastPerformance(hist, 'leg-press').kg], ['f', 82.5]);
   assert.equal(L.lastPerformance([hist[1]], 'leg-press').kg, 45, 'seule séance connue : retenue (prudent)');
 });
+
+test('V2-RECETTE-1 · changements récents lisibles par ChatGPT (fatigue, niveau, durée, poids cible…), y compris l’historique déjà enregistré', () => {
+  const before = SP.sanitizeSport({ fatigue: 3, level: 'debutant', durationMin: 60, intensity: 'moderee', sleep: 'bon', targetWeightKg: 82, updatedAt: '2026-11-01T10:00:00Z' });
+  const after = SP.sanitizeSport({ fatigue: 4, level: 'intermediaire', durationMin: 45, intensity: 'elevee', sleep: 'mauvais', targetWeightKg: null });
+  const history = SP.diffSport(before, after, '2026-11-08T10:00:00.000Z');
+  const t = buildCoachPrompt({ ...base, sport: { ...after, mainGoal: 'Force', history } });
+  for (const want of ['fatigue : Normale → Fatigué(e)', 'niveau : Débutant (moins de 6 mois de pratique) → Intermédiaire (6 mois à 2 ans)', 'durée maximale par séance : 60 min → 45 min',
+    'poids cible : 82 kg → —', 'sommeil : Bon sommeil → Mauvais sommeil', 'intensité souhaitée : Modérée']) assert.ok(t.includes(want), want);
+  assert.equal(/fatigue : 3 → 4/.test(t), false);
+});

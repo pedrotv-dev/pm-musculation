@@ -120,3 +120,15 @@ dans le dépôt) ; chaque cas est rejoué par `tests/e2e/v2-qa9-flow.mjs` (6 éc
 - Réglage renommé « Durée maximale par séance » (30, 45, 60, 75, 90, 120 min, inchangés).
 - Demande : plafond, jamais à remplir ; durée réaliste (échauffement, séries, repos, transitions, cardio).
 - Import : « Durée estimée : environ N min (estimation) » par jour, avertissement si l’estimation dépasse la durée maximale.
+
+## V2-RECETTE-1 (utilisation quotidienne, branche `claude/v2-recette-1`)
+
+Parcours `tests/e2e/v2-recette-flow.mjs` (28 étapes, 390 px puis 320 px, horloge simulée, données fictives, uniquement
+par l’interface) : première utilisation, séance réelle (machines, cardio, repos automatique et manuel, machine occupée,
+fermeture brutale puis reprise, fin partielle et complète), lundi 45 → 80 kg puis vendredi prérempli, semaine suivante,
+séance libre, deux profils indépendants (sauvegarde / restauration individuelles, refus croisé), petit écran, arrière-plan,
+hors connexion, mise à jour PWA pendant une séance, bilan et demande de la semaine suivante (prise de muscle, endurance).
+
+Anomalie corrigée : la section « Changements récents » de la demande ChatGPT affichait des valeurs brutes
+(« fatigue : 3 → 4 », « niveau : debutant → intermediaire », « durée : 60 → 45 ») ; elle affiche désormais leur sens
+(« fatigue : Normale → Fatigué(e) », « 60 min → 45 min »), y compris pour l’historique déjà enregistré.
