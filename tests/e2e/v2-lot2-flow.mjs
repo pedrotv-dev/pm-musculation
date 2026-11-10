@@ -27,43 +27,99 @@ const reply = (id, weekStart, days) => 'Voici ton programme : 2 séances complè
   { type: 'strength', machineId: 'leg-press', shared: false, restSeconds: 90, sets: [{ kg: 70, reps: 8 }, { kg: 70, reps: 8 }] },
   { type: 'strength', machineId: 'chest-press', shared: false, restSeconds: 90, sets: [{ kg: 40, reps: 8 }] }] })) } } }, null, 2) + '\n```\n';
 
-console.log('V2-UX · LOT 2 : premier lancement + « Préparer ma semaine »');
-await step('David crée son profil : « Ta semaine en 30 secondes » en tête d’accueil, visible sans défiler', async () => {
+console.log('V2-UX · LOT 2 + FINALISATION : installation vierge, inscription guidée, premier accueil, « Préparer ma semaine »');
+const ob = '#screen-onboarding:not([hidden]) .pm-onboarding';
+const obChip = label => page.click(ob + ' label.pm-qs-chip:has(span:text-is("' + label + '"))');
+const obNext = () => page.click(ob + ' button:has-text("Suivant")');
+const obTitle = () => page.locator(ob + ' #pm-ob-title').innerText();
+await step('installation vierge : « Bienvenue sur PM Musculation », Créer mon profil + mode Démo, AUCUN profil précréé', async () => {
   await page.clock.install({ time: new Date(2026, 10, 10, 10, 0, 0) }); // mardi 10 novembre 2026
   await page.goto(srv.url);
-  await page.click('#create-profile'); await page.fill('#new-profile-name', 'David fictif'); await page.click('#create-profile-submit');
-  await page.waitForFunction(() => /^p-/.test(document.documentElement.dataset.pmProfile || ''));
-  david = await db(() => document.documentElement.dataset.pmProfile);
-  await page.waitForSelector(qs);
-  const top = await page.locator(qs).boundingBox();
-  assert.ok(top.y < 844, 'carte de démarrage visible sans défiler (y=' + Math.round(top.y) + ')');
-  assert.equal(await page.locator(home + ' .pm-progress-home').count(), 0, 'pas de chiffres à zéro pour un nouveau profil');
+  assert.equal(await page.locator('#select-title').innerText(), 'Bienvenue sur PM Musculation');
+  for (const id of ['pierre', 'manon']) assert.equal(await page.locator('[data-select-profile="' + id + '"]').isVisible(), false, id + ' absent');
+  assert.equal(await page.locator('[data-user-profile]').count(), 0);
+  assert.equal(await page.locator('#create-profile').innerText(), '+ Créer mon profil');
+  assert.match(await page.locator('[data-select-profile="demo"]').innerText(), /Essayer le mode Démo/);
+  assert.doesNotMatch(await page.locator('body').innerText(), /Pierre|Manon/, 'aucun nom personnel affiché');
+  assert.equal(await db(async () => (await import('./storage.js')).countProfileRows(['pierre', 'manon'])), 0);
   assert.equal(await noOverflow(), true);
 });
 
-await step('enregistrer sans tout choisir : message clair, rien n’est écrit', async () => {
-  await chip('Objectif principal', 'Force').click();
-  await page.click(qs + ' button:has-text("Enregistrer et préparer ma semaine")');
-  assert.match(await page.locator(qs + ' .pm-coach-status').innerText(), /Choisis encore : niveau, au moins un jour, durée/);
+await step('étape 1 (prénom) puis inscription guidée : pas d’Accueil ni de barre tant que l’obligatoire manque', async () => {
+  await page.click('#create-profile'); await page.fill('#new-profile-name', 'David fictif'); await page.click('#create-profile-submit');
+  await page.waitForFunction(() => /^p-/.test(document.documentElement.dataset.pmProfile || ''));
+  david = await db(() => document.documentElement.dataset.pmProfile);
+  await page.waitForSelector(ob);
+  assert.equal(await obTitle(), 'Ton objectif principal');
+  assert.match(await page.locator(ob + ' .eyebrow').innerText(), /ÉTAPE 2 \/ 7/i);
+  for (const sel of ['#bottom-nav', '#open-settings', '[data-page="accueil"]']) assert.equal(await page.locator(sel).isVisible(), false, sel + ' masqué');
+  assert.ok(await page.locator(ob + ' .pm-mascot').count() === 1, 'Korv présent (ASCENT)');
+});
+
+await step('validation : « Suivant » sans choix → message, rien d’enregistré ; « Retour » vers le prénom (corrigeable)', async () => {
+  await obNext();
+  await page.waitForSelector(ob + ' .pm-coach-status:has-text("Choisis un objectif")');
   assert.equal(await setting(david, 'coach.profile'), null);
+  await page.click(ob + ' button:has-text("Retour")');
+  await page.waitForSelector(ob + ' #pm-ob-name');
+  assert.equal(await page.inputValue('#pm-ob-name'), 'David fictif');
+  await page.fill('#pm-ob-name', 'David F. fictif'); await obNext();
+  await page.waitForFunction(() => /David F\. fictif/.test(document.getElementById('switch-profile').innerText));
+  assert.equal(await obTitle(), 'Ton objectif principal');
 });
 
-await step('5 choix (Force, Confirmé, mardi + jeudi, 75 min, Hard) → profil sportif complet, autres champs intacts', async () => {
-  await chip('Niveau', 'Confirmé').click();
-  await chip('Jours', 'Mar').click(); await chip('Jours', 'Jeu').click();
-  assert.equal(await page.inputValue('#pm-qs-freq'), '2', 'séances = jours cochés');
-  await chip('Durée', '75 min').click();
-  await chip('Intensité', 'Hard').click();
-  for (const c of await page.locator(qs + ' label.pm-qs-chip').all()) { const b = await c.boundingBox(); assert.ok(b.height >= 44, 'pastille ≥ 44 px'); }
-  await page.click(qs + ' button:has-text("Enregistrer et préparer ma semaine")');
-  await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine")');
+await step('objectif (Force), ancienneté (Moins de 3 mois) ; inscription INTERROMPUE (rechargement) → reprise à la bonne étape', async () => {
+  await obChip('Force'); await obNext();
+  await page.waitForSelector(ob + ' #pm-ob-title:has-text("ancienneté")');
+  await obChip('Moins de 3 mois'); await obNext();
+  await page.waitForSelector(ob + ' #pm-ob-title:has-text("intensité")');
+  await page.reload();
+  await page.waitForSelector(ob + ' #pm-ob-title:has-text("intensité")');
+  assert.equal(await page.locator('#bottom-nav').isVisible(), false);
   const s = await setting(david, 'coach.profile');
-  assert.deepEqual([s.mainGoal, s.level, s.days, s.frequency, s.durationMin, s.intensity], ['Force', 'confirme', ['mardi', 'jeudi'], 2, 75, 'elevee']);
-  assert.equal(await page.locator(qs).count(), 0, 'démarrage rapide terminé');
+  assert.deepEqual([s.mainGoal, s.seniority, s.level], ['Force', 'lt3m', 'debutant'], 'étapes terminées enregistrées');
 });
 
-await step('Accueil → « Préparer ma semaine » : assistant en 3 étapes, semaine EN COURS proposée (aucun programme)', async () => {
-  await page.click(home + ' button:has-text("Préparer ma semaine")');
+await step('intensité Hard avec 3 mois d’ancienneté, mardi + jeudi (fréquence 2, réductible), 75 min', async () => {
+  await obChip('Hard / élevée — RPE 8-9 (1 à 2 en réserve)'); await obNext();
+  await page.waitForSelector(ob + ' #pm-ob-title:has-text("jours")');
+  await obChip('Mar'); await obChip('Jeu');
+  assert.equal(await page.inputValue('#pm-ob-freq'), '2', 'séances = jours cochés');
+  assert.deepEqual(await page.locator('#pm-ob-freq option').allInnerTexts(), ['1 (parmi ces jours)', '2 (un par jour coché)']);
+  for (const c of await page.locator(ob + ' label.pm-qs-chip').all()) { const b = await c.boundingBox(); assert.ok(b.height >= 44, 'pastille ≥ 44 px'); }
+  await obNext();
+  await page.waitForSelector(ob + ' #pm-ob-title:has-text("Durée")');
+  assert.match(await page.locator(ob).innerText(), /une limite, pas une durée à remplir/);
+  await obChip('75 min'); await obNext();
+  await page.waitForSelector(ob + ' #pm-ob-title:has-text("facultatif")');
+});
+
+await step('dernière étape FACULTATIVE : poids et contrainte renseignés → « Terminer » → premier Accueil', async () => {
+  assert.equal(await page.locator(ob + ' button:has-text("Passer cette étape")').count(), 1);
+  await page.fill('#pm-ob-weight', '72,5');
+  await page.fill('#pm-ob-constraints', 'Épaule droite fragile (fictif)');
+  await page.click(ob + ' button:has-text("Terminer")');
+  await page.waitForSelector(home + ' .pm-welcome-card');
+  const s = await setting(david, 'coach.profile');
+  assert.deepEqual([s.mainGoal, s.seniority, s.intensity, s.days, s.frequency, s.durationMin, s.constraints], ['Force', 'lt3m', 'elevee', ['mardi', 'jeudi'], 2, 75, 'Épaule droite fragile (fictif)']);
+  assert.deepEqual(await db(async id => (await (await import('./js/weights.js')).listBodyWeights(id)).map(w => w.kg), david), [72.5]);
+  assert.equal(await page.locator('#bottom-nav').isVisible(), true);
+  assert.equal(await page.locator('#screen-onboarding').isVisible(), false);
+});
+
+await step('premier Accueil : trois possibilités DANS L’ORDRE (séance libre, mes charges, programme ChatGPT), visibles sans défiler', async () => {
+  const opts = (await page.locator(home + ' .pm-welcome-card .pm-welcome-opt strong').allInnerTexts());
+  assert.deepEqual(opts, ['Une séance libre', 'Mes charges', 'Mon programme']);
+  const btns = await page.locator(home + ' .pm-welcome-card button').allInnerTexts();
+  assert.deepEqual(btns, ['Commencer une séance libre', 'Renseigner mes charges', 'Préparer mon programme avec ChatGPT']);
+  assert.ok((await page.locator(home + ' .pm-welcome-card').boundingBox()).y < 844);
+  assert.equal(await page.locator(home + ' .pm-progress-home').count(), 0, 'pas de chiffres à zéro pour un nouveau profil');
+  await page.reload(); await page.waitForSelector(home + ' .pm-welcome-card');
+  assert.equal(await page.locator('#screen-onboarding').isVisible(), false, 'jamais redemandé après la fin');
+});
+
+await step('« Préparer mon programme avec ChatGPT » : assistant en 3 étapes, semaine EN COURS proposée (aucun programme)', async () => {
+  await page.click(home + ' .pm-welcome-card button:has-text("Préparer mon programme avec ChatGPT")');
   await page.waitForSelector(coach + ' button:has-text("Copier ma demande")');
   assert.equal(await page.inputValue(coach + ' select'), '2026-11-09', 'semaine en cours sans programme');
   const t = await page.locator(coach).innerText();
@@ -77,7 +133,7 @@ await step('① « Copier ma demande » : rédigée ET copiée en un appui (prof
   await page.waitForSelector(coach + ' .pm-coach-status:has-text("Demande copiée")');
   prompt = await page.inputValue('.pm-coach-out');
   assert.equal(await db(() => navigator.clipboard.readText()), prompt, 'demande dans le presse-papiers');
-  for (const want of ['Objectif principal : Force', 'HARD — RPE 8 à 9', 'Prépare EXACTEMENT 2 séances', 'mardi, jeudi', '75 min', '"weekStart": "2026-11-09"']) assert.ok(prompt.includes(want), want);
+  for (const want of ['Objectif principal : Force', 'Ancienneté en musculation : Moins de 3 mois', 'HARD — RPE 8 à 9', 'Ne réduis PAS toutes les charges', 'Prépare EXACTEMENT 2 séances', 'mardi, jeudi', '75 min', 'Épaule droite fragile (fictif)', '"weekStart": "2026-11-09"']) assert.ok(prompt.includes(want), want);
 });
 
 await step('② « Coller » avec la demande encore copiée : refus clair, cadre d’import ouvert, rien d’importé', async () => {
@@ -134,21 +190,34 @@ await step('Réglages : le profil sportif contient les choix rapides ; « Prépa
   await page.click('#open-settings');
   const f = page.locator('.pm-sport-fold'); if (!(await f.evaluate(d => d.open))) await f.locator('summary').click();
   assert.equal(await page.inputValue('#pm-sport-mainGoal'), 'Force');
+  assert.equal(await page.inputValue('#pm-sport-seniority'), 'lt3m', 'ancienneté modifiable dans Réglages');
   await f.locator('.pm-to-coach').click();
   await page.waitForSelector(coach + ' button:has-text("Copier ma demande")');
 });
 
-await step('« Plus tard » : un autre profil sans programme garde l’accès direct à la séance libre', async () => {
+await step('second profil : étape facultative PASSÉE (rien de bloquant) → premier Accueil ; séance libre immédiatement possible', async () => {
   await page.click('#switch-profile');
+  assert.equal(await page.locator('#select-title').innerText(), 'Choisis ton profil');
   await page.click('#create-profile'); await page.fill('#new-profile-name', 'Eve fictive'); await page.click('#create-profile-submit');
-  await page.waitForSelector(qs);
-  assert.equal(await page.locator(home + ' button:has-text("Séance libre")').count(), 1);
-  await page.click(qs + ' button:has-text("Plus tard")');
-  await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine")');
-  assert.equal(await page.locator(qs).count(), 0);
+  await page.waitForSelector(ob);
+  await obChip('Remise en forme'); await obNext();
+  await page.waitForSelector(ob + ' #pm-ob-title:has-text("ancienneté")'); await obChip('Plus d’un an'); await obNext();
+  await page.waitForSelector(ob + ' #pm-ob-title:has-text("intensité")'); await obNext(); // « Soutenue » préchoisie
+  await page.waitForSelector(ob + ' #pm-ob-title:has-text("jours")'); await obChip('Lun'); await obChip('Mer'); await obChip('Ven');
+  await page.selectOption('#pm-ob-freq', '2'); await obNext(); // moins de séances que de jours disponibles
+  await page.waitForSelector(ob + ' #pm-ob-title:has-text("Durée")'); await obChip('45 min'); await obNext();
+  await page.waitForSelector(ob + ' #pm-ob-title:has-text("facultatif")');
+  await page.click(ob + ' button:has-text("Passer cette étape")');
+  await page.waitForSelector(home + ' .pm-welcome-card');
+  const eve = await db(() => document.documentElement.dataset.pmProfile);
+  const s = await setting(eve, 'coach.profile');
+  assert.deepEqual([s.mainGoal, s.seniority, s.level, s.intensity, s.days, s.frequency, s.durationMin, s.constraints], ['Remise en forme', 'gt1y', 'confirme', 'soutenue', ['lundi', 'mercredi', 'vendredi'], 2, 45, '']);
+  await page.click(home + ' .pm-welcome-card button:has-text("Commencer une séance libre")');
+  await page.waitForSelector(screen + ':not([hidden]) button:has-text("Ajouter une machine")');
 });
 
 await step('320 px sans débordement ; aucune requête externe ; Pierre et Manon intacts ; aucune erreur JS', async () => {
+  await page.reload(); await page.waitForSelector('#bottom-nav:not([hidden])'); // séance libre d'Eve laissée en cours (reprise possible)
   await page.setViewportSize({ width: 320, height: 640 });
   await page.click('.nav-btn[data-go="programme"]'); assert.equal(await noOverflow(), true);
   await page.click('.nav-btn[data-go="accueil"]'); assert.equal(await noOverflow(), true);

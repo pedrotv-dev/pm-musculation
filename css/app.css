@@ -368,3 +368,46 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-coach-open { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:0 14px; border-radius:var(--radius-12, 12px); text-decoration:none; border:1px solid var(--ascent-rim, var(--stroke)); color:var(--text); background:var(--surface); font-weight:720; }
 .pm-coach-paste { width:100%; }
 .pm-coach-section .pm-coach-out { min-height:0; height:120px; }
+
+/* V2-UX-FINALISATION · inscription guidée (ASCENT : panneau doux, Korv, barre turquoise, pastilles) */
+#screen-onboarding[hidden] { display:none; }
+.pm-onboarding h2 { margin:12px 0 10px; }
+.pm-ob-progress { height:8px; border-radius:999px; background:rgba(255,255,255,.07); overflow:hidden; margin:10px 0 14px; border:1px solid var(--ascent-rim, var(--stroke)); }
+.pm-ob-progress span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg, rgba(20,230,199,.55), var(--turq)); box-shadow:0 0 12px rgba(20,230,199,.35); transition:width .35s ease; }
+.pm-ob-head { display:flex; align-items:center; gap:12px; }
+.pm-ob-head .pm-mascot { flex:none; width:64px; height:64px; }
+.pm-ob-bubble { display:flex; flex-direction:column; gap:2px; padding:10px 12px; border-radius:14px; border:1px solid var(--ascent-rim, var(--stroke)); background:var(--surface); font-size:13.5px; }
+.pm-ob-bubble strong { color:var(--turq); font-size:12px; letter-spacing:.06em; }
+.pm-ob-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:18px; }
+.pm-ob-actions .pm-validate { flex:1 1 60%; }
+.pm-ob-measures { margin:12px 0; }
+@media (prefers-reduced-motion: reduce) { .pm-ob-progress span { transition:none; } }
+
+/* V2-UX-FINALISATION · premier accueil : trois possibilités numérotées */
+.pm-welcome-opt { display:flex; gap:12px; align-items:flex-start; padding:12px 0; border-top:1px solid var(--ascent-rim, var(--stroke)); }
+.pm-welcome-opt:first-of-type { border-top:0; }
+.pm-welcome-copy { flex:1; min-width:0; }
+.pm-welcome-copy p { margin:4px 0 10px; }
+.pm-welcome-copy button { width:100%; }
+
+/* V2-UX-FINALISATION · « Mes charges » (groupes repliables, saisie mobile) */
+.pm-loads-group > summary { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.pm-loads-list { list-style:none; margin:10px 0 0; padding:0; display:flex; flex-direction:column; gap:10px; }
+.pm-load-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; padding:10px; border-radius:14px; border:1px solid var(--ascent-rim, var(--stroke)); background:var(--surface); }
+.pm-load-name { display:flex; align-items:center; gap:10px; flex:1 1 170px; min-width:0; }
+.pm-load-name img, .pm-load-name .pm-machine-img { width:44px; height:44px; flex:none; border-radius:10px; object-fit:cover; }
+.pm-load-name strong { display:block; font-size:14.5px; }
+.pm-load-real { display:block; font-size:12px; }
+.pm-load-fields { display:flex; align-items:center; gap:6px; flex:0 0 auto; }
+.pm-load-fields .pm-input { width:74px; min-height:44px; text-align:center; font-size:16px; }
+.pm-load-x { color:var(--muted); font-weight:800; }
+.pm-load-partial { border-color:#ff8a8a; }
+.pm-load-warn { width:100%; margin:0; color:#ff8a8a; font-size:13px; }
+.pm-loads-actions { position:sticky; bottom:calc(env(safe-area-inset-bottom, 0px) + 74px); display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:12px; margin-top:16px; border-radius:15px; border:1px solid var(--ascent-rim, var(--stroke)); background:var(--surface-nav, var(--surface)); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); z-index:3; }
+.pm-loads-actions .pm-coach-status { width:100%; margin:0; }
+.pm-loads-actions .pm-validate { flex:1 1 60%; }
+.pm-ob-area { width:100%; min-height:64px; resize:vertical; font:inherit; font-size:16px; text-align:left; line-height:1.4; padding:10px 12px; }
+.pm-loads-actions { padding:10px 12px; gap:6px 12px; }
+.pm-loads-actions .pm-coach-status:empty { display:none; }
+.pm-loads-actions .pm-validate { min-height:48px; }
+.pm-load-name .pm-machine-photo, .pm-load-name > :first-child:not(div) { width:40px; height:40px; }

@@ -23,3 +23,11 @@ test('feelAdjustment : un cran (2,5 kg) sur les séries NON validées ; adapté 
   assert.deepEqual(feelAdjustment(assist, 'easy').changes, [{ setId: 'y', from: 30, kg: 27.5 }], 'plus dur = moins d’assistance');
   assert.deepEqual(feelAdjustment({ type: 'strength', machineId: 'leg-press', sets: [{ id: 'y', kg: 0, done: false }] }, 'hard'), null, 'jamais sous 0');
 });
+
+test('feelAdjustment : cran propre à la machine (charges déjà utilisées), 2,5 kg seulement sans historique', () => {
+  const a = { type: 'strength', machineId: 'leg-press', sets: [{ id: 'y', kg: 60, done: false }] };
+  assert.deepEqual(feelAdjustment(a, 'easy', { known: [50, 55, 60] }).changes, [{ setId: 'y', from: 60, kg: 65 }], 'écart de 5 kg sur cette machine');
+  assert.deepEqual(feelAdjustment(a, 'easy', { known: [60, 70] }).changes, [{ setId: 'y', from: 60, kg: 70 }], 'charge suivante déjà utilisée');
+  assert.deepEqual(feelAdjustment(a, 'hard', { known: [50, 55, 60] }).changes, [{ setId: 'y', from: 60, kg: 55 }]);
+  assert.equal(feelAdjustment(a, 'easy', { known: [60] }).delta, 2.5);
+});

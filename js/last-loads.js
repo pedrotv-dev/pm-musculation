@@ -25,7 +25,7 @@
  * Machines assistées (Dip / Chin Assist) : « kg » = assistance ; MOINS d'assistance = plus difficile. Les comparaisons
  * sont inversées (charge de travail = assistance la plus faible). Machines par côté : référence prise sur le même côté.
  */
-import { plannedIndex } from './machine-rules.js';
+import { plannedIndex, stepWeight } from './machine-rules.js';
 
 /** Machines dont la charge est une assistance (contrepoids). */
 export const ASSISTED_MACHINES = Object.freeze(['dip-chin-assist']);
@@ -178,13 +178,16 @@ export function lastFeel(sessions, machineId, { excludeId = null } = {}) {
  * trop facile → un cran plus dur ; trop difficile → un cran plus léger ; adapté → rien. Machines assistées : plus dur =
  * MOINS d'assistance. Jamais appliquée sans appui de l'utilisateur. @returns {null | {direction:'up'|'down', delta, changes}}
  */
-export function feelAdjustment(activity, feel, step = LOAD_STEP) {
+export function feelAdjustment(activity, feel, { known = [] } = {}) {
   if (!activity || activity.type !== 'strength' || (feel !== 'easy' && feel !== 'hard')) return null;
   const assisted = isAssisted(activity.machineId);
   const harder = feel === 'easy';
-  const delta = (harder ? 1 : -1) * (assisted ? -1 : 1) * step;
+  // cran PROPRE À LA MACHINE : charge suivante déjà utilisée sur cette machine (ou écart le plus fin entre ses charges
+  // connues) ; LOAD_STEP (2,5 kg) seulement si la machine n'a encore aucun historique exploitable
+  const dir = (harder ? 1 : -1) * (assisted ? -1 : 1);
+  const sorted = [...new Set((known || []).filter(Number.isFinite))].sort((x, y) => x - y);
   const changes = (activity.sets || []).filter(x => !x.done && Number.isFinite(x.kg))
-    .map(x => ({ setId: x.id, from: x.kg, kg: round(Math.min(1000, Math.max(0, x.kg + delta))) }))
+    .map(x => ({ setId: x.id, from: x.kg, kg: round(Math.min(1000, Math.max(0, sorted.length > 1 ? stepWeight(x.kg, sorted, dir) : x.kg + dir * LOAD_STEP))) }))
     .filter(c => c.kg !== c.from);
-  return changes.length ? { direction: harder ? 'up' : 'down', delta, changes } : null;
+  return changes.length ? { direction: harder ? 'up' : 'down', delta: round(changes[0].kg - changes[0].from), changes } : null;
 }

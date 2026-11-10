@@ -1,7 +1,7 @@
 {
   "name": "PM Musculation",
   "short_name": "PM Muscu",
-  "description": "Suivi d'entraînement de Pierre & Manon, hors ligne.",
+  "description": "Carnet de musculation guidé, hors ligne, données sur l'appareil.",
   "lang": "fr",
   "start_url": "./",
   "scope": "./",

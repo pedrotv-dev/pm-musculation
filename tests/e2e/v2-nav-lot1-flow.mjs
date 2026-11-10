@@ -4,7 +4,7 @@
 // séance en cours conservée pendant la navigation. Aucune donnée réelle (Pierre, Manon) n'est touchée.
 // node tests/e2e/v2-nav-lot1-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, watch, step, summary } from './lib.mjs';
+import { serve, launch, watch, step, summary, createProfileApi } from './lib.mjs';
 
 const srv = await serve();
 const { browser } = await launch();
@@ -23,7 +23,7 @@ await step('nouvel utilisateur : création du profil → 3 onglets (Accueil, Pro
   await page.clock.install({ time: new Date(2026, 10, 10, 10, 0, 0) }); // mardi 10 novembre 2026
   await page.goto(srv.url);
   assert.equal(await page.locator('#open-settings').isVisible(), false, 'pas de Réglages sur l’écran de choix');
-  await page.click('#create-profile'); await page.fill('#new-profile-name', 'Alex fictif'); await page.click('#create-profile-submit');
+  await createProfileApi(page, 'Alex fictif'); // profil existant (fiche seule) : l'inscription guidée a son propre parcours
   await page.waitForFunction(() => /^p-/.test(document.documentElement.dataset.pmProfile || ''));
   alex = await db(() => document.documentElement.dataset.pmProfile);
   const tabs = await page.locator('.bottom-nav .nav-btn').allInnerTexts();

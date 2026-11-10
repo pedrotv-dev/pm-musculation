@@ -13,7 +13,6 @@ import { homeHero, levelStrip } from './jeu-ui.js';
 import { recentProgress } from './stats.js';
 import { icon } from './icons.js';
 import { getSportProfile, missingEssentials } from './sport-profile.js';
-import { quickStartCard } from './quick-start.js';
 import { prepareWeek } from './coach-ui.js';
 
 const root = document.documentElement;
@@ -22,7 +21,6 @@ const DAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dima
 let rev = 0;
 let snoozed = false; // « Plus tard » : le rappel de sauvegarde reste masque jusqu'au prochain lancement
 let persistAsked = false;
-let quickLater = false; // LOT 2 : « Plus tard » sur « Ta semaine en 30 secondes » (jusqu'au prochain lancement)
 
 async function loadProgram(profile) {
   if (profile === 'demo') return getDemoProgram().catch(() => null);
@@ -71,6 +69,22 @@ function progressSection(r) {
   return box;
 }
 
+const openLoads = () => emit('pm:open-declared-loads', { from: 'accueil' });
+/**
+ * V2-UX-FINALISATION — premier accueil : 1. séance libre (tout de suite, performances réelles enregistrées),
+ * 2. « Mes charges » (charges déjà connues, sans séance), 3. programme avec ChatGPT. Disparaît dès la première séance
+ * terminée ou le premier programme ; les trois fonctions restent accessibles ailleurs (Accueil, Réglages, Programme).
+ */
+function welcomeCard(profile) {
+  const card = el('article', 'panel soft pm-home-card pm-welcome-card');
+  const opt = (n, title, text, button) => add(el('div', 'pm-welcome-opt'), add(el('span', 'pm-coach-step-n', String(n))), add(el('div', 'pm-welcome-copy'), el('strong', '', title), el('p', 'pm-muted', text), button));
+  add(card, el('span', 'tag', 'Bienvenue'), el('h3', '', 'Par quoi veux-tu commencer ?'),
+    opt(1, 'Une séance libre', 'Entraîne-toi tout de suite : l’application retient tes charges réelles, séance après séance.',
+      btn('Commencer une séance libre', 'pm-validate', () => emit('pm:start-workout', { profileId: profile, free: true }))),
+    opt(2, 'Mes charges', 'Note les charges et répétitions que tu connais déjà, sans lancer de séance.', btn('Renseigner mes charges', 'pm-secondary', openLoads)),
+    opt(3, 'Mon programme', 'L’application prépare ta demande à ChatGPT d’après ton profil et tes performances.', btn('Préparer mon programme avec ChatGPT', 'pm-secondary', () => prepareWeek(mondayOf()))));
+  return card;
+}
 /** Séance libre (V2) : sans programme, machines ajoutées pendant la séance. */
 const freeButton = profile => btn('Séance libre (sans programme)', 'pm-link', () => emit('pm:start-workout', { profileId: profile, free: true }));
 async function renderHome() {
@@ -82,7 +96,9 @@ async function renderHome() {
     getSportProfile(profile).catch(() => null)
   ]);
   const incomplete = profile !== 'demo' && sport && missingEssentials(sport).length > 0;
-  const quick = incomplete && !program && !upcoming && !resumable && !quickLater ? await quickStartCard(profile, { onSaved: refresh, onLater: () => { quickLater = true; refresh(); } }).catch(() => null) : null;
+  const closedTotal = sessions.filter(s => s.status === 'completed' || s.status === 'partial').length;
+  // V2-UX-FINALISATION : premier accueil (aucune séance, aucun programme) → trois possibilités, dans cet ordre
+  const welcome = profile !== 'demo' && !program && !upcoming && !resumable && closedTotal === 0;
   if (mine !== rev || root.dataset.pmProfile !== profile) return;
   clear(page);
   // ASCENT : salut + Korv sur le décor montagne, puis niveau (calculés depuis l'historique du profil, jamais comparés à l'autre)
@@ -108,13 +124,13 @@ async function renderHome() {
     slot.append(card);
   } else if (!program && upcoming) {
     slot.append(upcomingCard(profile, upcoming));
-  } else if (!program && quick) {
-    slot.append(quick);
-    slot.append(add(el('p', 'pm-muted pm-home-alt'), freeButton(profile)));
+  } else if (!program && welcome) {
+    slot.append(welcomeCard(profile));
   } else if (!program) {
     slot.append(add(el('article', 'panel'), el('h3', '', 'Aucun programme cette semaine'),
       el('p', 'pm-muted', incomplete ? 'Complète d’abord ton profil sportif (Réglages ⚙︎), puis prépare ta semaine avec ChatGPT. Ou fais une séance libre.' : 'Prépare-la avec ChatGPT en 3 étapes (copier, coller, importer), ou fais une séance libre.'),
       btn('Préparer ma semaine', 'pm-validate', () => prepareWeek(mondayOf())),
+      btn('Renseigner mes charges', 'pm-link', () => openLoads()),
       freeButton(profile)));
   } else {
     const today = dayIdOf(new Date());

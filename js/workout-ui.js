@@ -13,6 +13,7 @@ import {
 } from './workouts.js';
 import { el, btn, clear, add, dialog, confirmDialog, toast, formatClock, formatMinutes, fmtNum, parseNum, localISODate, formatDateFr } from './dom.js';
 import { lastPerformance, planLoads, programLoads, knownLoads, lastFeel, feelAdjustment, FEELS, FEEL_LABEL } from './last-loads.js';
+import { getDeclaredLoads, currentReference } from './declared-loads.js';
 import { icon, withIcon } from './icons.js';
 import { loadCatalog, machineImage } from './catalog.js';
 import { isKnownProfile, isRealProfile, getProfileInfo } from './profiles.js';
@@ -431,7 +432,9 @@ function leaveScreen() {
   root.classList.remove('pm-workout-active');
   panel.hidden = true; clear(panel);
   header.hidden = false;
-  if (root.dataset.pmProfile) { appPages.hidden = false; bottomNav.hidden = false; }
+  // V2-UX-FINALISATION : jamais pendant l'inscription guidée (l'Accueil n'apparaît qu'une fois le profil terminé)
+  const onboarding = document.getElementById('screen-onboarding');
+  if (root.dataset.pmProfile && (!onboarding || onboarding.hidden)) { appPages.hidden = false; bottomNav.hidden = false; }
 }
 function closeWorkout({ goTo } = {}) {
   disposeView(false);
@@ -458,7 +461,9 @@ function showWorkout(session) {
   clearInterval(S.clock);
   S.clock = setInterval(tickClock, 1000);
   S.history = [];
+  S.declared = null;
   const profile = S.profile, rev = S.rev;
+  getDeclaredLoads(profile).then(d => { if (valid(profile, rev)) { S.declared = d; render(); } }).catch(() => {}); // « Mes charges »
   S.revealed = null;
   listWorkouts(profile).then(rows => { if (valid(profile, rev)) { S.history = rows.filter(r => r.id !== session.id && isClosed(r)); render(); } }).catch(() => {});
   render();
@@ -612,6 +617,37 @@ function scheduleReveal(key) {
   requestAnimationFrame(() => revealCurrentSet());
   setTimeout(() => { if (S.revealed === key) revealCurrentSet(); }, 320);
 }
+/** Bouton qui change les charges des séries NON validées (sur appui seulement ; saisie en cours jamais écrasée). */
+function loadApplyBtn(T, a, label, compute, done) {
+  return btn(label, 'pm-secondary pm-last-apply', async () => {
+    await flushAll();
+    if (!isLive(T)) return;
+    const fresh = act(S.session, a.key);
+    if (!fresh) return;
+    // une saisie en cours ou en échec sur cette machine n'est jamais écrasée
+    if ([...S.writers.values()].some(w => isLive(w.t) && w.activityKey === a.key && (w.pending || w.failed.size || isDirty(w)))) {
+      setStatus('Termine d’abord la saisie en cours sur cette machine, puis réessaie.', 'error'); return;
+    }
+    const ch = compute(fresh);
+    if (!ch.length) { render(); return; }
+    const gen = genOf(S.session);
+    for (const w of [...S.writers.values()]) if (w.activityKey === a.key) S.writers.delete(w.key); // référence = valeurs enregistrées
+    if (await guardedCommit(T, (p, id) => setLoads(p, id, a.key, ch, { expectGen: gen }))) setStatus(done(ch.length), 'ok');
+  });
+}
+/**
+ * V2-UX-FINALISATION : charge DÉCLARÉE (« Mes charges ») — proposée seulement si aucune séance réelle plus récente ;
+ * appliquée uniquement sur appui, aux séries non validées. @returns {HTMLElement|null}
+ */
+function declaredHint(T, a, ref) {
+  if (!ref || ref.source !== 'declared') return null;
+  const box = el('div', 'pm-last-load pm-declared-load');
+  box.append(el('p', 'pm-last-load-text', 'Charge déclarée : ' + fmtNum(ref.kg) + ' kg × ' + ref.reps + (ref.date ? ' · saisie le ' + formatDateFr(ref.date) : '') + ' (Mes charges)'));
+  const changes = fresh => fresh.sets.filter(x => !x.done && x.kg !== ref.kg).map(x => ({ setId: x.id, from: x.kg, kg: ref.kg }));
+  if (changes(a).length) box.append(add(el('div', 'pm-last-actions'), loadApplyBtn(T, a, 'Utiliser ma charge déclarée (' + fmtNum(ref.kg) + ' kg)', changes,
+    n => 'Charge déclarée reprise pour ' + n + ' série(s). Rien n’est validé : − / + pour corriger.')));
+  return box;
+}
 /**
  * Charges réelles mémorisées (V2) : « Dernière fois : 80 kg × 12 » (séances terminées du profil, séries validées
  * seulement). Au démarrage, le moteur a déjà prérempli les séries de travail si besoin (`a.prefill`, voir last-loads.js) ;
@@ -622,7 +658,8 @@ function lastLoadHint(T, a) {
   if (a.type !== 'strength' || !a.machineId) return null;
   const lastFor = side => lastPerformance(S.history, a.machineId, { excludeId: S.session?.id, side });
   const last = lastFor(null);
-  if (!last) return null;
+  const ref = S.declared ? currentReference(S.history, S.declared, a.machineId, { excludeId: S.session?.id }) : null;
+  if (!last) return declaredHint(T, a, ref);
   const known = knownLoads(S.history, a.machineId);
   const box = el('div', 'pm-last-load');
   box.append(el('p', 'pm-last-load-text', 'Dernière fois : ' + (last.assisted ? 'assistance ' : '') + fmtNum(last.kg) + ' kg × ' + last.reps +
@@ -640,35 +677,23 @@ function lastLoadHint(T, a) {
   const lf = lastFeel(S.history, a.machineId, { excludeId: S.session?.id });
   const pendingKgs = a.sets.filter(x => !x.done).map(x => x.kg).filter(Number.isFinite);
   const atLast = pendingKgs.length && (last.assisted ? Math.min(...pendingKgs) : Math.max(...pendingKgs)) === last.kg;
-  const adj = lf && !a.sets.some(x => x.done) && atLast ? feelAdjustment(a, lf.feel) : null;
+  const adj = lf && !a.sets.some(x => x.done) && atLast ? feelAdjustment(a, lf.feel, { known: knownLoads(S.history, a.machineId) }) : null;
   if (lf) info.push((lf.sessionId === last.sessionId ? 'Ressenti noté' : 'Ressenti noté le ' + formatDateFr(lf.date)) + ' : « ' + FEEL_LABEL[lf.feel] + ' ».');
   if (info.length) box.append(el('p', 'pm-muted pm-last-load-info', info.join(' ')));
-  const apply = (label, compute, done) => btn(label, 'pm-secondary pm-last-apply', async () => {
-    await flushAll();
-    if (!isLive(T)) return;
-    const fresh = act(S.session, a.key);
-    if (!fresh) return;
-    // une saisie en cours ou en échec sur cette machine n'est jamais écrasée
-    if ([...S.writers.values()].some(w => isLive(w.t) && w.activityKey === a.key && (w.pending || w.failed.size || isDirty(w)))) {
-      setStatus('Termine d’abord la saisie en cours sur cette machine, puis réessaie.', 'error'); return;
-    }
-    const ch = compute(fresh);
-    if (!ch.length) { render(); return; }
-    const gen = genOf(S.session);
-    for (const w of [...S.writers.values()]) if (w.activityKey === a.key) S.writers.delete(w.key); // référence = valeurs enregistrées
-    if (await guardedCommit(T, (p, id) => setLoads(p, id, a.key, ch, { expectGen: gen }))) setStatus(done(ch.length), 'ok');
-  });
+  const apply = (label, compute, done) => loadApplyBtn(T, a, label, compute, done);
   const row = el('div', 'pm-last-actions');
   if (adj) {
     const step = fmtNum(Math.abs(adj.delta));
     const harderLabel = a.machineId && last.assisted ? 'Essayer avec ' + step + ' kg d’assistance en moins' : 'Essayer +' + step + ' kg';
     row.append(apply(adj.direction === 'up' ? harderLabel : (last.assisted ? 'Alléger : ' + step + ' kg d’assistance en plus' : 'Alléger de ' + step + ' kg'),
-      fresh => { const x = feelAdjustment(fresh, lf.feel); return x ? x.changes : []; },
+      fresh => { const x = feelAdjustment(fresh, lf.feel, { known: knownLoads(S.history, a.machineId) }); return x ? x.changes : []; },
       n => (adj.direction === 'up' ? 'Un cran plus lourd' : 'Un cran plus léger') + ' pour ' + n + ' série(s). Rien n’est validé : − / + pour corriger.'));
   }
   if (toProgram.length) row.append(apply('Revenir à la charge du programme', fresh => programLoads(fresh), n => 'Charge du programme reprise pour ' + n + ' série(s).'));
   if (toLast.length) row.append(apply('Reprendre mes dernières charges', fresh => planLoads(fresh, lastFor, { known, mode: 'last' }).changes, n => 'Dernières charges reprises pour ' + n + ' série(s). Tu peux toujours les modifier.'));
   if (row.childNodes.length) box.append(row);
+  const newer = declaredHint(T, a, ref); // déclaration PLUS RÉCENTE que la dernière séance : proposée aussi
+  if (newer) box.append(newer);
   return box;
 }
 function renderSets(card, a) {
@@ -1043,7 +1068,9 @@ async function addMachineDialog() {
   const note = el('p', 'pm-muted pm-last-load-text');
   const prefill = () => {
     const last = lastPerformance([...S.history, ...(S.session ? [S.session] : [])], sel.value);
-    if (last) { kg.input.value = fmtNum(last.kg); reps.input.value = String(last.reps); note.textContent = 'Dernière fois : ' + (last.assisted ? 'assistance ' : '') + fmtNum(last.kg) + ' kg × ' + last.reps + ' · ' + formatDateFr(last.date) + ' (modifiable)'; }
+    const ref = S.declared ? currentReference([...S.history, ...(S.session ? [S.session] : [])], S.declared, sel.value) : null;
+    if (ref && ref.source === 'declared') { kg.input.value = fmtNum(ref.kg); reps.input.value = String(ref.reps); note.textContent = 'Charge déclarée : ' + fmtNum(ref.kg) + ' kg × ' + ref.reps + ' (Mes charges, modifiable)'; }
+    else if (last) { kg.input.value = fmtNum(last.kg); reps.input.value = String(last.reps); note.textContent = 'Dernière fois : ' + (last.assisted ? 'assistance ' : '') + fmtNum(last.kg) + ' kg × ' + last.reps + ' · ' + formatDateFr(last.date) + ' (modifiable)'; }
     else { kg.input.value = '20'; reps.input.value = '10'; note.textContent = 'Jamais faite : choisis une charge prudente.'; }
   };
   sel.addEventListener('change', prefill); prefill();

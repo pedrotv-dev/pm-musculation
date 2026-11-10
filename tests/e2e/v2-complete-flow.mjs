@@ -241,7 +241,7 @@ await step('second profil « Sam fictif » : indépendant (vide), séance libre,
   await page.click('#create-profile-submit');
   await page.waitForFunction(id => /^p-/.test(document.documentElement.dataset.pmProfile || '') && document.documentElement.dataset.pmProfile !== id, alex);
   const sam = await active();
-  await page.waitForSelector('[data-page="accueil"] h3:has-text("Aucun programme cette semaine"), [data-page="accueil"] h3:has-text("Ta semaine en 30 secondes")');
+  await page.waitForSelector('[data-page="accueil"] h3:has-text("Aucun programme cette semaine"), [data-page="accueil"] h3:has-text("Par quoi veux-tu commencer")');
   await page.click('button:has-text("Séance libre")');
   await page.waitForSelector(screen + ':not([hidden])');
   await page.click(screen + ' button:has-text("Ajouter une machine")');

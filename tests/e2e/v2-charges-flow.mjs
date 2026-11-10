@@ -4,7 +4,7 @@
 // programme et séances passées inchangés, profils isolés.
 // node tests/e2e/v2-charges-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, watch, step, summary } from './lib.mjs';
+import { serve, launch, watch, step, summary, createProfileApi } from './lib.mjs';
 
 const srv = await serve();
 const { browser } = await launch();
@@ -39,7 +39,7 @@ const validateCurrent = async (kg) => {
 console.log('V2 · dernières charges validées');
 await step('préparation : profil fictif, programme (Leg Press 30 / 45 / 45 kg, lundi et vendredi) cette semaine et la suivante', async () => {
   await page.goto(srv.url);
-  await page.click('#create-profile'); await page.fill('#new-profile-name', 'Alex fictif'); await page.click('#create-profile-submit');
+  await createProfileApi(page, 'Alex fictif'); // profil existant (fiche seule) : l'inscription guidée a son propre parcours
   await page.waitForFunction(() => /^p-/.test(document.documentElement.dataset.pmProfile || ''));
   alex = await db(() => document.documentElement.dataset.pmProfile);
   ({ week, next } = await db(async () => { const P = await import('./js/programs.js'); const S = await import('./js/stats.js'); const w = P.mondayOf(new Date()); return { week: w, next: S.addDays(w, 7) }; }));

@@ -1,6 +1,6 @@
 // Fonctionnement hors ligne (service worker) : node tests/e2e/offline-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, exampleProgram, watch, step, summary } from './lib.mjs';
+import { serve, launch, exampleProgram, watch, step, summary, legacyInstall } from './lib.mjs';
 import fs from 'node:fs';
 import { precacheList } from '../../tools/release.mjs';
 import { checkpoint } from './diagnostics.mjs';
@@ -16,6 +16,7 @@ const screen = '#pm-workout-screen';
 
 console.log('Parcours hors ligne');
 await page.goto(srv.url);
+  await legacyInstall(page); // V2-UX-FINALISATION : Pierre et Manon n'existent que sur une ancienne installation
 await step('service worker installé et cache de l’application rempli', async () => {
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.reload();

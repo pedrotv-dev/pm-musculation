@@ -1,6 +1,6 @@
 // Niveaux, succès, classements personnels, mascotte et événements d'effets : node tests/e2e/jeu-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, watch, step, summary, mondayISO } from './lib.mjs';
+import { serve, launch, watch, step, summary, mondayISO, legacyInstall } from './lib.mjs';
 
 const srv = await serve();
 const { browser, context } = await launch();
@@ -56,6 +56,7 @@ await step('Profil : section Ambiance (animations, bruitages, jingles) activable
 });
 await step('Pierre (vide) : niveau 1, « Recrue », aucun succès', async () => {
   await page.goto(srv.url);
+  await legacyInstall(page); // V2-UX-FINALISATION : Pierre et Manon n'existent que sur une ancienne installation
   await page.click('[data-select-profile="pierre"]');
   await page.waitForSelector('.pm-level-card');
   const t = await text('.pm-level-card');

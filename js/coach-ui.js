@@ -4,7 +4,7 @@
  */
 import { el, btn, add, dialog, confirmDialog, toast, formatDateFr, fmtNum, localISODate } from './dom.js';
 import { getProfileInfo, isRealProfile, isLegacyProfile, updateProfile, deleteProfile, PROFILE_COLORS, NAME_MAX, GOAL_MAX } from './profiles.js';
-import { GOALS, LEVELS, DAYS, DURATIONS, INTENSITIES, FATIGUE, SLEEP, MEASURES, TEXT_MAX, getSportProfile, saveSportProfile, getGym, saveGym, missingEssentials, weightOrNull } from './sport-profile.js';
+import { GOALS, LEVELS, SENIORITY, LEVEL_OF_SENIORITY, DAYS, DURATIONS, INTENSITIES, FATIGUE, SLEEP, MEASURES, TEXT_MAX, getSportProfile, saveSportProfile, getGym, saveGym, missingEssentials, weightOrNull } from './sport-profile.js';
 import { buildCoachPrompt } from './coach.js';
 import { loadCatalog } from './catalog.js';
 import { listWorkouts, getDemoProgram } from './workouts.js';
@@ -13,6 +13,7 @@ import { listPrograms } from '../storage.js';
 import { mondayOf } from './programs.js';
 import { addDays } from './stats.js';
 import { runBackup, saveTextFile } from './backup.js';
+import { getDeclaredLoads } from './declared-loads.js';
 
 const panel = (title, intro) => { const box = el('article', 'panel pm-profile-section'); box.append(el('h3', '', title)); if (intro) box.append(el('p', 'pm-muted', intro)); return box; };
 /** Section repliable (un seul niveau) : titre toujours visible, contenu à l'ouverture. */
@@ -62,7 +63,7 @@ const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 export function identitySection(profile) {
   if (!isRealProfile(profile)) return null;
   const info = getProfileInfo(profile) || {};
-  const box = fold('Mon profil', isLegacyProfile(profile) ? 'Nom et objectif affichés. Ce profil historique ne peut pas être supprimé.' : 'Nom, objectif affiché et couleur. Les données du profil ne changent pas.');
+  const box = fold('Mon profil', 'Nom, objectif affiché et couleur. Les données du profil ne changent pas.');
   const name = input(info.name, { max: NAME_MAX });
   const goal = input(info.goal || '', { max: GOAL_MAX });
   const color = select(Object.entries(PROFILE_COLORS).map(([k, c]) => [k, c.theme]), info.color, 'Couleur');
@@ -75,17 +76,11 @@ export function identitySection(profile) {
     finally { save.disabled = false; }
   });
   add(box, field('Prénom ou pseudo', name), field('Objectif affiché (facultatif)', goal), field('Couleur', color), save, st);
-  if (!isLegacyProfile(profile)) {
-    box.append(btn('Supprimer ce profil', 'pm-warning pm-block', async () => {
-      const pick = await dialog({ title: 'Supprimer le profil', message: 'Supprimer « ' + info.name + ' » et TOUTES ses données (programmes, séances, poids, réglages) de ce téléphone ? Les autres profils ne sont pas touchés. Fais d’abord une sauvegarde si tu veux pouvoir le restaurer.',
-        choices: [{ label: 'Annuler', value: null }, { label: 'Sauvegarder d’abord', value: 'backup', kind: 'primary' }, { label: 'Supprimer', value: 'delete', kind: 'danger' }] });
-      if (pick === 'backup') { try { const r = await runBackup(profile); say(st, r.how === 'cancelled' ? 'Sauvegarde annulée : rien n’a été supprimé.' : 'Sauvegarde faite. Appuie de nouveau sur « Supprimer ce profil » pour continuer.', r.how === 'cancelled' ? '' : 'ok'); } catch (e) { say(st, 'Sauvegarde impossible : ' + (e.message || e) + ' Rien n’a été supprimé.', 'error'); } return; }
-      if (pick !== 'delete') return;
-      if (!(await confirmDialog('Dernière confirmation : supprimer définitivement « ' + info.name + ' » et ses données ?', { title: 'Irréversible', ok: 'Supprimer définitivement', danger: true }))) return;
-      try { await deleteProfile(profile, { confirm: profile }); toast('Profil supprimé'); }
-      catch (e) { say(st, 'Suppression impossible : ' + (e.message || e) + ' Les données sont conservées.', 'error'); }
-    }));
-  }
+  // V2-UX-FINALISATION : tout profil (Pierre et Manon compris) est supprimable, avec les mêmes protections
+  box.append(btn('Supprimer ce profil', 'pm-warning pm-block', async () => {
+    const { remove } = await import('./profiles-ui.js');
+    await remove({ id: profile, name: (getProfileInfo(profile) || info).name }, st);
+  }));
   return box;
 }
 
@@ -108,6 +103,7 @@ export async function sportSection(profile) {
   const goals = checks(GOALS, s.goals);
   const goalNote = area(s.goalNote, 'Ex. : préparer un trail en mars, reprendre après une pause…');
   const level = select(LEVELS, s.level); level.id = ESSENTIAL_IDS.level;
+  const seniority = select(SENIORITY, s.seniority); seniority.id = 'pm-sport-seniority'; // V2-UX-FINALISATION
   const freq = select([1, 2, 3, 4, 5, 6, 7].map(n => [n, n + ' séance' + (n > 1 ? 's' : '')]), s.frequency); freq.id = ESSENTIAL_IDS.frequency;
   const days = checks(DAYS, s.days, cap); days.box.id = ESSENTIAL_IDS.days;
   const dur = select(DURATIONS.map(d => [d, d + ' min']), s.durationMin); dur.id = ESSENTIAL_IDS.durationMin;
@@ -133,7 +129,7 @@ export async function sportSection(profile) {
       // poids actuel : vérifié AVANT tout enregistrement (rien n'est écrit si la valeur est invalide)
       const typed = weightOrNull(weightNow.value.trim(), 'Poids actuel');
       const newWeight = typed !== null && (!lastW || typed !== lastW.kg) ? typed : null; // Progression se relit à l'ouverture
-      await saveSportProfile(profile, { mainGoal: mainGoal.value, goals: goals.values(), goalNote: goalNote.value, level: level.value, frequency: freq.value, days: days.values(), durationMin: dur.value,
+      await saveSportProfile(profile, { mainGoal: mainGoal.value, goals: goals.values(), goalNote: goalNote.value, level: level.value, seniority: seniority.value, frequency: freq.value, days: days.values(), durationMin: dur.value,
         targetWeightKg: target.value.trim(), intensity: intensity.value, fatigue: fatigue.value, sleep: sleep.value, recoveryNote: recovery.value, measures: m, initialPerf: perf.value,
         avoid: avoid.value, constraints: constraints.value, preferences: prefs.value, health: health.value, healthInBilan: hs.checked });
       let extra = '';
@@ -150,7 +146,7 @@ export async function sportSection(profile) {
   });
   const mgrid = el('div', 'pm-coach-grid'); measures.forEach(([, i, label]) => mgrid.append(field(label, i)));
   add(box,
-    el('h4', 'pm-coach-sub', 'Objectifs'), field('Objectif principal *', mainGoal), el('p', 'pm-coach-label', 'Objectifs secondaires (facultatif)'), goals.box, field('Précision (facultatif)', goalNote), field('Niveau d’expérience *', level),
+    el('h4', 'pm-coach-sub', 'Objectifs'), field('Objectif principal *', mainGoal), el('p', 'pm-coach-label', 'Objectifs secondaires (facultatif)'), goals.box, field('Précision (facultatif)', goalNote), field('Niveau d’expérience *', level), field('Ancienneté en musculation', seniority, 'Elle règle la technique et la prudence, pas l’intensité.'),
     el('h4', 'pm-coach-sub', 'Disponibilités'), field('Séances par semaine *', freq), el('p', 'pm-coach-label', 'Jours disponibles *'), days.box,
     field('Durée maximale par séance *', dur, 'Le temps dont tu disposes au maximum, pas une durée à remplir : une séance plus courte est normale.'),
     el('h4', 'pm-coach-sub', 'Intensité, fatigue et récupération'), field('Difficulté souhaitée (RPE)', intensity, 'RPE : effort ressenti de 1 à 10 ; 8 = il reste environ 2 répétitions possibles.'),
@@ -214,13 +210,13 @@ async function copy(text, areaEl) {
 }
 /** Données du profil pour le bilan (programmes : démo en mémoire, sinon IndexedDB). */
 export async function coachInput(profile, targetWeek, today = new Date()) {
-  const [sport, gym, cat, sessions, weights] = await Promise.all([getSportProfile(profile), getGym(profile), loadCatalog(), listWorkouts(profile), listBodyWeights(profile)]);
+  const [sport, gym, cat, sessions, weights, declared] = await Promise.all([getSportProfile(profile), getGym(profile), loadCatalog(), listWorkouts(profile), listBodyWeights(profile), getDeclaredLoads(profile)]);
   let programs = [];
   if (profile === 'demo') { const p = await getDemoProgram().catch(() => null); if (p) programs = [p]; }
   else programs = (await listPrograms(profile).catch(() => [])).map(r => r.data || r).filter(Boolean);
   const pad = n => String(n).padStart(2, '0');
   const todayIso = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
-  return { profileId: profile, name: getProfileInfo(profile)?.name || profile, sport, gym, catalog: cat.list, sessions, weights, programs, targetWeek, today: todayIso };
+  return { profileId: profile, name: getProfileInfo(profile)?.name || profile, sport, gym, catalog: cat.list, sessions, weights, programs, declared, targetWeek, today: todayIso };
 }
 /** Ouvre « Mon profil sportif » (page Réglages) sur un champ essentiel manquant. */
 async function goToField(key) {

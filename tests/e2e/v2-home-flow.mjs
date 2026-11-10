@@ -4,7 +4,7 @@
 // après rechargement et changement de profil ; activation automatique le lundi (y compris application restée ouverte).
 // node tests/e2e/v2-home-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, watch, step, summary } from './lib.mjs';
+import { serve, launch, watch, step, summary, createProfileApi } from './lib.mjs';
 
 const srv = await serve();
 const { browser } = await launch();
@@ -25,10 +25,10 @@ console.log('V2 · accueil et activation des programmes');
 await step('mardi 10 novembre 2026 : profil fictif sans programme → « Aucun programme cette semaine »', async () => {
   await page.clock.install({ time: new Date(2026, 10, 10, 10, 0, 0) });
   await page.goto(srv.url);
-  await page.click('#create-profile'); await page.fill('#new-profile-name', 'Alex fictif'); await page.click('#create-profile-submit');
+  await createProfileApi(page, 'Alex fictif'); // profil existant (fiche seule) : l'inscription guidée a son propre parcours
   await page.waitForFunction(() => /^p-/.test(document.documentElement.dataset.pmProfile || ''));
   alex = await db(() => document.documentElement.dataset.pmProfile);
-  await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine"), ' + home + ' h3:has-text("Ta semaine en 30 secondes")');
+  await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine"), ' + home + ' h3:has-text("Par quoi veux-tu commencer")');
 });
 
 await step('import (interface) du programme de la semaine du 16 novembre → accueil rafraîchi tout de suite : « Programme prêt »', async () => {
@@ -68,7 +68,7 @@ await step('fermeture / réouverture et changement de profil : état conservé, 
   sam = await db(async () => (await (await import('./js/profiles.js')).createProfile({ name: 'Sam fictif', color: 'sauge' })).id);
   await page.evaluate(id => document.dispatchEvent(new CustomEvent('pm:select-profile', { detail: { profile: id } })), sam);
   await page.waitForFunction(id => document.documentElement.dataset.pmProfile === id, sam);
-  await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine"), ' + home + ' h3:has-text("Ta semaine en 30 secondes")');
+  await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine"), ' + home + ' h3:has-text("Par quoi veux-tu commencer")');
   await page.evaluate(id => document.dispatchEvent(new CustomEvent('pm:select-profile', { detail: { profile: id } })), alex);
   await page.waitForSelector(home + ' h3:has-text("Programme prêt pour la semaine du 16 novembre")');
 });

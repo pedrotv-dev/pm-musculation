@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { diagnostics } from './diagnostics.mjs';
-import { serve, watch, step, summary } from './lib.mjs';
+import { serve, watch, step, summary, legacyInstall } from './lib.mjs';
 
 const srv = await serve();
 const SIZES = [[320, 568], [375, 667], [390, 844]];
@@ -20,6 +20,7 @@ const fits = locator => locator.evaluate(i => {
 });
 const openDemoHistoryDetail = async page => {
   await page.goto(srv.url); await page.click('[data-select-profile="demo"]'); await page.waitForSelector('.pm-home-card');
+  await legacyInstall(page); // V2-UX-FINALISATION : Pierre et Manon n'existent que sur une ancienne installation
   await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
   await page.locator('.pm-history-card').nth(1).click(); await page.waitForSelector('.pm-hist-set input');
 };

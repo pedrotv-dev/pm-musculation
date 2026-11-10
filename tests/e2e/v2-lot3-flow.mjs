@@ -4,7 +4,7 @@
 // avec − ; jamais proposée une 2e fois. « Machine occupée », Valider, − / + toujours visibles. Demande ChatGPT : ressenti repris.
 // node tests/e2e/v2-lot3-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, watch, step, summary } from './lib.mjs';
+import { serve, launch, watch, step, summary, createProfileApi } from './lib.mjs';
 
 const srv = await serve();
 const { browser } = await launch();
@@ -35,7 +35,7 @@ console.log('V2-UX · LOT 3 : ressenti par machine et calibrage');
 await step('préparation : profil fictif, programme lundi + mardi (Leg Press 2 × 60 kg)', async () => {
   await page.clock.install({ time: new Date(2026, 10, 9, 10, 0, 0) }); // lundi 9 novembre 2026
   await page.goto(srv.url);
-  await page.click('#create-profile'); await page.fill('#new-profile-name', 'Alex fictif'); await page.click('#create-profile-submit');
+  await createProfileApi(page, 'Alex fictif'); // profil existant (fiche seule) : l'inscription guidée a son propre parcours
   await page.waitForFunction(() => /^p-/.test(document.documentElement.dataset.pmProfile || ''));
   alex = await db(() => document.documentElement.dataset.pmProfile);
   await db(async id => {

@@ -12,7 +12,7 @@ const SHORT_INTENSITY = { moderee: 'Modérée', soutenue: 'Soutenue', elevee: 'H
 const DAY_SHORT = { lundi: 'Lun', mardi: 'Mar', mercredi: 'Mer', jeudi: 'Jeu', vendredi: 'Ven', samedi: 'Sam', dimanche: 'Dim' };
 
 /** Groupe de choix (boutons radio ou cases) présentés comme des pastilles. */
-function chips(legend, name, options, { multiple = false, value = null, hint = '' } = {}) {
+export function chips(legend, name, options, { multiple = false, value = null, hint = '' } = {}) {
   const box = el('fieldset', 'pm-qs-group');
   box.append(el('legend', 'pm-qs-legend', legend));
   if (hint) box.append(el('p', 'pm-muted pm-qs-hint', hint));

@@ -3,7 +3,7 @@
 // pas sur la notification mais sur la vérification du registre DANS chaque transaction d'écriture.
 // Données FICTIVES. node tests/e2e/v2-tabs-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, exampleProgram, watch, step, summary } from './lib.mjs';
+import { serve, launch, exampleProgram, watch, step, summary, legacyInstall } from './lib.mjs';
 
 const srv = await serve();
 const { browser, context } = await launch();
@@ -25,6 +25,7 @@ let pierreBefore, manonBefore;
 console.log('V2-PROF1 · deux onglets');
 await step('préparation : Pierre et Manon ont des données ; deux onglets ouverts sur la même base', async () => {
   await pageA.goto(srv.url);
+  await legacyInstall(pageA); // V2-UX-FINALISATION : Pierre et Manon n'existent que sur une ancienne installation
   await pageA.click('[data-select-profile="pierre"]');
   await api(pageA, async () => {
     const { addBodyWeight } = await import('./js/weights.js');

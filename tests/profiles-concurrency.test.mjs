@@ -170,10 +170,9 @@ test('restauration dans l’onglet même : réinscription autorisée ici ; resta
   assert.ok(PA.isKnownProfile(u));
 });
 
-test('profils historiques : modification de fiche toujours possible, suppression toujours refusée', async () => {
+test('profils historiques : modification de fiche toujours possible, suppression seulement avec confirmation', async () => {
   const pierre = await PA.updateProfile('pierre', { goal: 'Prise de muscle, force et endurance' });
   assert.equal(pierre.id, 'pierre');
-  await assert.rejects(PA.deleteProfile('pierre', { confirm: 'pierre' }), /ne peut pas/);
-  await assert.rejects((async () => SB.deleteProfileAndData('manon'))(), /ne peut pas/);
-  await SB.updateProfileRecord('manon', cur => ({ ...cur })); // B (autre onglet) : historiques non soumis à l'époque
+  await assert.rejects(PA.deleteProfile('pierre'), /Confirmation/); // V2-UX-FINALISATION : supprimable, jamais sans confirmation
+  await SB.updateProfileRecord('pierre', cur => ({ ...cur })); // B (autre onglet) : historiques non soumis à l'époque
 });

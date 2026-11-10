@@ -3,7 +3,7 @@
 // une séance portant le MÊME identifiant que celle de Pierre (sauvegarde fabriquée). Données FICTIVES.
 // node tests/e2e/v2-history-target-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, exampleProgram, mondayISO, watch, step, summary } from './lib.mjs';
+import { serve, launch, exampleProgram, mondayISO, watch, step, summary, legacyInstall } from './lib.mjs';
 
 let id, pierre0, manon0;
 const srv = await serve();
@@ -17,6 +17,7 @@ const fresh = async () => {
   page = await context.newPage(); page.setDefaultTimeout(15000);
   errors = watch(page, []);
   await page.goto(srv.url);
+  await legacyInstall(page); // V2-UX-FINALISATION : Pierre et Manon n'existent que sur une ancienne installation
   id = await seed();
   pierre0 = await sessionOf('pierre', id); manon0 = await sessionOf('manon', id);
 };

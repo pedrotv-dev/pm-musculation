@@ -4,7 +4,7 @@
 // orienté endurance → sauvegardes individuelles → hors connexion → bilan et programme suivant.
 // node tests/e2e/v2-recette-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, watch, step, summary } from './lib.mjs';
+import { serve, launch, watch, step, summary, createProfileApi } from './lib.mjs';
 
 const srv = await serve();
 const { browser } = await launch();
@@ -86,10 +86,10 @@ await step('1.1 lundi 9 novembre : création du profil « Alex fictif » depuis 
   await page.clock.install({ time: at(9, 9) });
   await page.goto(srv.url);
   await page.waitForSelector('#screen-select:not([hidden])');
-  await page.click('#create-profile'); await page.fill('#new-profile-name', 'Alex fictif'); await page.click('#create-profile-submit');
+  await createProfileApi(page, 'Alex fictif'); // profil existant (fiche seule) : l'inscription guidée a son propre parcours
   await page.waitForFunction(() => /^p-/.test(document.documentElement.dataset.pmProfile || ''));
   alex = await db(() => document.documentElement.dataset.pmProfile);
-  await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine"), ' + home + ' h3:has-text("Ta semaine en 30 secondes")');
+  await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine"), ' + home + ' h3:has-text("Par quoi veux-tu commencer")');
 });
 
 await step('1.2 profil sportif incomplet : la génération ChatGPT n’apparaît pas, ce qui manque est listé', async () => {
@@ -340,10 +340,10 @@ await step('4.1 deuxième profil « Sam fictif » (endurance, perte de graisse) 
   alexSnap = await db(async id => { const d = await (await import('./storage.js')).exportProfileData(id); delete d.exportedAt; return JSON.stringify(d); }, alex);
   await page.click('#switch-profile');
   await page.waitForSelector('#screen-select:not([hidden])');
-  await page.click('#create-profile'); await page.fill('#new-profile-name', 'Sam fictif'); await page.click('#create-profile-submit');
+  await createProfileApi(page, 'Sam fictif'); // profil existant (fiche seule) : l'inscription guidée a son propre parcours
   await page.waitForFunction(id => /^p-/.test(document.documentElement.dataset.pmProfile || '') && document.documentElement.dataset.pmProfile !== id, alex);
   sam = await db(() => document.documentElement.dataset.pmProfile);
-  await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine"), ' + home + ' h3:has-text("Ta semaine en 30 secondes")');
+  await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine"), ' + home + ' h3:has-text("Par quoi veux-tu commencer")');
   await goProfil();
   const f = await openFold('Mon profil sportif');
   await f.getByLabel('Objectif principal').selectOption('Endurance');

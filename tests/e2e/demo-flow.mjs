@@ -1,6 +1,6 @@
 // Mode démo complet dans un vrai navigateur, sans toucher aux données réelles : node tests/e2e/demo-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, watch, step, summary } from './lib.mjs';
+import { serve, launch, watch, step, summary, legacyInstall } from './lib.mjs';
 
 const srv = await serve();
 const { browser, context } = await launch();
@@ -27,6 +27,7 @@ const dbRows = () => page.evaluate(async () => {
 
 console.log('Parcours démo');
 await page.goto(srv.url);
+  await legacyInstall(page); // V2-UX-FINALISATION : Pierre et Manon n'existent que sur une ancienne installation
 await step('ouvrir la démo depuis le choix de profil', async () => {
   await page.click('[data-select-profile="demo"]');
   await page.waitForSelector('.pm-home-card');
