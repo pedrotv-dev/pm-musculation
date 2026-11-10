@@ -15,7 +15,7 @@ test('sprite ASCENT : les 18 icônes déclarées existent, en currentColor, sans
 test('index.html : icônes du sprite, précachées ; icon() refuse un nom inconnu', () => {
   const html = readFileSync('index.html', 'utf8');
   const used = [...html.matchAll(/icones\.svg#ico-([a-z-]+)/g)].map(m => m[1]);
-  assert.deepEqual(used, ['accueil', 'seances', 'progression', 'profil']);
+  assert.deepEqual(used, ['reglages', 'accueil', 'seances', 'progression']); // LOT 1 : ⚙︎ Réglages en haut + 3 onglets
   assert.doesNotMatch(html, /href="#ico-/);
   assert.match(readFileSync('sw.js', 'utf8'), /'assets\/ascent\/icones\.svg'/);
   assert.throws(() => icon('inexistante'), /Icône inconnue/);

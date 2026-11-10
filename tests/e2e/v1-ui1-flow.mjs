@@ -20,7 +20,7 @@ const fits = locator => locator.evaluate(i => {
 });
 const openDemoHistoryDetail = async page => {
   await page.goto(srv.url); await page.click('[data-select-profile="demo"]'); await page.waitForSelector('.pm-home-card');
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
   await page.locator('.pm-history-card').nth(1).click(); await page.waitForSelector('.pm-hist-set input');
 };
 
@@ -78,7 +78,7 @@ for (const [label, share, expected] of [
   const errors = watch(page);
   await step(`CSV · ${label} : message affiché juste`, async () => {
     await page.goto(srv.url); await page.click('[data-select-profile="pierre"]');
-    await page.click('.nav-btn[data-go="profil"]');
+    await page.click('.pm-settings-btn[data-go="profil"]');
     const dl = share ? null : page.waitForEvent('download');
     await page.click('button:has-text("Exporter mes résultats")');
     if (dl) await dl;

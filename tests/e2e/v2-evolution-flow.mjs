@@ -12,7 +12,7 @@ const page = await context.newPage(); page.setDefaultTimeout(15000);
 const errors = watch(page);
 const db = (fn, arg) => page.evaluate(fn, arg);
 const openFold = async title => { const d = page.locator('details.pm-fold', { has: page.locator('summary', { hasText: new RegExp('^' + title + '$') }) }); if (!(await d.evaluate(x => x.open))) await d.locator('summary').click(); return d; };
-const goProfil = async () => { await page.click('.nav-btn[data-go="profil"]'); await page.waitForSelector('[data-page="profil"] .pm-manage-profiles'); };
+const goProfil = async () => { await page.click('.pm-settings-btn[data-go="profil"]'); await page.waitForSelector('[data-page="profil"] .pm-manage-profiles'); };
 const select = id => page.evaluate(id => document.dispatchEvent(new CustomEvent('pm:select-profile', { detail: { profile: id } })), id).then(() => page.waitForFunction(id => document.documentElement.dataset.pmProfile === id, id));
 let pierre2, backupText;
 
@@ -61,7 +61,7 @@ await step('second import du même fichier : « Rien à importer », aucun doubl
   await f.locator('.pm-coach-status:has-text("Rien à importer")').waitFor();
   assert.equal(await f.locator('button:has-text("Importer l’historique")').isDisabled(), true);
   assert.equal((await db(async id => (await (await import('./js/workouts.js')).listWorkouts(id)).length, pierre2)), 2);
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('[data-go="historique"]');
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('[data-go="historique"]');
   await page.waitForSelector('.pm-history-card .pm-chip-imported');
   assert.equal(await page.locator('.pm-history-card .pm-chip-imported').count(), 2);
   const xp = await db(async id => { const G = await import('./js/gamification.js'); const W = await import('./js/workouts.js'); return G.computeProgress(await W.listWorkouts(id), { today: '2026-11-12', startDate: G.progressionStartFor(id) }).xp; }, pierre2);
@@ -113,7 +113,7 @@ await step('suppression refusée pendant une séance en cours ; Pierre (protég�
 await step('fréquence : profil 5 séances (mardi → samedi), JSON d’UNE séance → avertissement, refus par défaut, puis exception explicite', async () => {
   await db(async id => (await import('./js/sport-profile.js')).saveSportProfile(id, { mainGoal: 'Renforcement', level: 'debutant', frequency: 5, days: ['mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'], durationMin: 60, intensity: 'elevee' }), pierre2);
   const one = { schemaVersion: 1, weekStart: '2026-11-16', programs: { [pierre2]: { days: [{ id: 'mardi', name: 'Unique', activities: [{ type: 'strength', machineId: 'leg-press', shared: false, restSeconds: 90, sets: [{ kg: 80, reps: 10 }] }] }] } } };
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('[data-go="programme"]');
+  await page.click('.nav-btn[data-go="programme"]');
   if (!(await page.locator('.pm-import').evaluate(d => d.open))) await page.click('.pm-import summary');
   await page.fill('.pm-textarea', JSON.stringify(one));
   await page.click('.pm-action-verify');
@@ -130,7 +130,7 @@ await step('fréquence : profil 5 séances (mardi → samedi), JSON d’UNE séa
 });
 
 await step('demande ChatGPT de Pierre2 : 5 séances exigées, Hard RPE 8–9, charges importées utilisées (82,5 kg)', async () => {
-  await goProfil();
+  await page.click('.nav-btn[data-go="programme"]'); await page.waitForSelector('[data-page="programme"] .pm-coach-section h3'); // LOT 1 : demande dans Programme
   await page.getByLabel('Semaine à préparer').selectOption('2026-11-23');
   await page.click('.pm-coach-section button:has-text("Générer ma demande")');
   await page.waitForSelector('.pm-coach-out:not([hidden])');

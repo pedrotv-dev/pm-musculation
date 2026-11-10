@@ -37,7 +37,7 @@ const program = dayName => ({ schemaVersion: 1, weekStart: mondayISO(), programs
   id, name: dayName, activities: [{ type: 'strength', machineId: 'leg-press', shared: true, restSeconds: 30, sets: [{ kg: 60, reps: 12 }] }] })) } } });
 async function importProgram(page, name) {
   await page.click('[data-select-profile="pierre"]');
-  await page.click('.nav-btn[data-go="seances"]');
+  await page.click('.nav-btn[data-go="programme"]');
   await page.click('.pm-import summary');
   await page.fill('.pm-textarea', JSON.stringify(program(name)));
   await page.click('.pm-action-verify');
@@ -85,15 +85,15 @@ await step('aperçu : Pierre y importe « PREVIEW-SEANCE » ; la production gard
 });
 await step('production rechargée : toujours son propre profil et son propre programme', async () => {
   await prod.reload();
-  await prod.waitForSelector('.nav-btn[data-go="seances"]');
-  await prod.click('.nav-btn[data-go="seances"]');
+  await prod.waitForSelector('.nav-btn[data-go="programme"]');
+  await prod.click('.nav-btn[data-go="programme"]');
   const t = await prod.locator('[data-page="programme"]').innerText();
   assert.match(t, /PROD-SEANCE/); assert.doesNotMatch(t, /PREVIEW-SEANCE/);
   assert.equal(await prod.evaluate(() => localStorage.getItem('pm-musculation:profile:v2')), 'pierre');
   assert.equal(await prod.evaluate(() => localStorage.getItem('pm-musculation:profile:v2-preview')), 'pierre');
 });
 await step('une séance démarrée dans l\'aperçu n\'apparaît pas dans la production (et inversement)', async () => {
-  await prev.click('.nav-btn[data-go="seances"]');
+  await prev.click('.nav-btn[data-go="programme"]');
   await prev.click('.pm-start-workout');
   await prev.waitForSelector('#pm-workout-screen:not([hidden])');
   await prev.click('#pm-validate-set');
@@ -120,8 +120,8 @@ await step('service workers : deux enregistrements, deux portées, deux caches, 
 });
 await step('hors ligne : les deux versions démarrent, chacune avec ses données', async () => {
   await context.setOffline(true);
-  await prod.reload(); await prod.waitForSelector('.nav-btn[data-go="seances"]');
-  await prev.reload(); await prev.waitForSelector('.nav-btn[data-go="seances"]');
+  await prod.reload(); await prod.waitForSelector('.nav-btn[data-go="programme"]');
+  await prev.reload(); await prev.waitForSelector('.nav-btn[data-go="programme"]');
   assert.equal(await prev.evaluate(() => document.documentElement.dataset.pmEnv), 'preview');
   await context.setOffline(false);
 });

@@ -150,3 +150,17 @@ Anomalie corrigée : la section « Changements récents » de la demande ChatGPT
   explicite possible ; jamais appliqué aux semaines passées.
 - **Gérer mes profils** (Profil) : liste des profils de l’appareil, renommer, supprimer (sauvegarde proposée, double
   confirmation, refus si une séance est en cours) ; Pierre et Manon protégés : masquables de l’écran de choix (données intactes).
+
+## V2-UX LOT 1 — navigation simplifiée (branche `claude/v2-ux-lot1`)
+
+- **Trois onglets** en bas : Accueil, Programme, Progression. **Réglages** : icône ⚙︎ en haut à droite, à côté du profil,
+  toujours accessible (page `profil` ; `data-go="profil"`, `#open-settings`).
+- **Programme** : « Préparer mon programme avec ChatGPT » (auparavant dans Profil) est juste au-dessus de « Importer un
+  programme hebdomadaire » : préparer, copier, coller et importer dans le même onglet. « Compléter : … » ouvre Réglages sur
+  le champ manquant ; « Préparer mon programme avec ChatGPT → » (sous le profil sportif) y ramène.
+- **Progression** : deux sous-onglets, Vue d’ensemble et Historique (l’ancien onglet Séances › Historique).
+- **Réglages** : les sections existantes, regroupées en 5 rubriques : Mon profil (identité, profil sportif, machines) ·
+  Séance et chrono · Profils (gérer, importer l’historique) · Données (sauvegardes, bilan, données locales, démo) · À propos.
+- Accueil sans programme : une seule action principale, « Préparer ou importer mon programme » (+ séance libre).
+- Aucune donnée, aucun moteur de séance, aucun import modifié. « Retour » du téléphone depuis Réglages : accueil.
+- Test : `tests/e2e/v2-nav-lot1-flow.mjs` (nouvel utilisateur, utilisateur régulier, séance en cours conservée, 320 px).

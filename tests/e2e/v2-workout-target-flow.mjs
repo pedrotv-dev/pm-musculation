@@ -15,7 +15,7 @@ const WEEK = mondayISO();
 /** Même programme (mêmes clés a1, a2… et s1, s2…) pour les deux profils. */
 const programFor = id => { const p = exampleProgram(WEEK); p.programs = { [id]: p.programs.pierre }; return p; };
 const importViaUi = async id => {
-  await page.click('.nav-btn[data-go="seances"]');
+  await page.click('.nav-btn[data-go="programme"]');
   await page.click('.pm-import summary');
   await page.fill('.pm-textarea', JSON.stringify(programFor(id)));
   await page.click('.pm-action-verify');

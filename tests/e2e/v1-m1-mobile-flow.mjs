@@ -40,7 +40,7 @@ for (const [w, h] of SIZES) {
   await page.waitForSelector('.pm-home-card');
 
   await step(`UX-01 · calendrier : 7 colonnes sans débordement, jours de 44 px de haut minimum, tous touchables (${w} px)`, async () => {
-    await page.click('.nav-btn[data-go="seances"]');
+    await page.click('.nav-btn[data-go="progres"]');
     await page.click('.pm-subtab[data-go="historique"]');
     await page.click('button:has-text("Calendrier")');
     await page.waitForSelector('.pm-cal-day');

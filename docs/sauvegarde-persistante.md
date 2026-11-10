@@ -12,10 +12,10 @@ L'option E (dépôt GitHub privé) est **écartée**. Voici ce qui la remplace, 
 | **Sauvegarde en un geste** | Accueil, fin de séance, Profil | ouvre la feuille de partage du téléphone → tu choisis **Fichiers / iCloud Drive / Google Drive / e-mail à toi-même / WhatsApp « message à soi-même »** : l'historique complet est alors hors du téléphone |
 | **Rappel automatique** | Accueil | bandeau « Pense à sauvegarder » après 3 nouvelles séances, ou 7 jours avec au moins 1 nouvelle séance, ou si jamais sauvegardé |
 | **Date de dernière sauvegarde** | Profil | visible en permanence (et conservée dans le fichier : un nouveau téléphone repart du bon état) |
-| **Partager bilan + sauvegarde** | Profil → Bilan | un seul envoi contient le bilan texte **et** la sauvegarde → la routine hebdomadaire Pierre ↔ Manon sert aussi de **copie de secours croisée** |
+| **Partager bilan + sauvegarde** | Réglages ⚙︎ → Données → Bilan | un seul envoi contient le bilan texte **et** la sauvegarde → la routine hebdomadaire Pierre ↔ Manon sert aussi de **copie de secours croisée** |
 | **Stockage protégé** | automatique + Profil | demande au navigateur de ne pas effacer les données (Chrome Android l'accorde souvent ; iPhone : installer l'appli sur l'écran d'accueil) |
 
-**Routine recommandée (30 secondes par semaine)** : en fin de semaine, *Profil → Générer le bilan → Partager bilan + sauvegarde* → choisir « Enregistrer dans Fichiers (iCloud Drive) » ou « Drive » ou « e-mail à soi-même ». Les fichiers s'accumulent : tu gardes **toutes les performances précédentes**, restaurables à tout moment (Profil → Restaurer ce fichier, *fusionner* ou *remplacer*).
+**Routine recommandée (30 secondes par semaine)** : en fin de semaine, *Réglages ⚙︎ → Données → Générer le bilan → Partager bilan + sauvegarde* → choisir « Enregistrer dans Fichiers (iCloud Drive) » ou « Drive » ou « e-mail à soi-même ». Les fichiers s'accumulent : tu gardes **toutes les performances précédentes**, restaurables à tout moment (Profil → Restaurer ce fichier, *fusionner* ou *remplacer*).
 
 ### Option automatique à 0 € (à valider) : Dropbox
 Pour une sauvegarde **sans aucun geste**, la seule voie réaliste sans serveur ni GitHub est un espace cloud gratuit accessible depuis le navigateur :
@@ -45,7 +45,7 @@ Les données vivent dans **IndexedDB, sur chaque téléphone**. Elles peuvent di
 
 ## 2. Ce qui existe déjà (sans coût)
 
-- Sauvegarde JSON par profil (Profil → *Télécharger ma sauvegarde*) : sur mobile, ouvre la **feuille de partage** (Fichiers, iCloud Drive, Google Drive, e-mail…).
+- Sauvegarde JSON par profil (Réglages ⚙︎ → Données → *Télécharger ma sauvegarde*) : sur mobile, ouvre la **feuille de partage** (Fichiers, iCloud Drive, Google Drive, e-mail…).
 - Restauration *remplacer* ou *fusionner* ; export CSV.
 - Bouton **Protéger les données** (`navigator.storage.persist()`) et affichage de l'état de protection.
 

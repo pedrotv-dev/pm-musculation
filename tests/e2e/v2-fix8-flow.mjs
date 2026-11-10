@@ -28,7 +28,7 @@ async function newPage() {
 async function startPierre(page) {
   await page.goto(srv.url);
   await page.click('[data-select-profile="pierre"]');
-  await page.click('.nav-btn[data-go="seances"]');
+  await page.click('.nav-btn[data-go="programme"]');
   await page.click('.pm-import summary');
   await page.fill('.pm-textarea', JSON.stringify(exampleProgram()));
   await page.click('.pm-action-verify');
@@ -377,7 +377,7 @@ await step('P1 · clôtures légitimes : partielle confirmée sans changement, p
   await a.waitForTimeout(700);
   assert.equal((await fullRow(a)).status, 'partial');
   await a.goto(srv.url);
-  await a.click('.nav-btn[data-go="seances"]');
+  await a.click('.nav-btn[data-go="programme"]');
   await a.click('.pm-day-tab:has-text("Mardi")'); await a.click('.pm-start-workout');
   await a.waitForSelector(screen + ':not([hidden])');
   assert.equal(await completeAll(a), true);
@@ -552,7 +552,7 @@ await step('historique · « Retirer la série » puis « Supprimer cette séanc
   });
   assert.equal(await a.evaluate(async id => (await (await import('./js/workouts.js')).getWorkout('pierre', id)).activities.find(x => x.type === 'strength').key, id), 'a2');
   await a.goto(srv.url);
-  await a.click('.nav-btn[data-go="seances"]'); await a.click('.pm-subtab[data-go="historique"]');
+  await a.click('.nav-btn[data-go="progres"]'); await a.click('.pm-subtab[data-go="historique"]');
   await a.click('.pm-history-card');
   await a.click('[aria-label="Retirer la série 1"]');
   await a.waitForSelector('.pm-modal:has-text("Retirer la série 1")');
@@ -573,7 +573,7 @@ await step('historique · « Retirer la série » puis « Supprimer cette séanc
   assert.deepEqual(row.sets[0], { id: 's1', kg: 89, reps: 7, done: true });
   await a.reload();
   assert.ok(await fullRow(a), 'après rechargement');
-  await a.click('.nav-btn[data-go="seances"]'); await a.click('.pm-subtab[data-go="historique"]');
+  await a.click('.nav-btn[data-go="progres"]'); await a.click('.pm-subtab[data-go="historique"]');
   await a.click('.pm-history-card');
   await a.click('button:has-text("Supprimer cette séance")');   // confirmation fondée sur l'état actuel : acceptée
   await a.click('.pm-modal .pm-modal-btn:has-text("Supprimer")');

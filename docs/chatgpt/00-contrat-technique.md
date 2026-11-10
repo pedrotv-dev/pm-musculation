@@ -47,7 +47,7 @@ Cibles : **Safari iPhone** (PWA installée) et **Chrome Android**. Interface **e
 - **Légèreté** : CSS total ajouté ≤ 30 Ko, un dessin SVG ≤ 6 Ko, aucune image bitmap > 40 Ko, aucun son > 40 Ko (de préférence aucun fichier : sons synthétisés).
 - **Fluidité** : n'animer que `transform` et `opacity` ; pas d'animation infinie lourde ; pas de décalage de mise en page ; rien ne doit bloquer un appui.
 - **Accessibilité** : respecter `prefers-reduced-motion` ; contrastes WCAG AA ; **cibles tactiles ≥ 44 × 44 px** ; champs de saisie ≥ 16 px (sinon iPhone zoome) ; ne jamais transmettre une information par la seule couleur.
-- **Réglages utilisateur** (Profil → Ambiance), lus avec `peekUiSettings(profil)` de `js/ui-settings.js` : `animations`, `sfx`, `jingles` (booléens, vrais par défaut). **Chaque effet respecte le sien**, sans exception.
+- **Réglages utilisateur** (Réglages ⚙︎ → Séance et chrono → Ambiance), lus avec `peekUiSettings(profil)` de `js/ui-settings.js` : `animations`, `sfx`, `jingles` (booléens, vrais par défaut). **Chaque effet respecte le sien**, sans exception.
 - **Jamais bloquant** : tout code d'effet est protégé par `try/catch` ; une erreur d'effet ne doit jamais empêcher d'enregistrer une série.
 - **iPhone et le son** : l'audio ne démarre qu'après un geste de l'utilisateur. Crée le `AudioContext` au premier `pointerdown`/`touchend`/`click`, appelle `resume()` si besoin ; ne présume rien du son avant.
 - **Pas de comparaison entre Pierre et Manon** : le jeu est « chacun contre soi-même ». Aucun classement, couleur ou texte qui oppose les deux profils.

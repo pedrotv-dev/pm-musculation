@@ -58,8 +58,8 @@ await step('aucune donnée perdue par la mise à jour', async () => {
 await step('2e mise à jour appliquée depuis l’onglet Profil (garde du bouton retour présente) : un seul rechargement, historique propre', async () => {
   await page.waitForFunction(() => navigator.serviceWorker.controller);
   await page.click('[data-select-profile="demo"]').catch(() => {});
-  await page.waitForSelector('.nav-btn[data-go="profil"]');
-  await page.click('.nav-btn[data-go="profil"]'); await page.waitForSelector('[data-page="profil"] .pm-profile-section');
+  await page.waitForSelector('.pm-settings-btn[data-go="profil"]');
+  await page.click('.pm-settings-btn[data-go="profil"]'); await page.waitForSelector('[data-page="profil"] .pm-profile-section');
   await page.waitForTimeout(300);
   assert.equal(await page.evaluate(() => !!(history.state && history.state.pmGuard)), true); // garde posée
   let loads = 0; page.on('load', () => { loads++; }); // chargements de document (la sortie de la garde par l'historique n'en est pas un)

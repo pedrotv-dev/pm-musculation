@@ -100,9 +100,8 @@ async function renderHome() {
     page.append(upcomingCard(profile, upcoming));
   } else if (!program) {
     page.append(add(el('article', 'panel'), el('h3', '', 'Aucun programme cette semaine'),
-      el('p', 'pm-muted', 'Prépare-le avec ChatGPT (Profil → Préparer mon programme), importe-le, ou fais une séance libre.'),
-      btn('Importer un programme', 'pm-validate', () => go('programme')),
-      btn('Préparer mon programme avec ChatGPT', 'pm-secondary', () => go('profil')),
+      el('p', 'pm-muted', 'Prépare-le avec ChatGPT et importe-le dans l’onglet Programme, ou fais une séance libre.'),
+      btn('Préparer ou importer mon programme', 'pm-validate', () => go('programme')),
       freeButton(profile)));
   } else {
     const today = dayIdOf(new Date());

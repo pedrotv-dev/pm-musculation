@@ -9,7 +9,7 @@ page.setDefaultTimeout(10000);
 const screen = '#pm-workout-screen';
 await page.goto(srv.url);
 await page.click('[data-select-profile="pierre"]');
-await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-import summary');
+await page.click('.nav-btn[data-go="programme"]'); await page.click('.pm-import summary');
 await page.fill('.pm-textarea', JSON.stringify(exampleProgram())); await page.click('.pm-action-verify');
 await page.waitForSelector('.pm-action-save:not([disabled])'); await page.click('.pm-action-save'); await page.waitForSelector('.pm-start-workout');
 await page.click('.pm-day-tab:has-text("Mardi")'); await page.click('.pm-start-workout'); await page.waitForSelector(screen + ':not([hidden])');

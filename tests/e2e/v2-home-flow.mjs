@@ -32,7 +32,7 @@ await step('mardi 10 novembre 2026 : profil fictif sans programme → « Aucun p
 });
 
 await step('import (interface) du programme de la semaine du 16 novembre → accueil rafraîchi tout de suite : « Programme prêt »', async () => {
-  await page.click('.nav-btn[data-go="seances"]');
+  await page.click('.nav-btn[data-go="programme"]');
   await page.click('[data-go="programme"]');
   await page.click('.pm-import summary');
   const reply = 'Je prévois deux séances courtes.\nProgression prudente.\n\n```json\n' + JSON.stringify(program(alex, '2026-11-16'), null, 2) + '\n```\n';

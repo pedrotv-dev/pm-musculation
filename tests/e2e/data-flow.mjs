@@ -12,11 +12,11 @@ const errors = watch(page);
 page.setDefaultTimeout(10000);
 const text = sel => page.locator(sel).innerText();
 const screen = '#pm-workout-screen';
-const openProfile = async p => { await p.click('.nav-btn[data-go="profil"]'); await p.waitForSelector('[data-page="profil"] button:has-text("Sauvegarder maintenant")'); await p.waitForTimeout(400); };
+const openProfile = async p => { await p.click('.pm-settings-btn[data-go="profil"]'); await p.waitForSelector('[data-page="profil"] button:has-text("Sauvegarder maintenant")'); await p.waitForTimeout(400); };
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-e2e-'));
 
 async function importProgram(p) {
-  await p.click('.nav-btn[data-go="seances"]');
+  await p.click('.nav-btn[data-go="programme"]');
   await p.click('.pm-import summary');
   await p.fill('.pm-textarea', JSON.stringify(exampleProgram()));
   await p.click('.pm-action-verify');
@@ -64,7 +64,7 @@ await step('progrès : les statistiques évoluent', async () => {
   assert.match(await text('[data-page="progres"]'), /1\s*séances/i);
 });
 await step('télécharger la sauvegarde du profil', async () => {
-  await page.click('.nav-btn[data-go="profil"]');
+  await page.click('.pm-settings-btn[data-go="profil"]');
   const [download] = await Promise.all([page.waitForEvent('download'), page.click('[data-page="profil"] button:has-text("Sauvegarder maintenant")')]);
   const file = path.join(tmp, download.suggestedFilename());
   await download.saveAs(file);
@@ -83,7 +83,7 @@ await step('exporter les résultats en CSV', async () => {
 await step('effacer les données du profil (double confirmation)', async () => {
   await page.click('button:has-text("Effacer toutes les données")');
   await page.click('.pm-modal .pm-danger'); await page.click('.pm-modal .pm-danger');
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
   await page.waitForSelector('[data-page="historique"] .empty');
 });
 await step('restaurer en remplacement', async () => {
@@ -93,7 +93,7 @@ await step('restaurer en remplacement', async () => {
   await page.click('.pm-modal .pm-danger:has-text("Remplacer tout")');
   await page.click('.pm-modal .pm-danger:has-text("Remplacer")');
   await page.waitForFunction(() => /Restauration terminée/.test(document.body.innerText));
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
   await page.waitForSelector('.pm-history-card');
   assert.equal(await page.locator('.pm-history-card').count(), 1);
 });
@@ -103,7 +103,7 @@ await step('restaurer par fusion : aucun doublon', async () => {
   await page.click('button:has-text("Restaurer ce fichier")');
   await page.click('.pm-modal .pm-primary');
   await page.waitForFunction(() => /fusion/.test(document.body.innerText));
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
   assert.equal(await page.locator('.pm-history-card').count(), 1);
 });
 await step('bilan texte de la semaine', async () => {
@@ -123,7 +123,7 @@ await step('réglages du chronomètre propres au profil', async () => {
 await step('Manon : espace séparé, bilan commun avec le fichier de Pierre (en mémoire)', async () => {
   await page.click('#switch-profile');
   await page.click('[data-select-profile="manon"]');
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
   await page.waitForSelector('[data-page="historique"] .empty');
   await openProfile(page);
   assert.equal(await page.locator('select[aria-label="Mode du chronomètre"]').inputValue(), 'auto'); // réglage de Pierre non repris
@@ -139,24 +139,24 @@ await step('Manon : espace séparé, bilan commun avec le fichier de Pierre (en 
   await page.waitForFunction(() => document.querySelector('.pm-bilan') && document.querySelector('.pm-bilan').value.length > 50);
   const bilan = await page.locator('.pm-bilan').inputValue();
   assert.match(bilan, /=== PIERRE/); assert.match(bilan, /=== MANON/);
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
   assert.match(await text('[data-page="historique"]'), /Aucune séance/); // rien n'a été écrit pour Manon
 });
 await step('rechargement : les données persistent', async () => {
   await page.reload();
   await page.click('#switch-profile'); await page.click('[data-select-profile="pierre"]');
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
   await page.waitForSelector('.pm-history-card');
   assert.equal(await page.locator('.pm-history-card').count(), 1);
 });
 await step('deux onglets : une seule séance ouverte pour un profil', async () => {
   const tab2 = await context.newPage(); watch(tab2, errors);
   await tab2.goto(srv.url);
-  await tab2.waitForSelector('.nav-btn[data-go="seances"]');
-  await page.click('.nav-btn[data-go="seances"]');
+  await tab2.waitForSelector('.nav-btn[data-go="programme"]');
+  await page.click('.nav-btn[data-go="programme"]');
   await page.click('.pm-day-tab:has-text("Lundi")'); await page.click('.pm-start-workout');
   await page.waitForSelector(screen + ':not([hidden])');
-  await tab2.click('.nav-btn[data-go="seances"]');
+  await tab2.click('.nav-btn[data-go="programme"]');
   await tab2.click('.pm-day-tab:has-text("Jeudi")'); await tab2.click('.pm-start-workout');
   await tab2.waitForSelector('.pm-modal');
   assert.match(await tab2.locator('.pm-modal').innerText(), /déjà en cours/);
