@@ -164,3 +164,26 @@ Anomalie corrigée : la section « Changements récents » de la demande ChatGPT
 - Accueil sans programme : une seule action principale, « Préparer ou importer mon programme » (+ séance libre).
 - Aucune donnée, aucun moteur de séance, aucun import modifié. « Retour » du téléphone depuis Réglages : accueil.
 - Test : `tests/e2e/v2-nav-lot1-flow.mjs` (nouvel utilisateur, utilisateur régulier, séance en cours conservée, 320 px).
+
+## V2-UX LOTS 2 à 4 (branche locale `claude/v2-ux-lot2`, non publiée)
+
+- **Premier lancement** (`js/quick-start.js`) : carte « Ta semaine en 30 secondes » en tête de l’Accueil tant que le profil
+  sportif est incomplet et qu’il n’y a pas de programme : objectif, niveau, jours (séances = jours cochés, modifiable),
+  durée maximale, intensité (Soutenue par défaut, Hard possible). Le reste du profil sportif est conservé. « Plus tard ».
+- **Accueil** : l’action du moment (séance en cours, séance du jour, démarrage rapide, préparation) juste sous le salut,
+  le niveau et les chiffres ensuite ; chiffres à zéro masqués tant qu’aucune séance n’est faite. Samedi, dimanche ou
+  semaine terminée : carte « Préparer la semaine prochaine ».
+- **Assistant « Préparer ma semaine »** (Programme, `coach-ui.js`) : ① « Copier ma demande » (rédigée ET copiée en un
+  appui) + lien « Ouvrir ChatGPT ↗ » ; ② « Coller la réponse de ChatGPT » (presse-papiers avec l’accord du navigateur ;
+  sinon cadre d’import ouvert ; demande encore copiée détectée) → vérification automatique (`pm:import-text`) ;
+  ③ aperçu et « Importer ce programme » (règles d’import inchangées). Semaine proposée : en cours si elle n’a pas de
+  programme, sinon la suivante. Aucune donnée envoyée par l’application.
+- **Séance** : ressenti FACULTATIF par machine terminée (Trop facile / Adapté / Trop difficile, `activity.feel`,
+  `setActivityFeel`) ; à la séance suivante, « Ressenti noté » + proposition d’UN cran (`feelAdjustment`, 2,5 kg ;
+  assistance inversée) appliquée seulement sur appui, aux séries non validées, proposée une seule fois ; − / + et
+  « Revenir à la charge du programme » restent disponibles. En-tête de machine : la dernière performance n’est plus
+  répétée quand le cadre de la série l’affiche. Machine occupée, Valider, reprise, chrono : inchangés. Demande ChatGPT :
+  « ressenti noté : TROP FACILE / adapté / TROP DIFFICILE » par machine.
+- **Progression** : charges machine par machine et records d’abord, puis fréquence et volume, poids corporel, et
+  « Succès et classements · N / 18 » replié en bas (niveau toujours visible en haut).
+- Tests : `tests/lot3.test.mjs`, `tests/e2e/v2-lot2-flow.mjs`, `tests/e2e/v2-lot3-flow.mjs`.
