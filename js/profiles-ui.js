@@ -16,7 +16,8 @@ const fold = (title, intro) => {
   if (intro) box.append(el('p', 'pm-muted', intro)); return box;
 };
 const nameOf = id => (getProfileInfo(id) || {}).name || id;
-const dataChanged = profile => document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile } }));
+// source « profiles-ui » : les autres écrans se mettent à jour ; la page Profil ne se reconstruit pas (message de résultat conservé)
+const dataChanged = profile => document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile, source: 'profiles-ui' } }));
 
 // ---------------------------------------------------------------- gérer mes profils
 

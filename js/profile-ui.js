@@ -307,6 +307,6 @@ async function render() {
 const refresh = () => render().catch(console.error);
 const reload = () => { if (!page.hidden) refresh(); };
 document.addEventListener('pm:profile-changed', () => { S.other = null; S.bilan = ''; S.notice = ''; reload(); });
-document.addEventListener('pm:data-changed', () => { S.bilan = ''; reload(); });
+document.addEventListener('pm:data-changed', e => { S.bilan = ''; if (e.detail?.source !== 'profiles-ui') reload(); });
 document.addEventListener('pm:profiles-changed', e => { if (e.detail?.id === root.dataset.pmProfile && e.detail?.reason === 'updated') reload(); });
 document.addEventListener('click', e => { if (e.target.closest?.('.nav-btn[data-go="profil"]')) refresh(); });
