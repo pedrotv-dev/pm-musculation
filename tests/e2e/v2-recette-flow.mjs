@@ -89,13 +89,13 @@ await step('1.1 lundi 9 novembre : création du profil « Alex fictif » depuis 
   await page.click('#create-profile'); await page.fill('#new-profile-name', 'Alex fictif'); await page.click('#create-profile-submit');
   await page.waitForFunction(() => /^p-/.test(document.documentElement.dataset.pmProfile || ''));
   alex = await db(() => document.documentElement.dataset.pmProfile);
-  await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine")');
+  await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine"), ' + home + ' h3:has-text("Ta semaine en 30 secondes")');
 });
 
 await step('1.2 profil sportif incomplet : la génération ChatGPT n’apparaît pas, ce qui manque est listé', async () => {
   await goCoach();
   await page.waitForSelector(coach + ' .pm-coach-missing');
-  assert.equal(await page.locator(coach + ' button:has-text("Générer ma demande")').count(), 0);
+  assert.equal(await page.locator(coach + ' button:has-text("Copier ma demande")').count(), 0);
   await goProfil();
 });
 
@@ -120,12 +120,12 @@ await step('1.3 profil sportif, poids actuel et poids cible ; machines de la sal
   assert.equal(await noOverflow(), true);
 });
 
-await step('1.4 « Générer ma demande » apparaît ; génération et copie', async () => {
+await step('1.4 « Copier ma demande » apparaît ; génération et copie', async () => {
   await goCoach();
-  await page.waitForSelector(coach + ' button:has-text("Générer ma demande")');
+  await page.waitForSelector(coach + ' button:has-text("Copier ma demande")');
   await context.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
   await page.getByLabel('Semaine à préparer').selectOption('2026-11-09');
-  await page.click(coach + ' button:has-text("Générer ma demande")');
+  await page.click(coach + ' button:has-text("Copier ma demande")');
   await page.waitForSelector('.pm-coach-out:not([hidden])');
   const t = await page.inputValue('.pm-coach-out');
   for (const want of ['Objectif principal : Prise de muscle', 'Poids : 78,6 kg', 'Poids cible', 'Durée MAXIMALE disponible par séance : 60 min', 'Machines à éviter : Calf Press']) assert.ok(t.includes(want), want);
@@ -135,7 +135,7 @@ await step('1.4 « Générer ma demande » apparaît ; génération et copie', a
 
 await step('1.5 import de la réponse complète (semaine en cours) → accueil : « Séance du jour »', async () => {
   programAlex = weekA(alex, '2026-11-09');
-  await page.click(coach + ' button:has-text("Importer la réponse de ChatGPT")');
+  await page.click(coach + ' button:has-text("Coller la réponse de ChatGPT")');
   await page.waitForSelector('.pm-import[open]');
   await page.fill('.pm-textarea', reply(programAlex));
   await page.click('.pm-action-verify');
@@ -343,7 +343,7 @@ await step('4.1 deuxième profil « Sam fictif » (endurance, perte de graisse) 
   await page.click('#create-profile'); await page.fill('#new-profile-name', 'Sam fictif'); await page.click('#create-profile-submit');
   await page.waitForFunction(id => /^p-/.test(document.documentElement.dataset.pmProfile || '') && document.documentElement.dataset.pmProfile !== id, alex);
   sam = await db(() => document.documentElement.dataset.pmProfile);
-  await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine")');
+  await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine"), ' + home + ' h3:has-text("Ta semaine en 30 secondes")');
   await goProfil();
   const f = await openFold('Mon profil sportif');
   await f.getByLabel('Objectif principal').selectOption('Endurance');
@@ -356,7 +356,7 @@ await step('4.1 deuxième profil « Sam fictif » (endurance, perte de graisse) 
   await f.locator('#pm-sport-weight').fill('64,2');
   await saveSport(f);
   await goCoach();
-  await page.waitForSelector(coach + ' button:has-text("Générer ma demande")');
+  await page.waitForSelector(coach + ' button:has-text("Copier ma demande")');
 });
 
 await step('4.2 Sam : programme différent, séance faite ; aucune référence de charge venant d’Alex', async () => {
@@ -484,7 +484,7 @@ await step('6.1 Alex : demande pour la semaine du 23 novembre — performances, 
   await saveSport(f);
   await goCoach();
   await page.getByLabel('Semaine à préparer').selectOption('2026-11-23');
-  await page.click(coach + ' button:has-text("Générer ma demande")');
+  await page.click(coach + ' button:has-text("Copier ma demande")');
   await page.waitForSelector('.pm-coach-out:not([hidden])');
   const t = await page.inputValue('.pm-coach-out');
   for (const want of ['Leg Press (leg-press) : dernière fois', '82,5 kg', 'séries validées la dernière fois', 'non faites : mercredi', 'SEMAINE INCOMPLÈTE', 'ressenti moyen',
@@ -502,7 +502,7 @@ await step('6.2 Sam (endurance) : orientation différente, alimentation, durée 
   await page.waitForFunction(id => document.documentElement.dataset.pmProfile === id, sam);
   await goCoach();
   await page.getByLabel('Semaine à préparer').selectOption('2026-11-23');
-  await page.click(coach + ' button:has-text("Générer ma demande")');
+  await page.click(coach + ' button:has-text("Copier ma demande")');
   await page.waitForSelector('.pm-coach-out:not([hidden])');
   const t = await page.inputValue('.pm-coach-out');
   for (const want of ['Objectif principal : Endurance — priorité à la capacité cardio-respiratoire', 'Objectif secondaire : Perte de graisse', 'levier principal est l’alimentation',

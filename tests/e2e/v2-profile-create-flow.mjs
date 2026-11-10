@@ -92,7 +92,7 @@ await step('échec d’écriture : erreur affichée, nom conservé, rien d’éc
 });
 
 await step('nouveau profil vide : aucune séance, aucun programme, aucun historique ; Pierre et Manon intacts', async () => {
-  await page.waitForSelector('[data-page="accueil"] h3:has-text("Aucun programme cette semaine")');
+  await page.waitForSelector('[data-page="accueil"] h3:has-text("Aucun programme cette semaine"), [data-page="accueil"] h3:has-text("Ta semaine en 30 secondes")');
   const d = JSON.parse(await exportOf(camille.id)).data;
   assert.deepEqual([d.sessions.length, d.programs.length, d.weights.length], [0, 0, 0]);
   assert.equal(await exportOf('pierre'), pierreBefore);

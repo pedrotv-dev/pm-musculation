@@ -28,7 +28,7 @@ await step('mardi 10 novembre 2026 : profil fictif sans programme → « Aucun p
   await page.click('#create-profile'); await page.fill('#new-profile-name', 'Alex fictif'); await page.click('#create-profile-submit');
   await page.waitForFunction(() => /^p-/.test(document.documentElement.dataset.pmProfile || ''));
   alex = await db(() => document.documentElement.dataset.pmProfile);
-  await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine")');
+  await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine"), ' + home + ' h3:has-text("Ta semaine en 30 secondes")');
 });
 
 await step('import (interface) du programme de la semaine du 16 novembre → accueil rafraîchi tout de suite : « Programme prêt »', async () => {
@@ -68,7 +68,7 @@ await step('fermeture / réouverture et changement de profil : état conservé, 
   sam = await db(async () => (await (await import('./js/profiles.js')).createProfile({ name: 'Sam fictif', color: 'sauge' })).id);
   await page.evaluate(id => document.dispatchEvent(new CustomEvent('pm:select-profile', { detail: { profile: id } })), sam);
   await page.waitForFunction(id => document.documentElement.dataset.pmProfile === id, sam);
-  await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine")');
+  await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine"), ' + home + ' h3:has-text("Ta semaine en 30 secondes")');
   await page.evaluate(id => document.dispatchEvent(new CustomEvent('pm:select-profile', { detail: { profile: id } })), alex);
   await page.waitForSelector(home + ' h3:has-text("Programme prêt pour la semaine du 16 novembre")');
 });

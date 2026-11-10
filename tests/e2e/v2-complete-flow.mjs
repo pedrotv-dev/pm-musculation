@@ -21,7 +21,7 @@ const noOverflow = () => page.evaluate(() => document.documentElement.scrollWidt
 const openFold = async title => { const d = page.locator('details.pm-fold', { has: page.locator('summary', { hasText: new RegExp('^' + title + '$') }) }); if (!(await d.evaluate(x => x.open))) await d.locator('summary').click(); return d; };
 // LOT 1 : profil sportif et machines dans Réglages (⚙︎) ; « Préparer mon programme avec ChatGPT » dans l'onglet Programme
 const goProfil = async () => { await page.click('.pm-settings-btn[data-go="profil"]'); await page.waitForSelector('[data-page="profil"] .pm-sport-fold'); };
-const goCoach = async () => { await page.click('.nav-btn[data-go="programme"]'); await page.waitForSelector('[data-page="programme"] h3:has-text("Préparer mon programme avec ChatGPT")'); };
+const goCoach = async () => { await page.click('.nav-btn[data-go="programme"]'); await page.waitForSelector('[data-page="programme"] h3:has-text("Préparer ma semaine")'); };
 const toSelect = async () => { await page.click('#switch-profile'); await page.waitForSelector('#screen-select:not([hidden])'); };
 const settingOf = (profile, key) => db(async ([p, k]) => (await import('./storage.js')).getSetting(p, k, null), [profile, key]);
 let alex, today, week, programJson, backupText;
@@ -96,7 +96,7 @@ await step('4 · machines : Leg Press indisponible, Calf Press à éviter', asyn
 await step('5 · demande pour ChatGPT : profil, machines, disponibilités, format JSON ; aucune donnée inventée', async () => {
   await goCoach();
   await page.getByLabel('Semaine à préparer').selectOption(week);
-  await page.click('button:has-text("Générer ma demande")');
+  await page.click('button:has-text("Copier ma demande")');
   await page.waitForSelector('.pm-coach-out:not([hidden])');
   const t = await page.inputValue('.pm-coach-out');
   for (const want of ['Pour : Alex fictif', 'identifiant dans l’application : ' + alex, 'weekStart = "' + week + '"', 'Objectif principal : Prise de muscle', 'Objectifs secondaires : Force', 'Jours disponibles : lundi, mercredi, vendredi',
@@ -111,7 +111,7 @@ await step('5 · demande pour ChatGPT : profil, machines, disponibilités, forma
 await step('6-7 · import du JSON fictif : vérifié, avertissement (Leg Press indisponible), puis enregistré', async () => {
   const dayId = DAYS[(new Date().getDay() + 6) % 7];
   programJson = program(alex, week, dayId);
-  await page.click('button:has-text("Importer la réponse de ChatGPT")');
+  await page.click('button:has-text("Coller la réponse de ChatGPT")');
   await page.waitForSelector('.pm-import[open]');
   await page.fill('.pm-textarea', JSON.stringify(programJson));
   await page.click('.pm-action-verify');
@@ -159,7 +159,7 @@ await step('11 · historique : la séance apparaît', async () => {
 await step('12 · nouveau bilan : la séance, la charge et le ressenti réels sont repris', async () => {
   await goCoach();
   await page.getByLabel('Semaine à préparer').selectOption(await db(async w => (await import('./js/stats.js')).addDays(w, 7), week));
-  await page.click('button:has-text("Générer ma demande")');
+  await page.click('button:has-text("Copier ma demande")');
   await page.waitForSelector('.pm-coach-out:not([hidden])');
   const t = await page.inputValue('.pm-coach-out');
   assert.match(t, /Chest Press \(chest-press\) : dernière fois .* 32,5 kg × 10/);
@@ -241,7 +241,7 @@ await step('second profil « Sam fictif » : indépendant (vide), séance libre,
   await page.click('#create-profile-submit');
   await page.waitForFunction(id => /^p-/.test(document.documentElement.dataset.pmProfile || '') && document.documentElement.dataset.pmProfile !== id, alex);
   const sam = await active();
-  await page.waitForSelector('[data-page="accueil"] h3:has-text("Aucun programme cette semaine")');
+  await page.waitForSelector('[data-page="accueil"] h3:has-text("Aucun programme cette semaine"), [data-page="accueil"] h3:has-text("Ta semaine en 30 secondes")');
   await page.click('button:has-text("Séance libre")');
   await page.waitForSelector(screen + ':not([hidden])');
   await page.click(screen + ' button:has-text("Ajouter une machine")');
@@ -262,7 +262,7 @@ await step('démo : fonctionne, rien en base ; profil sportif Démo en mémoire 
   await page.evaluate(() => document.dispatchEvent(new CustomEvent('pm:select-profile', { detail: { profile: 'demo' } })));
   await page.waitForFunction(() => document.documentElement.dataset.pmProfile === 'demo');
   await goCoach();
-  await page.click('button:has-text("Générer ma demande")');
+  await page.click('button:has-text("Copier ma demande")');
   await page.waitForSelector('.pm-coach-out:not([hidden])');
   assert.equal(await db(async () => (await import('./storage.js')).countProfileRows(['demo'])), 0);
 });

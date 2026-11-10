@@ -346,3 +346,25 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-manage-tags { font-size:13px; }
 .pm-history-import-summary p { margin:4px 0; }
 .pm-chip-imported { opacity:.8; }
+
+/* V2-UX LOT 2 · premier lancement « Ta semaine en 30 secondes » (Accueil) */
+.pm-quick-start .pm-validate { width:100%; margin-top:14px; }
+.pm-qs-group { border:0; padding:0; margin:14px 0 0; min-width:0; }
+.pm-qs-legend { font-size:14px; font-weight:780; margin:0 0 6px; padding:0; }
+.pm-qs-hint { font-size:12.5px; margin:-2px 0 6px; }
+.pm-qs-chips { display:flex; flex-wrap:wrap; gap:6px; }
+.pm-qs-chip { position:relative; display:inline-flex; }
+.pm-qs-chip input { position:absolute; inset:0; opacity:0; margin:0; cursor:pointer; }
+.pm-qs-chip span { display:inline-flex; align-items:center; min-height:44px; padding:0 13px; border-radius:999px; border:1px solid var(--ascent-rim, var(--stroke)); background:var(--surface); color:var(--text); font-size:14px; font-weight:700; }
+.pm-qs-chip input:checked + span { border-color:rgba(20,230,199,.75); background:rgba(20,230,199,.14); color:var(--turq); }
+.pm-qs-chip input:focus-visible + span { outline:3px solid var(--turq); outline-offset:2px; }
+.pm-qs-freq-field { margin-top:12px; }
+.pm-qs-freq-field[hidden] { display:none; }
+.pm-home-alt { text-align:center; margin:4px 0 14px; }
+
+/* V2-UX LOT 2 · assistant « Préparer ma semaine » (Programme) : 3 étapes numérotées */
+.pm-coach-step { display:flex; align-items:center; gap:10px; margin:16px 0 8px; font-weight:720; font-size:14.5px; }
+.pm-coach-step-n { flex:none; display:inline-grid; place-items:center; width:26px; height:26px; border-radius:50%; background:rgba(20,230,199,.16); color:var(--turq); font-size:13px; font-weight:850; }
+.pm-coach-open { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:0 14px; border-radius:var(--radius-12, 12px); text-decoration:none; border:1px solid var(--ascent-rim, var(--stroke)); color:var(--text); background:var(--surface); font-weight:720; }
+.pm-coach-paste { width:100%; }
+.pm-coach-section .pm-coach-out { min-height:0; height:120px; }

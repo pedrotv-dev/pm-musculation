@@ -77,7 +77,7 @@ await step('profil créé par l’API puis sélectionné : même chemin que les 
   assert.equal(await page.locator('#switch-profile').getAttribute('aria-label'), 'Changer de profil (Camille fictive)');
   assert.equal(await page.evaluate(() => document.documentElement.style.getPropertyValue('--accent')), '#14e6c7');
   await page.waitForSelector('.pm-hero-title:has-text("Salut Camille fictive")');
-  await page.waitForSelector('[data-page="accueil"] h3:has-text("Aucun programme cette semaine")');
+  await page.waitForSelector('[data-page="accueil"] h3:has-text("Aucun programme cette semaine"), [data-page="accueil"] h3:has-text("Ta semaine en 30 secondes")');
 });
 
 await step('nouveau profil : import d’un programme et poids, isolés ; Pierre et Manon intacts', async () => {

@@ -132,7 +132,7 @@ await step('fréquence : profil 5 séances (mardi → samedi), JSON d’UNE séa
 await step('demande ChatGPT de Pierre2 : 5 séances exigées, Hard RPE 8–9, charges importées utilisées (82,5 kg)', async () => {
   await page.click('.nav-btn[data-go="programme"]'); await page.waitForSelector('[data-page="programme"] .pm-coach-section h3'); // LOT 1 : demande dans Programme
   await page.getByLabel('Semaine à préparer').selectOption('2026-11-23');
-  await page.click('.pm-coach-section button:has-text("Générer ma demande")');
+  await page.click('.pm-coach-section button:has-text("Copier ma demande")');
   await page.waitForSelector('.pm-coach-out:not([hidden])');
   const t = await page.inputValue('.pm-coach-out');
   for (const want of ['Prépare EXACTEMENT 5 séances, une sur chacun de ces jours : mardi, mercredi, jeudi, vendredi, samedi', 'Intensité choisie : HARD — RPE 8 à 9', 'Ne réduis PAS toutes les charges sous prétexte que je suis débutant(e)', 'Leg Press (leg-press) : dernière fois', '82,5 kg', 'importées d’un ancien profil']) assert.ok(t.includes(want), want);

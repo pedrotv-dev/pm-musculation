@@ -538,6 +538,18 @@ document.addEventListener('pm:profile-changed', event => {
   const started = state.profileVersion + 1;
   setProfile(profile).catch(error => handleProfileError(error, profile, started));
 });
+// LOT 2 : assistant « Préparer ma semaine » → « Coller la réponse de ChatGPT » : texte du presse-papiers (ou rien : cadre
+// ouvert pour coller à la main) ; vérification lancée tout de suite, aperçu et bouton « Importer ce programme » visibles.
+document.addEventListener('pm:import-text', event => {
+  if (!isRealProfile(state.profile) && state.profile !== 'demo') return;
+  if (importCard.hidden) return;
+  const text = String(event.detail?.text || '');
+  importCard.open = true;
+  if (!text) { paste.focus(); paste.scrollIntoView({ block: 'center' }); return; }
+  paste.value = text; state.source = null; fileInput.value = ''; fileName.textContent = 'Aucun fichier sélectionné';
+  resetPreview();
+  previewImport().then(() => (previewView.hidden ? actionArea : previewView).scrollIntoView({ block: 'start' })).catch(showError);
+});
 // Accueil → « Voir mon programme » : affiche la semaine demandée (programme futur déjà enregistré)
 document.addEventListener('pm:show-program-week', event => {
   const week = event.detail && event.detail.weekStart;
