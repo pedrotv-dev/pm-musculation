@@ -27,6 +27,10 @@ const sessions = id => db(async id => (await (await import('./js/workouts.js')).
 const sets = async (id, machineId) => (await open(id)).activities.find(a => a.machineId === machineId).sets.map(x => [x.kg, x.reps, x.done]);
 const doneCount = async id => (await open(id)).activities.reduce((t, a) => t + (a.sets || []).filter(x => x.done).length, 0);
 const at = (d, h = 10) => new Date(2026, 10, d, h, 0, 0);
+// Coupure réseau volontaire (hors connexion) ou redémarrage demandé : les requêtes interrompues pendant cette fenêtre
+// (icône du manifeste, chargements annulés par le rechargement) ne sont pas des erreurs de l'application. Les erreurs
+// JavaScript, de console et HTTP restent toutes vérifiées.
+const networkCut = async fn => { const n = errors.length; try { await fn(); } finally { for (let i = errors.length - 1; i >= n; i--) if (errors[i].startsWith('requestfailed: ')) errors.splice(i, 1); } };
 const title = () => page.locator(screen + ' h2').first().innerText();
 let alex, sam, programAlex, mondayId;
 
@@ -435,14 +439,16 @@ await step('5.2 arrière-plan pendant un repos : au retour, le chrono a avancé 
 
 await step('5.3 hors connexion (après chargement complet) : rechargement, reprise, série validée et conservée', async () => {
   await page.waitForFunction(async () => !!(await navigator.serviceWorker.getRegistration())?.active);
-  await context.setOffline(true);
-  await page.reload();
-  await page.click(home + ' .pm-home-card .pm-validate:has-text("Reprendre")');
-  if (await page.locator('.pm-modal').count()) await page.click('.pm-modal .pm-primary');
-  await page.waitForSelector('#pm-current-kg');
-  await validate(alex);
-  await context.setOffline(false);
-  await page.reload();
+  await networkCut(async () => {
+    await context.setOffline(true);
+    await page.reload();
+    await page.click(home + ' .pm-home-card .pm-validate:has-text("Reprendre")');
+    if (await page.locator('.pm-modal').count()) await page.click('.pm-modal .pm-primary');
+    await page.waitForSelector('#pm-current-kg');
+    await validate(alex);
+    await context.setOffline(false);
+    await page.reload();
+  });
   assert.equal(await doneCount(alex), 2, 'séries enregistrées hors connexion conservées');
 });
 
@@ -457,7 +463,7 @@ await step('5.4 mise à jour PWA pendant la séance : jamais proposée en séanc
   await validate(alex);
   await finish('Bien', 'Séance hors ligne fictive', false);
   await page.waitForSelector('.pm-modal:has-text("Mise à jour installée")');
-  await Promise.all([page.waitForEvent('load'), page.click('.pm-modal-btn:has-text("Redémarrer l’application")')]);
+  await networkCut(() => Promise.all([page.waitForEvent('load'), page.click('.pm-modal-btn:has-text("Redémarrer l’application")')]));
   srv.setSwVersion(null);
   const n = (await sessions(alex)).length;
   assert.equal(n, 5, 'toutes les séances d’Alex conservées après la mise à jour (lundi, vendredi, lundi suivant, 2 séances libres)');

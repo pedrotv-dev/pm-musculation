@@ -64,7 +64,7 @@ dans le dépôt) ; chaque cas est rejoué par `tests/e2e/v2-qa9-flow.mjs` (6 éc
 | Mineure | Profils créés : pas de bouton pour réordonner la liste du choix des profils | — | ordre de création |
 | Mineure | Machines de la salle : saisie machine par machine (pas de « tout décocher ») | profil avec peu de machines | quelques appuis de plus |
 | Limite | La relecture avant « Sauvegardé » réduit fortement mais n'annule pas la fenêtre entre deux onglets écrivant au même instant | deux onglets simultanés | affichage rattrapé à l'écriture suivante |
-| Limite | Course audio « blob: » (son de repos) corrigée dans `main` par la PR #68, pas encore dans cette branche | CI `offline-flow` répété | intermittente, sans effet sur les données ; disparaît à l'intégration de `main` |
+| Limite | Requête « blob: » du son de repos annulée (fichier son temporaire en mémoire, chargement interrompu à l’arrêt d’un son ou à la fermeture d’un onglet) ; réduite par la PR #68 (intégrée) mais encore observée une fois en CI (`offline-flow`, 10 novembre) | CI, rare | aucun effet sur les données ni sur l’alerte de fin de repos ; volontairement non modifiée avant les essais sur téléphone (son sur écran verrouillé) |
 | Limite | Pas de test sur iPhone / Safari réel ni lecteur d'écran | — | à vérifier sur téléphone |
 
 ## V2-CONSOLIDATION (branche `claude/v2-charges-objectifs`)
