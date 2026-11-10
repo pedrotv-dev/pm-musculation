@@ -298,3 +298,8 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-recap-feedback { margin:0 0 18px; padding-bottom:16px; border-bottom:1px solid var(--ascent-rim, var(--stroke)); }
 .pm-workout-card .pm-recap-feedback .pm-sets-title { font-size:14px; font-weight:800; letter-spacing:.01em; line-height:1.3; margin:18px 0 10px; text-wrap:wrap; }
 .pm-workout-card .pm-recap-feedback .pm-sets-title:first-child { margin-top:0; }
+
+/* V2 — dernière charge validée (indication discrète, proposition explicite) */
+.pm-last-load { margin-top:8px; display:flex; flex-direction:column; gap:6px; }
+.pm-last-load-text { margin:0; font-size:13px; color:var(--muted); }
+.pm-last-apply { min-height:44px; }

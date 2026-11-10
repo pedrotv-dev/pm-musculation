@@ -8,10 +8,11 @@
 import {
   startWorkout, getResumableWorkout, getWorkout, listWorkouts, updateSet, addSet, removeSet, completeActivity, skipActivity,
   postponeActivity, returnToPostponed, pauseWorkout, resumeWorkout, finishWorkout, discardWorkout,
-  addActivity, removeActivity, moveActivity, setCursor, setWorkoutFeedback, getNextActivity, getWorkoutSummary,
+  addActivity, removeActivity, moveActivity, setCursor, setLoads, setWorkoutFeedback, getNextActivity, getWorkoutSummary,
   getWorkoutDuration, getPostponedActivities
 } from './workouts.js';
-import { el, btn, clear, add, dialog, confirmDialog, toast, formatClock, formatMinutes, fmtNum, parseNum, localISODate } from './dom.js';
+import { el, btn, clear, add, dialog, confirmDialog, toast, formatClock, formatMinutes, fmtNum, parseNum, localISODate, formatDateFr } from './dom.js';
+import { lastPerformance, proposeLoads } from './last-loads.js';
 import { icon, withIcon } from './icons.js';
 import { loadCatalog, machineImage } from './catalog.js';
 import { isKnownProfile, isRealProfile, getProfileInfo } from './profiles.js';
@@ -611,6 +612,40 @@ function scheduleReveal(key) {
   requestAnimationFrame(() => revealCurrentSet());
   setTimeout(() => { if (S.revealed === key) revealCurrentSet(); }, 320);
 }
+/**
+ * Dernière charge validée de cette machine (séances terminées du profil, séries validées seulement) et proposition de la
+ * reprendre. Rien n'est appliqué sans appui de l'utilisateur ; l'objectif du programme reste affiché à part.
+ */
+function lastLoadHint(T, a) {
+  if (a.type !== 'strength' || !a.machineId) return null;
+  const lastFor = side => lastPerformance(S.history, a.machineId, { excludeId: S.session?.id, side });
+  const last = lastFor(null);
+  if (!last) return null;
+  const box = el('div', 'pm-last-load');
+  box.append(el('p', 'pm-last-load-text', (last.assisted ? 'Dernière assistance validée : ' : 'Dernière charge validée : ') + fmtNum(last.kg) + ' kg × ' + last.reps +
+    ' · ' + formatDateFr(last.date) + (last.assisted ? ' (moins d’assistance = plus difficile)' : '')));
+  const changes = proposeLoads(a, lastFor);
+  if (changes.length) {
+    box.append(btn('Reprendre mes dernières charges', 'pm-secondary pm-last-apply', async () => {
+      await flushAll();
+      if (!isLive(T)) return;
+      const fresh = act(S.session, a.key);
+      if (!fresh) return;
+      // une saisie en cours ou en échec sur cette machine n'est jamais écrasée
+      if ([...S.writers.values()].some(w => isLive(w.t) && w.activityKey === a.key && (w.pending || w.failed.size || isDirty(w)))) {
+        setStatus('Termine d’abord la saisie en cours sur cette machine, puis réessaie.', 'error'); return;
+      }
+      const ch = proposeLoads(fresh, lastFor);
+      if (!ch.length) { render(); return; }
+      const gen = genOf(S.session);
+      for (const w of [...S.writers.values()]) if (w.activityKey === a.key) S.writers.delete(w.key); // référence = valeurs enregistrées
+      if (await guardedCommit(T, (p, id) => setLoads(p, id, a.key, ch, { expectGen: gen }))) {
+        setStatus('Dernières charges reprises pour ' + ch.length + ' série(s). Tu peux toujours les modifier.', 'ok');
+      }
+    }));
+  }
+  return box;
+}
 function renderSets(card, a) {
   const T = targetNow(); // cible capturée au rendu : les rappels (même après une attente) visent CETTE séance
   const current = a.sets.find(s => !s.done);
@@ -657,6 +692,8 @@ function renderSets(card, a) {
     const plan = plannedFor(a, curIdx);
     add(box, head, grid);
     if (plan) box.append(el('p', 'pm-current-plan', 'Objectif du programme : ' + fmtNum(plan.kg) + ' kg × ' + plan.reps));
+    const hint = lastLoadHint(T, a);
+    if (hint) box.append(hint);
     box.inputs = { kg: kgF.input, reps: repsF.input };
     // « Valider » fait partie du cadre : charge, répétitions et validation restent groupées (audit V1, C2)
     const idx = curIdx, next = { set: current };
@@ -956,7 +993,15 @@ async function addMachineDialog() {
   const reps = inputField('reps', 10, { kind: 'reps' });
   const rest = inputField('repos (s)', 90, { kind: 'reps' });
   const grid = el('div', 'pm-grid-4'); grid.append(nSets.wrap, kg.wrap, reps.wrap, rest.wrap);
-  content.append(sel, grid);
+  // dernière charge validée de la machine choisie (séances terminées et séance en cours), modifiable avant l'ajout
+  const note = el('p', 'pm-muted pm-last-load-text');
+  const prefill = () => {
+    const last = lastPerformance([...S.history, ...(S.session ? [S.session] : [])], sel.value);
+    if (last) { kg.input.value = fmtNum(last.kg); reps.input.value = String(last.reps); note.textContent = (last.assisted ? 'Dernière assistance validée : ' : 'Dernière charge validée : ') + fmtNum(last.kg) + ' kg × ' + last.reps + ' · ' + formatDateFr(last.date); }
+    else { kg.input.value = '20'; reps.input.value = '10'; note.textContent = 'Jamais faite : choisis une charge prudente.'; }
+  };
+  sel.addEventListener('change', prefill); prefill();
+  content.append(sel, note, grid);
   const choice = await dialog({ title: 'Ajouter une machine', message: 'Elle sera ajoutée à la fin de cette séance.', content,
     choices: [{ label: 'Annuler', value: null }, { label: 'Ajouter', value: 'ok', kind: 'primary' }] });
   if (choice !== 'ok') return;

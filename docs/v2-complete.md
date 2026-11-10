@@ -66,3 +66,22 @@ dans le dépôt) ; chaque cas est rejoué par `tests/e2e/v2-qa9-flow.mjs` (6 éc
 | Limite | La relecture avant « Sauvegardé » réduit fortement mais n'annule pas la fenêtre entre deux onglets écrivant au même instant | deux onglets simultanés | affichage rattrapé à l'écriture suivante |
 | Limite | Course audio « blob: » (son de repos) corrigée dans `main` par la PR #68, pas encore dans cette branche | CI `offline-flow` répété | intermittente, sans effet sur les données ; disparaît à l'intégration de `main` |
 | Limite | Pas de test sur iPhone / Safari réel ni lecteur d'écran | — | à vérifier sur téléphone |
+
+## Dernières charges validées et objectifs polyvalents (branche `claude/v2-charges-objectifs`)
+
+- **Dernière charge validée** — sur l'écran d'une machine : « Dernière charge validée : 80 kg × 12 · date »
+  (séries **validées** seulement, séance terminée la plus récente du profil, toutes semaines et séances libres).
+  Rien n'est appliqué automatiquement : le bouton « Reprendre mes dernières charges » met la dernière charge de
+  travail sur les séries non validées et conserve l'écart prévu des séries plus légères (échauffement, montée en
+  charge) ; jamais au-delà de la dernière charge validée. Les séries validées, le programme (« Objectif du programme »)
+  et les séances passées ne changent pas ; tout reste modifiable à la main. Appliqué dans la transaction : une série
+  modifiée entre-temps n'est pas écrasée (`setLoads`, SET_CONFLICT).
+  - Machines par côté : référence prise sur le même côté. Machines assistées (Dip / Chin Assist) : la référence est
+    l'assistance la plus faible validée (moins d'assistance = plus difficile).
+  - Séance libre : « Ajouter une machine » est prérempli avec la dernière charge validée de la machine choisie.
+  - Aucune nouvelle base : calcul à partir de l'historique des séances.
+- **Objectifs polyvalents** — profil sportif : objectif principal (facultatif) et objectifs secondaires. La demande
+  pour ChatGPT présente un « coach sportif » et une section « Orientation du programme » : repères propres à chaque
+  objectif (répartition musculation / cardio, séries, répétitions, repos, intensité), au niveau, et rappel d'adapter à
+  la fatigue, aux machines et au temps disponible ; une séance peut être principalement cardio. Les dernières séries
+  validées par machine et le dernier cardio réalisé (durée, réglages) sont inclus. Format JSON inchangé.

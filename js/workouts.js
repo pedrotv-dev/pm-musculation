@@ -541,6 +541,27 @@ export function removeSet(profileId, sessionId, activityKey, setId, options) {
   }, options);
 }
 
+/**
+ * Applique des charges choisies par l'utilisateur (ex. « Reprendre mes dernières charges ») aux séries NON validées
+ * d'une activité : `changes` = [{ setId, from, kg }]. Chaque série doit être encore non validée et à la charge `from`
+ * (vérifié dans la transaction : SET_CONFLICT sinon, rien n'est écrit). Répétitions et programme inchangés.
+ */
+export function setLoads(profileId, sessionId, activityKey, changes, options) {
+  return mutate(profileId, sessionId, s => {
+    const a = findActivity(s, activityKey);
+    requireStrength(a);
+    if (!Array.isArray(changes) || !changes.length || changes.length > MAX_SETS) throw new WorkoutError('Modification invalide.', 'INVALID_SET');
+    for (const c of changes) {
+      const set = findSet(a, c && c.setId);
+      if (set.done || set.kg !== c.from) {
+        throw new WorkoutError('Cette série a été modifiée entre-temps : rien n’a été changé. Vérifie les valeurs affichées.', 'SET_CONFLICT', { setId: set.id });
+      }
+      checkKg(c.kg);
+    }
+    for (const c of changes) findSet(a, c.setId).kg = c.kg;
+  }, options);
+}
+
 // ---------------------------------------------------------------- activites
 
 /** Echauffement / cardio : marque comme fait (ou annule avec done:false). actual : { durationMinutes? }. */

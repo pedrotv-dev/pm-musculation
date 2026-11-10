@@ -23,10 +23,10 @@ export const MEASURES = Object.freeze([['heightCm', 'Taille', 'cm', 100, 250], [
 export const TEXT_MAX = 600;
 const HISTORY_MAX = 40;
 /** Champs dont les changements sont historisés (cités dans le bilan). */
-const TRACKED = Object.freeze({ goals: 'objectifs', goalNote: 'précision des objectifs', level: 'niveau', frequency: 'séances par semaine', days: 'jours disponibles', durationMin: 'durée des séances', intensity: 'intensité souhaitée', fatigue: 'fatigue', sleep: 'sommeil', avoid: 'mouvements à éviter', constraints: 'contraintes', preferences: 'préférences' });
+const TRACKED = Object.freeze({ mainGoal: 'objectif principal', goals: 'objectifs secondaires', goalNote: 'précision des objectifs', level: 'niveau', frequency: 'séances par semaine', days: 'jours disponibles', durationMin: 'durée des séances', intensity: 'intensité souhaitée', fatigue: 'fatigue', sleep: 'sommeil', avoid: 'mouvements à éviter', constraints: 'contraintes', preferences: 'préférences' });
 
 export const EMPTY_SPORT = Object.freeze({
-  goals: [], goalNote: '', level: null, frequency: null, days: [], durationMin: null, measures: {}, initialPerf: '',
+  mainGoal: null, goals: [], goalNote: '', level: null, frequency: null, days: [], durationMin: null, measures: {}, initialPerf: '',
   intensity: null, fatigue: null, sleep: null, recoveryNote: '', avoid: '', constraints: '', preferences: '',
   health: '', healthInBilan: false, updatedAt: null, history: []
 });
@@ -49,7 +49,9 @@ const oneOf = (v, list, field) => {
 export function sanitizeSport(raw = {}) {
   const r = raw && typeof raw === 'object' ? raw : {};
   const out = clone(EMPTY_SPORT);
-  out.goals = Array.isArray(r.goals) ? [...new Set(r.goals.filter(g => GOALS.includes(g)))] : [];
+  out.mainGoal = GOALS.includes(r.mainGoal) ? r.mainGoal : null;
+  // objectifs secondaires : sans l'objectif principal (anciens profils : la liste reste telle quelle)
+  out.goals = Array.isArray(r.goals) ? [...new Set(r.goals.filter(g => GOALS.includes(g) && g !== out.mainGoal))] : [];
   out.goalNote = text(r.goalNote, 'Précision des objectifs');
   out.level = oneOf(r.level, LEVELS, 'Niveau');
   if (r.frequency !== null && r.frequency !== undefined && r.frequency !== '') {

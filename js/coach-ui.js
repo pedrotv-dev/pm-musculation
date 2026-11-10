@@ -94,6 +94,7 @@ export function identitySection(profile) {
 export async function sportSection(profile) {
   const s = await getSportProfile(profile);
   const box = fold('Mon profil sportif', 'Ces informations servent à préparer ton programme avec ChatGPT. Aucune n’est obligatoire ; modifie-les quand ta situation change (l’historique de tes changements est conservé).');
+  const mainGoal = select(GOALS.map(g => [g, g]), s.mainGoal);
   const goals = checks(GOALS, s.goals);
   const goalNote = area(s.goalNote, 'Ex. : préparer un trail en mars, reprendre après une pause…');
   const level = select(LEVELS, s.level);
@@ -117,7 +118,7 @@ export async function sportSection(profile) {
     save.disabled = true;
     try {
       const m = {}; for (const [k, i] of measures) m[k] = i.value.trim().replace(',', '.');
-      await saveSportProfile(profile, { goals: goals.values(), goalNote: goalNote.value, level: level.value, frequency: freq.value, days: days.values(), durationMin: dur.value,
+      await saveSportProfile(profile, { mainGoal: mainGoal.value, goals: goals.values(), goalNote: goalNote.value, level: level.value, frequency: freq.value, days: days.values(), durationMin: dur.value,
         intensity: intensity.value, fatigue: fatigue.value, sleep: sleep.value, recoveryNote: recovery.value, measures: m, initialPerf: perf.value,
         avoid: avoid.value, constraints: constraints.value, preferences: prefs.value, health: health.value, healthInBilan: hs.checked });
       say(st, 'Profil sportif enregistré ✓', 'ok'); toast('Profil sportif enregistré');
@@ -126,7 +127,7 @@ export async function sportSection(profile) {
   });
   const mgrid = el('div', 'pm-coach-grid'); measures.forEach(([, i, label]) => mgrid.append(field(label, i)));
   add(box,
-    el('h4', 'pm-coach-sub', 'Objectifs'), goals.box, field('Précision (facultatif)', goalNote), field('Niveau d’expérience', level),
+    el('h4', 'pm-coach-sub', 'Objectifs'), field('Objectif principal', mainGoal), el('p', 'pm-coach-label', 'Objectifs secondaires (facultatif)'), goals.box, field('Précision (facultatif)', goalNote), field('Niveau d’expérience', level),
     el('h4', 'pm-coach-sub', 'Disponibilités'), field('Séances par semaine', freq), el('p', 'pm-coach-label', 'Jours disponibles'), days.box, field('Durée d’une séance', dur),
     el('h4', 'pm-coach-sub', 'Intensité, fatigue et récupération'), field('Difficulté souhaitée (RPE)', intensity, 'RPE : effort ressenti de 1 à 10 ; 8 = il reste environ 2 répétitions possibles.'),
     field('Fatigue actuelle', fatigue), field('Sommeil', sleep), field('Récupération (facultatif)', recovery),

@@ -7,6 +7,42 @@
 import { isClosed, sessionFigures, addDays, machineHistory } from './stats.js';
 import { buildBilan } from './bilan.js';
 import { GOALS, LEVELS, INTENSITIES, FATIGUE, SLEEP, MEASURES, usableMachines } from './sport-profile.js';
+import { isAssisted } from './last-loads.js';
+import { metricsText, metricsOf } from './cardio.js';
+
+/**
+ * Repères par objectif (indicatifs : ChatGPT les adapte au niveau, à la fatigue et aux performances). La répartition
+ * musculation / cardio, le volume, les répétitions, le repos et l'intensité découlent des objectifs, pas d'une structure
+ * imposée. Le moteur accepte des séances composées uniquement de cardio (et d'échauffement).
+ */
+export const GOAL_GUIDES = Object.freeze({
+  'Prise de muscle': 'hypertrophie : musculation majoritaire, chaque groupe musculaire 2 fois par semaine si possible, 3 à 4 séries de 6 à 12 répétitions proches de l’échec (RPE 7 à 9), repos 60 à 120 s, volume augmenté progressivement ; cardio modéré et court (10 à 20 min) pour la santé.',
+  'Perte de graisse': 'conserver le muscle (2 à 3 séries de 8 à 15 répétitions sur les grands groupes musculaires), repos plus courts (45 à 75 s) ou enchaînements, et une part de cardio plus importante (20 à 40 min, continu ou intervalles selon le niveau et la fatigue) ; volume raisonnable pour tenir la semaine.',
+  'Renforcement': 'renforcement global et gainage : 2 à 3 séries de 10 à 15 répétitions, mouvement contrôlé, charges modérées (RPE 6 à 8), repos 60 à 90 s, accent sur dos, ceinture abdominale et jambes ; cardio léger à modéré.',
+  'Force': 'force : priorité aux machines polyarticulaires lourdes (presses, tirages), 3 à 5 séries de 3 à 6 répétitions (RPE 7 à 9), repos longs (120 à 180 s), peu d’exercices et volume total limité ; cardio léger pour ne pas gêner la récupération.',
+  'Endurance': 'endurance : cardio majoritaire (durées progressives, réglages d’inclinaison, de vitesse ou de niveau adaptés, intervalles possibles), musculation en séries longues de 12 à 20 répétitions, charges légères, repos courts (30 à 60 s).',
+  'Remise en forme': 'reprise progressive : séances corps entier, 2 à 3 séries de 10 à 15 répétitions à charges légères (RPE 5 à 7), repos 60 à 90 s, cardio doux et régulier ; augmenter très progressivement.'
+});
+const LEVEL_GUIDES = Object.freeze({
+  debutant: 'Débutant : peu d’exercices par séance, machines guidées simples, apprentissage du mouvement, progression lente.',
+  intermediaire: 'Intermédiaire : volume et intensité modérés à élevés, progression régulière des charges ou des répétitions.',
+  confirme: 'Confirmé : volume et intensité plus élevés possibles, variation des répétitions et des repos.'
+});
+/** Consignes adaptées aux objectifs et au niveau (texte, sans structure imposée). */
+function goalBlock(sport) {
+  const main = sport.mainGoal || sport.goals[0] || null;
+  const secondary = sport.goals.filter(g => g !== main);
+  const L = [];
+  if (!main) {
+    L.push('- Aucun objectif renseigné : propose un programme équilibré de remise en forme (musculation et cardio), prudent, et indique-le.');
+  } else {
+    L.push('- Objectif principal : ' + main + ' — repères : ' + GOAL_GUIDES[main]);
+    for (const g of secondary) L.push('- Objectif secondaire : ' + g + ' — à intégrer sans prendre le pas sur l’objectif principal (repères : ' + GOAL_GUIDES[g] + ')');
+  }
+  if (LEVEL_GUIDES[sport.level]) L.push('- ' + LEVEL_GUIDES[sport.level]);
+  L.push('- Ces repères sont indicatifs : adapte-les à ma fatigue, à ma récupération, à mes dernières performances, à mes machines et au temps disponible. Une séance peut être majoritairement (ou uniquement) cardio si l’objectif le justifie.');
+  return L;
+}
 
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 const num = n => (Math.round(n * 100) / 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 });
@@ -17,7 +53,9 @@ const orNR = v => (v === null || v === undefined || v === '' || (Array.isArray(v
 
 function profileBlock(sport, weights) {
   const L = [];
-  L.push('- Objectifs : ' + (sport.goals.length ? sport.goals.join(', ') : NR) + (sport.goalNote ? ' — précision : ' + sport.goalNote : ''));
+  const main = sport.mainGoal || null;
+  if (main) L.push('- Objectif principal : ' + main);
+  L.push('- Objectifs' + (main ? ' secondaires' : '') + ' : ' + (sport.goals.length ? sport.goals.join(', ') : main ? 'aucun' : NR) + (sport.goalNote ? ' — précision : ' + sport.goalNote : ''));
   L.push('- Niveau d’expérience : ' + (labelOf(LEVELS, sport.level) || NR));
   L.push('- Séances souhaitées par semaine : ' + orNR(sport.frequency));
   L.push('- Jours disponibles : ' + (sport.days.length ? sport.days.join(', ') : NR + ' (à toi de proposer une répartition)'));
@@ -99,10 +137,28 @@ function loadsBlock(sessions, catalogById, today) {
     const h = machineHistory(closed, id);
     if (!h.length) continue;
     const last = h[h.length - 1], best = Math.max(...h.map(x => x.topKg));
+    const sess = closed.find(s => s.id === last.sessionId);
+    const done = sess ? sess.activities.filter(a => a.type === 'strength' && a.machineId === id).flatMap(a => a.sets.filter(x => x.done)) : [];
+    const assisted = isAssisted(id);
     L.push('- ' + (catalogById.get(id)?.name || id) + ' (' + id + ') : dernière fois ' + date(last.date) + ' — ' + num(last.topKg) + ' kg' +
-      (last.repsAtTop ? ' × ' + last.repsAtTop : '') + ' ; meilleure charge ' + num(best) + ' kg ; ' + h.length + ' séance(s)');
+      (last.repsAtTop ? ' × ' + last.repsAtTop : '') + ' ; meilleure charge ' + num(best) + ' kg ; ' + h.length + ' séance(s)' +
+      (done.length ? ' ; séries validées la dernière fois : ' + done.map(x => (x.side ? (x.side === 'left' ? 'G ' : 'D ') : '') + num(x.kg) + ' × ' + x.reps).join(' / ') : '') +
+      (assisted ? ' (kg = ASSISTANCE : moins = plus difficile)' : ''));
   }
   return L.length ? L : ['- aucune séance de musculation enregistrée ces 8 dernières semaines'];
+}
+
+/** Dernier cardio réalisé par appareil (durée et réglages réels). */
+function cardioBlock(sessions, today) {
+  const seen = new Map();
+  const rows = sessions.filter(isClosed).filter(s => s.date >= addDays(today, -56)).sort((a, b) => b.date.localeCompare(a.date));
+  for (const s of rows) for (const a of s.activities) {
+    if (a.type === 'strength' || a.status !== 'done' || seen.has(a.name)) continue;
+    const min = a.actual?.durationMinutes ?? a.planned?.durationMinutes;
+    const reg = metricsText(metricsOf(a), { speedUnit: a.name === 'Tapis de course' });
+    seen.set(a.name, '- ' + (a.name || (a.type === 'warmup' ? 'Échauffement' : 'Cardio')) + ' : ' + date(s.date) + (min ? ' — ' + num(min) + ' min' : '') + (reg ? ' — ' + reg : ''));
+  }
+  return seen.size ? [...seen.values()] : ['- aucun cardio enregistré ces 8 dernières semaines'];
 }
 
 function formatBlock(profileId, targetWeek, strength, cardio) {
@@ -142,13 +198,16 @@ export function buildCoachPrompt({ profileId, name, sport, gym, catalog, session
   L.push('Bilan établi le ' + date(today) + '. Les informations absentes sont indiquées « non renseigné » : ne les invente pas.');
   L.push('');
   L.push('## Ce que je te demande');
-  L.push('Tu es mon coach de musculation. À partir des informations ci-dessous :');
-  L.push('1. Analyse mon profil, ma salle, mes disponibilités et mon historique récent (séances manquées, semaines incomplètes, fatigue, ressentis, progression des charges).');
-  L.push('2. Prépare mon programme de la semaine : exercices, ordre, séries, répétitions, charges, repos et cardio, adaptés à mes objectifs et à ma récupération.');
+  L.push('Tu es mon coach sportif (musculation, cardio et condition physique). À partir des informations ci-dessous :');
+  L.push('1. Analyse mon profil, mes objectifs, ma salle, mes disponibilités et mon historique récent (séances manquées, semaines incomplètes, fatigue, ressentis, charges et cardio réalisés).');
+  L.push('2. Prépare mon programme de la semaine en fonction de MES objectifs (voir « Orientation du programme ») : répartition musculation / cardio, choix des machines, ordre, séries, répétitions, charges, repos, durées et réglages de cardio.');
   L.push('3. N’utilise QUE les machines de la liste « Machines utilisables » et évite les mouvements et machines à éviter.');
   L.push('4. Place les séances sur mes jours disponibles et respecte la durée souhaitée. Si des séances ont été manquées ou si la fatigue est élevée, adapte le volume plutôt que d’ajouter des séances.');
-  L.push('5. Charges : pars de mes dernières charges réelles ; pour une machine jamais faite, propose une charge prudente. Si une information manque, fais une hypothèse prudente et signale-la.');
+  L.push('5. Charges et cardio : pars de mes dernières performances réelles (séries validées, durées et réglages) ; pour une machine jamais faite, propose une charge prudente. Ne m’impose pas de grosse hausse d’un coup. Si une information manque, fais une hypothèse prudente et signale-la.');
   L.push('6. Écris d’abord en 5 lignes maximum ce que tu changes et pourquoi, puis donne le JSON au format exact décrit à la fin.');
+  L.push('');
+  L.push('## Orientation du programme (selon mes objectifs)');
+  L.push(...goalBlock(sport));
   L.push('');
   L.push('## Mon profil sportif');
   L.push(...profileBlock(sport, weights));
@@ -165,10 +224,13 @@ export function buildCoachPrompt({ profileId, name, sport, gym, catalog, session
   L.push('## Mes charges récentes par machine (8 dernières semaines)');
   L.push(...loadsBlock(sessions, byId, today));
   L.push('');
+  L.push('## Mon cardio récent (8 dernières semaines)');
+  L.push(...cardioBlock(sessions, today));
+  L.push('');
   L.push('## Détail de la semaine précédente');
   const lastWeek = addDays(targetWeek, -7);
   const names = new Map((catalog || []).map(m => [m.id, m.name]));
-  L.push(buildBilan({ weekStart: lastWeek, people: [{ profileId, name, goal: sport.goals.join(', ').toLowerCase(), sessions, weights, program: programs.find(p => p.weekStart === lastWeek) || null }], machineNames: names }).trim());
+  L.push(buildBilan({ weekStart: lastWeek, people: [{ profileId, name, goal: [sport.mainGoal, ...sport.goals].filter(Boolean).join(', ').toLowerCase(), sessions, weights, program: programs.find(p => p.weekStart === lastWeek) || null }], machineNames: names }).trim());
   L.push('');
   L.push('## Format de réponse attendu (obligatoire)');
   L.push(...formatBlock(profileId, targetWeek, gymInfo.strength, gymInfo.cardio));
