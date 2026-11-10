@@ -187,7 +187,7 @@ test('coaching : consignes propres à chaque objectif, sans grille imposée ; d�
   assert.match(muscle, /Niveau d’expérience : Débutant/);
   assert.match(muscle, /Séances souhaitées par semaine : 5/);
   assert.match(muscle, /Jours disponibles : lundi, mardi, mercredi, jeudi, vendredi/);
-  assert.match(muscle, /pas une obligation de remplir chaque jour par une grosse séance/);
+  assert.match(muscle, /Prépare EXACTEMENT 5 séances, une sur chacun de ces jours : lundi, mardi, mercredi, jeudi, vendredi/);
   assert.equal(Object.keys(GOAL_GUIDES).sort().join(), [...SP.GOALS].sort().join(), 'un axe par objectif existant');
   assert.match(buildCoachPrompt({ ...base, sport: SP.sanitizeSport({}) }), /Aucun objectif principal renseigné/);
 });

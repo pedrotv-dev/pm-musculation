@@ -132,3 +132,21 @@ hors connexion, mise à jour PWA pendant une séance, bilan et demande de la sem
 Anomalie corrigée : la section « Changements récents » de la demande ChatGPT affichait des valeurs brutes
 (« fatigue : 3 → 4 », « niveau : debutant → intermediaire », « durée : 60 → 45 ») ; elle affiche désormais leur sens
 (« fatigue : Normale → Fatigué(e) », « 60 min → 45 min »), y compris pour l’historique déjà enregistré.
+
+## V2-EVOLUTION-1 (branche `claude/v2-evolution-1`)
+
+- **Importer l’historique d’un autre profil** (Profil → section du même nom) : sauvegarde JSON d’un ancien profil (même
+  identifiant différent), profil de destination au choix, aperçu (séances terminées ou partielles, pesées, déjà présentes,
+  non terminées ignorées), puis import en fusion (`planHistoryTransfer` / `applyHistoryTransfer`, js/backup.js). Données
+  recopiées telles qu’enregistrées ; séances marquées `importedFrom` (« Importée » dans l’Historique, « historique importé »
+  dans la demande ChatGPT : charges et répétitions des séries validées confirmées, durées et ressentis indicatifs). Aucun
+  doublon (identifiant dérivé de l’origine, même date et heure de début, même pesée). Ni programmes, ni objectifs, ni
+  réglages. Jeu : aucune séance d’avant le 9 novembre 2026 ne donne XP, niveau ou succès (`GAME_START`, tous les vrais profils).
+- **Intensité** : le niveau règle la technique et la prudence de progression ; l’intensité règle la difficulté réelle.
+  « Hard » (RPE 8-9) : séries de travail exigeantes (1 à 2 répétitions en réserve), dernières charges réelles, pas de baisse
+  automatique pour un débutant, aucune performance inventée, journées de cardio / récupération distinguées.
+- **Fréquence stricte** : « Prépare EXACTEMENT N séances » sur les jours choisis (ou N parmi eux) ; type et volume libres ;
+  exemple JSON au nombre de jours demandés. Import : écart de fréquence ou de jours signalé ; refus par défaut, exception
+  explicite possible ; jamais appliqué aux semaines passées.
+- **Gérer mes profils** (Profil) : liste des profils de l’appareil, renommer, supprimer (sauvegarde proposée, double
+  confirmation, refus si une séance est en cours) ; Pierre et Manon protégés : masquables de l’écran de choix (données intactes).

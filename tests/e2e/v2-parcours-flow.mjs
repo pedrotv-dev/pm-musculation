@@ -161,6 +161,7 @@ await step('11 · import de la réponse COMPLÈTE de ChatGPT (justification + JS
   await page.click('.pm-action-verify');
   await page.waitForSelector('.pm-action-save:not([disabled])');
   await page.click('.pm-action-save');
+  await page.click('.pm-modal:has-text("Programme incomplet") .pm-modal-btn:has-text("Importer quand même")'); // V2-EVOLUTION-1 : moins de séances que la fréquence du profil → exception explicite
   await page.waitForFunction(async id => !!(await (await import('./storage.js')).getProgram(id, '2026-11-09')), alex);
   await page.click('.nav-btn[data-go="accueil"]');
   await page.waitForSelector('[data-page="accueil"] .pm-next-card h3:has-text("Séance du jour")');

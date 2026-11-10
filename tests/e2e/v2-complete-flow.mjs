@@ -114,7 +114,9 @@ await step('6-7 · import du JSON fictif : vérifié, avertissement (Leg Press i
   await page.click('.pm-action-verify');
   await page.waitForSelector('.pm-action-save:not([disabled])');
   assert.match(await page.locator('#pm-import-feedback').innerText(), /Leg Press n’est pas dans tes machines disponibles/);
+  assert.match(await page.locator('#pm-import-feedback').innerText(), /contient 1 séance alors que ton profil sportif en demande 3/);
   await page.click('.pm-action-save');
+  await page.click('.pm-modal:has-text("Programme incomplet") .pm-modal-btn:has-text("Importer quand même")'); // V2-EVOLUTION-1 : moins de séances que la fréquence du profil → exception explicite
   await page.waitForFunction(async ([id, w]) => !!(await (await import('./storage.js')).getProgram(id, w)), [alex, week]);
 });
 
@@ -177,6 +179,7 @@ await step('13 · modification du programme de la semaine : remplacement seuleme
   assert.equal((await db(async ([id, w]) => (await import('./storage.js')).getProgram(id, w), [alex, week])).days[0].name, 'Haut du corps fictif', 'refus : programme conservé');
   await page.click('.pm-action-save');
   await page.click('.pm-modal .pm-modal-btn:has-text("Remplacer")');
+  await page.click('.pm-modal:has-text("Programme incomplet") .pm-modal-btn:has-text("Importer quand même")'); // V2-EVOLUTION-1 : moins de séances que la fréquence du profil → exception explicite
   await page.waitForFunction(async ([id, w]) => (await (await import('./storage.js')).getProgram(id, w))?.days[0].name === 'Haut du corps modifié', [alex, week]);
   assert.equal((await db(async id => (await import('./js/workouts.js')).listWorkouts(id), alex)).length, 1, 'séance conservée');
 });

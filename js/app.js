@@ -89,8 +89,12 @@ else if (saved) profilesStarted.then(() => { if (!currentProfile && isKnownProfi
 /** Affiche les profils du registre (hors Pierre et Manon, déjà présents) sur l'écran de choix. */
 async function renderUserProfiles() {
   const box = $('#user-profiles');
-  let list = [];
-  try { list = (await listProfiles()).filter(p => !p.legacy); } catch (_) { list = []; }
+  let list = [], all = [];
+  try { all = await listProfiles(); } catch (_) { all = []; }
+  // V2-EVOLUTION-1 : profil masqué (« Gérer mes profils ») : absent de l'écran de choix, données intactes, réaffichable
+  const hidden = p => !!(p.extra && p.extra.hidden);
+  for (const p of all.filter(x => x.legacy)) { const b = document.querySelector('[data-select-profile="' + p.id + '"]'); if (b) b.hidden = hidden(p); }
+  list = all.filter(p => !p.legacy && !hidden(p));
   box.replaceChildren(...list.map(p => {
     const info = getProfileInfo(p.id) || {};
     const b = document.createElement('button');

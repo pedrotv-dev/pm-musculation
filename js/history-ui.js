@@ -73,6 +73,7 @@ function sessionCard(s) {
   card.type = 'button';
   const top = el('div', 'pm-history-top');
   add(top, el('strong', '', (s.dayName || s.dayId)), el('span', 'pm-chip pm-chip-' + chipClass(s.status), STATUS[s.status] || s.status));
+  if (s.importedFrom) top.append(el('span', 'pm-chip pm-chip-imported', 'Importée')); // V2-EVOLUTION-1 : historique d'un ancien profil
   card.append(top, el('p', 'pm-muted', formatDateFr(s.date) + ' · ' + formatMinutes(sum.durationMinutes) + ' · ' + sum.setsDone + ' séries · ' + fmtNum(sum.volumeKg) + ' kg'));
   card.addEventListener('click', () => {
     if (!card.isConnected || owner !== S.owner || !ownRows()) return; // ancienne carte (autre profil, ancien chargement)
