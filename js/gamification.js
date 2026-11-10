@@ -9,6 +9,16 @@
  */
 import { isClosed, weekStartOf, addDays } from './stats.js';
 
+/**
+ * Date de DÉBUT de la progression, par profil (AAAA-MM-JJ, incluse). Les séances antérieures restent dans l'historique, les
+ * statistiques, les graphiques et les records, mais ne rapportent ni XP, ni niveau, ni succès, ni semaine de série.
+ * Elles servent seulement de référence pour les records (un record après le début doit battre TOUT l'historique).
+ * Rien n'est stocké : la règle est appliquée à chaque calcul, donc elle tient après un redémarrage ou une restauration.
+ * Démo : pas de date de début (données fictives).
+ */
+export const PROGRESSION_START = Object.freeze({ pierre: '2026-11-09', manon: '2026-11-09' });
+export const progressionStartFor = profileId => PROGRESSION_START[profileId] || null;
+
 export const XP = Object.freeze({ perSet: 10, perCardioMinute: 2, cardioCapMinutes: 60, completed: 60, partial: 25, record: 50 });
 
 /** XP à gagner pour passer du niveau `level` au suivant. */
@@ -87,7 +97,7 @@ function streakEndingAt(weeks, weekStart) {
  * @param {object[]} sessions séances du profil (toutes ; seules les terminées comptent)
  * @param {{today?: string}} [opts] date du jour AAAA-MM-JJ (pour la série en cours)
  */
-export function computeProgress(sessions, { today } = {}) {
+export function computeProgress(sessions, { today, startDate = null } = {}) {
   const closed = (sessions || []).filter(isClosed).slice().sort((a, b) => sessionStamp(a).localeCompare(sessionStamp(b)));
   const cum = { sessions: 0, completed: 0, sets: 0, volumeKg: 0, cardioMinutes: 0, records: 0, streak: 0 };
   const bestKg = new Map(), machines = new Set(), weeks = new Set();
@@ -97,6 +107,10 @@ export function computeProgress(sessions, { today } = {}) {
 
   for (const s of closed) {
     const f = sessionFacts(s);
+    if (startDate && s.date < startDate) { // avant le début : référence pour les records, rien d'autre
+      for (const [machineId, kg] of f.best) bestKg.set(machineId, Math.max(bestKg.get(machineId) || 0, kg));
+      continue;
+    }
     const records = [];
     for (const [machineId, kg] of f.best) {
       const before = bestKg.get(machineId);
@@ -134,19 +148,23 @@ export function computeProgress(sessions, { today } = {}) {
   const badges = BADGES.map(b => ({ id: b.id, name: b.name, desc: b.desc, unlocked: unlocked.has(b.id), ...(unlocked.get(b.id) || {}) }));
   return {
     ...levelFromXp(xp), totals: { ...cum, machines: machines.size }, streak: { current, best: bestStreak, thisWeekDone: weeks.has(thisWeek) },
-    badges, unlockedCount: unlocked.size, timeline, rankings: rankings(closed, timeline)
+    badges, unlockedCount: unlocked.size, timeline, rankings: rankings(closed),
+    startDate, notStarted: !!startDate && nowIso < startDate
   };
 }
 
 /** Classements PERSONNELS : tes meilleures semaines, tes séances les plus lourdes, tes machines qui progressent le plus. */
-function rankings(closed, timeline) {
+function rankings(closed) {
+  // classements sur TOUT l'historique (y compris avant le début de la progression) : ce sont des performances, pas des XP
+  const facts = closed.map(s => ({ s, f: sessionFacts(s) }));
   const byWeek = new Map();
-  for (const t of timeline) {
-    const w = weekStartOf(t.date), r = byWeek.get(w) || { weekStart: w, sessions: 0, volumeKg: 0, xp: 0 };
-    r.sessions++; r.volumeKg += t.volumeKg; r.xp += t.xp; byWeek.set(w, r);
+  for (const { s, f } of facts) {
+    const w = weekStartOf(s.date), r = byWeek.get(w) || { weekStart: w, sessions: 0, volumeKg: 0 };
+    r.sessions++; r.volumeKg += f.volumeKg; byWeek.set(w, r);
   }
-  const bestWeeks = [...byWeek.values()].map(r => ({ ...r, volumeKg: Math.round(r.volumeKg) })).sort((a, b) => b.xp - a.xp || b.weekStart.localeCompare(a.weekStart)).slice(0, 5);
-  const heaviestSessions = timeline.filter(t => t.volumeKg > 0).map(t => ({ id: t.id, date: t.date, dayName: t.dayName, volumeKg: Math.round(t.volumeKg) }))
+  const bestWeeks = [...byWeek.values()].map(r => ({ ...r, volumeKg: Math.round(r.volumeKg) })).filter(r => r.volumeKg > 0)
+    .sort((a, b) => b.volumeKg - a.volumeKg || b.weekStart.localeCompare(a.weekStart)).slice(0, 5);
+  const heaviestSessions = facts.filter(x => x.f.volumeKg > 0).map(({ s, f }) => ({ id: s.id, date: s.date, dayName: s.dayName || s.dayId, volumeKg: Math.round(f.volumeKg) }))
     .sort((a, b) => b.volumeKg - a.volumeKg || b.date.localeCompare(a.date)).slice(0, 5);
   const perMachine = new Map(); // machineId -> [charge max par séance, chronologique]
   for (const s of closed) for (const [machineId, kg] of sessionFacts(s).best) {

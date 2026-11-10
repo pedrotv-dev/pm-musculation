@@ -104,3 +104,27 @@ test('publication : la VERSION correspond à l\'empreinte des fichiers (sinon la
   assert.equal(APP_VERSION.split('-')[1], fingerprint(),
     'Des fichiers de l\'application ont changé sans nouvelle VERSION : les téléphones garderaient l\'ancien code. Lancer : node tools/release.mjs');
 });
+
+test('publication automatique : release --if-needed ne change rien quand la VERSION est à jour, et republie quand un fichier a changé', async () => {
+  const { ensureRelease, needsRelease, fingerprint, currentVersion } = await import('../tools/release.mjs');
+  const fs2 = await import('node:fs'), os = await import('node:os'), path2 = await import('node:path');
+  const dir = fs2.mkdtempSync(path2.join(os.tmpdir(), 'pm-release-'));
+  for (const f of ['sw.js', 'js/version.js']) { fs2.mkdirSync(path2.dirname(path2.join(dir, f)), { recursive: true }); fs2.copyFileSync(path2.join(ROOT, f), path2.join(dir, f)); }
+  for (const f of [...sw.match(/const PRECACHE = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]).filter(f => f !== './' && f !== 'js/version.js')) {
+    fs2.mkdirSync(path2.dirname(path2.join(dir, f)), { recursive: true }); fs2.copyFileSync(path2.join(ROOT, f), path2.join(dir, f));
+  }
+  assert.equal(needsRelease(dir), false);
+  const before = fs2.readFileSync(path2.join(dir, 'sw.js'), 'utf8');
+  // un autre jour, mêmes fichiers : AUCUNE nouvelle version (les téléphones ne sont pas dérangés pour une date)
+  assert.deepEqual(ensureRelease(dir, new Date(2031, 0, 5)), { released: false, version: currentVersion(dir) });
+  assert.equal(fs2.readFileSync(path2.join(dir, 'sw.js'), 'utf8'), before);
+  // un fichier CSS change sans nouvelle VERSION (cas d'une PR de ChatGPT fusionnée telle quelle) : la publication automatique le corrige
+  fs2.appendFileSync(path2.join(dir, 'css/base.css'), '\n.x { color: red; }\n');
+  assert.equal(needsRelease(dir), true);
+  const r = ensureRelease(dir, new Date(2031, 0, 5));
+  assert.equal(r.released, true);
+  assert.equal(r.version, '2031.01.05-' + fingerprint(dir));
+  assert.equal(needsRelease(dir), false);
+  assert.match(fs2.readFileSync(path2.join(dir, 'js/version.js'), 'utf8'), new RegExp(r.version));
+  assert.deepEqual(ensureRelease(dir, new Date(2031, 0, 6)), { released: false, version: r.version }); // idempotent
+});

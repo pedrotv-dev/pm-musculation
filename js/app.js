@@ -8,14 +8,19 @@ import { PROFILE_INFO, PROFILE_STORAGE_KEY, isKnownProfile } from './profiles.js
 const root = document.documentElement;
 const $ = selector => document.querySelector(selector);
 const pages = [...document.querySelectorAll('[data-page]')];
-const navButtons = [...document.querySelectorAll('.nav-btn')];
+const navButtons = [...document.querySelectorAll('.nav-btn, .pm-subtab')];
+const SEANCES = ['programme', 'historique']; // l'onglet « Séances » regroupe ces deux pages
 let currentProfile = null;
 
-function navigate(page) {
+function navigate(target) {
+  const page = target === 'seances' ? 'programme' : target;
   if (!currentProfile || !pages.some(section => section.dataset.page === page)) return;
   pages.forEach(section => { section.hidden = section.dataset.page !== page; });
+  const inSeances = SEANCES.includes(page);
+  $('#seances-tabs').hidden = !inSeances;
   navButtons.forEach(button => {
-    const active = button.dataset.go === page;
+    const go = button.dataset.go;
+    const active = go === page || (go === 'seances' && inSeances);
     button.classList.toggle('active', active);
     if (active) button.setAttribute('aria-current', 'page');
     else button.removeAttribute('aria-current');
@@ -33,7 +38,11 @@ function chooseProfile(profile, persist = true) {
   $('#screen-select').hidden = true;
   $('#app-pages').hidden = false;
   $('#bottom-nav').hidden = false;
-  $('#switch-profile').hidden = false;
+  // un seul profil en haut : le profil ACTIF, qui sert aussi de bouton pour en changer (nom accessible = « Changer de profil (Pierre) »)
+  const switcher = $('#switch-profile');
+  switcher.replaceChildren(document.createTextNode(data.name + ' '), Object.assign(document.createElement('span'), { textContent: '▾', ariaHidden: 'true' }));
+  switcher.setAttribute('aria-label', 'Changer de profil (' + data.name + ')');
+  switcher.hidden = false;
   if (persist) {
     try { localStorage.setItem(PROFILE_STORAGE_KEY, profile); }
     catch (error) { console.warn('Impossible de mémoriser le profil sur cet appareil.', error); }

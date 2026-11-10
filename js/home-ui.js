@@ -8,8 +8,10 @@ import { loadCatalog } from './catalog.js';
 import { ALL_PROFILES as KNOWN, PROFILE_INFO } from './profiles.js';
 import { getBackupStatus, backupAdvice, runBackup } from './backup.js';
 import { el, btn, clear, add, fmtNum, formatMinutes, formatDateFr, localISODate, dialog, toast } from './dom.js';
-import { computeProgress } from './gamification.js';
-import { levelCard } from './jeu-ui.js';
+import { computeProgress, progressionStartFor } from './gamification.js';
+import { homeHero, levelStrip } from './jeu-ui.js';
+import { recentProgress } from './stats.js';
+import { icon } from './icons.js';
 
 const root = document.documentElement;
 const page = document.querySelector('[data-page="accueil"]');
@@ -24,7 +26,23 @@ async function loadProgram(profile) {
   return active ? { ...active.program, weekStart: active.weekStart } : null;
 }
 const emit = (type, detail) => document.dispatchEvent(new CustomEvent(type, { detail }));
-const go = p => document.querySelector('.nav-btn[data-go="' + p + '"]')?.click();
+const go = p => document.querySelector('[data-go="' + p + '"]')?.click();
+
+
+
+/** « Ta progression » sur 30 jours : séances, force moyenne, volume. */
+function progressSection(r) {
+  const box = el('section', 'pm-progress-home');
+  const head = el('div', 'pm-section-head');
+  add(head, el('h3', '', 'Ta progression'), el('span', 'pm-chip', r.days + ' jours'));
+  const tiles = el('div', 'pm-tiles');
+  const force = r.strengthPercent === null ? '—' : (r.strengthPercent > 0 ? '+' : '') + fmtNum(r.strengthPercent) + ' %';
+  const vol = r.volumeKg >= 1000 ? fmtNum(Math.round(r.volumeKg / 100) / 10) + ' t' : fmtNum(r.volumeKg) + ' kg';
+  [['calendrier', r.sessions, r.sessions > 1 ? 'séances' : 'séance'], ['progression', force, 'force moy.'], ['seances', vol, 'volume']]
+    .forEach(([ico, v, l]) => tiles.append(add(el('div', 'pm-tile'), icon(ico), el('strong', '', String(v)), el('span', '', l))));
+  box.append(head, tiles);
+  return box;
+}
 
 async function renderHome() {
   const profile = root.dataset.pmProfile;
@@ -35,11 +53,10 @@ async function renderHome() {
   ]);
   if (mine !== rev || root.dataset.pmProfile !== profile) return;
   clear(page);
-  add(page, el('div', 'eyebrow', 'Accueil'), add(el('h2', '', 'Bonjour '), el('span', '', PROFILE_INFO[profile].name + ' !')));
-  if (profile === 'demo') page.append(el('p', 'description', 'Mode démo : tout est fictif et reste en mémoire. Rien n’est enregistré sur tes profils.'));
-
-  // niveau et mascotte : calculés depuis l'historique du profil (jamais comparés à l'autre profil)
-  page.append(levelCard(computeProgress(sessions, { today: localISODate() }), { seed: profile + localISODate() }));
+  // ASCENT : salut + Korv sur le décor montagne, puis niveau (calculés depuis l'historique du profil, jamais comparés à l'autre)
+  const game = computeProgress(sessions, { today: localISODate(), startDate: progressionStartFor(profile) });
+  page.append(homeHero(game, { name: PROFILE_INFO[profile].name, seed: profile + localISODate(), demo: profile === 'demo' }), levelStrip(game));
+  page.append(progressSection(recentProgress(sessions, localISODate(), 30)));
 
   if (resumable) {
     const last = resumable.activities.find(a => a.key === resumable.cursor) || resumable.activities.find(a => a.status === 'pending');
@@ -66,15 +83,23 @@ async function renderHome() {
     const isToday = !!day;
     if (!day) day = days.find(d => DAYS.indexOf(d.id) > idx) || days[0];
     const doneToday = sessions.find(s => s.date === localISODate() && s.dayId === day?.id && (s.status === 'completed' || s.status === 'partial'));
-    const card = el('article', 'panel soft pm-home-card');
-    add(card, el('span', 'tag', isToday ? 'Séance du jour' : 'Prochaine séance'), el('h3', '', day ? (day.name || day.id) : '—'));
+    const card = el('article', 'panel pm-home-card pm-next-card');
+    const head = el('div', 'pm-section-head');
+    add(head, el('h3', '', isToday ? 'Séance du jour' : 'Prochaine séance'), el('span', 'pm-next-when', isToday ? 'Aujourd’hui' : day ? day.id[0].toUpperCase() + day.id.slice(1) : ''));
+    card.append(head);
     if (day) {
       const machines = day.activities.filter(a => a.type === 'strength').length;
-      card.append(el('p', 'pm-muted', day.id[0].toUpperCase() + day.id.slice(1) + ' · ' + machines + ' machines · ' + day.activities.length + ' activités'));
+      const row = el('div', 'pm-next-row');
+      const info = el('div', 'pm-next-info');
+      add(info, el('strong', '', day.name || day.id), el('span', 'pm-muted', machines + ' machines · ' + day.activities.length + ' activités'));
+      const start = () => emit('pm:start-workout', { profileId: profile, weekStart: program.weekStart, dayId: day.id });
+      const play = btn('', 'pm-play', start);
+      play.setAttribute('aria-label', 'Démarrer cette séance : ' + (day.name || day.id));
+      play.append(icon('lecture'));
+      add(row, add(el('span', 'pm-next-icon'), icon('seances')), info, play);
+      card.append(row);
       if (doneToday) card.append(el('p', 'pm-muted', 'Déjà enregistrée aujourd’hui (' + (doneToday.status === 'completed' ? 'complète' : 'partielle') + ').'));
-      card.append(btn('Démarrer cette séance', 'pm-validate',
-        () => emit('pm:start-workout', { profileId: profile, weekStart: program.weekStart, dayId: day.id })));
-      card.append(btn('Choisir une autre journée', 'pm-secondary', () => go('programme')));
+      card.append(btn('Choisir une autre journée', 'pm-link', () => go('programme')));
     }
     page.append(card);
   }
@@ -101,23 +126,6 @@ async function renderHome() {
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (_) { /* indisponible */ }
   }
 
-  // quelques chiffres utiles
-  const monday = mondayOf();
-  const closed = sessions.filter(s => s.status === 'completed' || s.status === 'partial');
-  const week = closed.filter(s => s.date >= monday);
-  const planned = program?.days?.length || 0;
-  const sum = week.reduce((t, s) => { const x = s.summary || getWorkoutSummary(s); t.sets += x.setsDone; t.vol += x.volumeKg; t.min += x.durationMinutes; return t; }, { sets: 0, vol: 0, min: 0 });
-  const stats = el('div', 'pm-stats');
-  [[week.length + (planned ? ' / ' + planned : ''), 'séances cette semaine'], [sum.sets, 'séries'], [fmtNum(sum.vol) + ' kg', 'volume'], [formatMinutes(sum.min), 'temps d’entraînement']]
-    .forEach(([v, l]) => stats.append(add(el('div', 'pm-stat'), el('strong', '', v), el('span', '', l))));
-  page.append(add(el('article', 'panel'), el('h3', '', 'Cette semaine'), stats));
-  const last = closed[0];
-  if (last) {
-    const x = last.summary || getWorkoutSummary(last);
-    page.append(add(el('article', 'panel'), el('h3', '', 'Dernière séance'),
-      el('p', 'pm-muted', (last.dayName || last.dayId) + ' · ' + formatDateFr(last.date) + ' · ' + (last.status === 'completed' ? 'complète' : 'partielle') +
-        ' · ' + x.setsDone + ' séries · ' + fmtNum(x.volumeKg) + ' kg'), btn('Voir l’historique', 'pm-secondary', () => go('historique'))));
-  }
 }
 
 const refresh = () => renderHome().catch(console.error);

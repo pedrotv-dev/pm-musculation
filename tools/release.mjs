@@ -19,12 +19,35 @@ export function fingerprint(root = ROOT) {
   h.update('sw.js\0'); h.update(sw.replace(/const VERSION = '[^']*';/, "const VERSION = '';")); h.update('\0');
   return h.digest('hex').slice(0, 8);
 }
-if (process.argv[1] === new URL(import.meta.url).pathname) {
-  const d = new Date();
-  const stamp = d.getFullYear() + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0');
-  const version = `${stamp}-${fingerprint()}`;
-  const swPath = path.join(ROOT, 'sw.js'), vPath = path.join(ROOT, 'js/version.js');
+/** Version enregistrée dans sw.js. */
+export const currentVersion = (root = ROOT) => fs.readFileSync(path.join(root, 'sw.js'), 'utf8').match(/const VERSION = '([^']*)';/)[1];
+/** Vrai si des fichiers de l'application ont changé sans nouvelle VERSION (les téléphones garderaient l'ancien code). */
+export const needsRelease = (root = ROOT) => currentVersion(root).split('-')[1] !== fingerprint(root);
+
+/** Écrit la nouvelle VERSION (date + empreinte) dans sw.js et js/version.js. Retourne la version. */
+export function release(root = ROOT, now = new Date()) {
+  const stamp = now.getFullYear() + '.' + String(now.getMonth() + 1).padStart(2, '0') + '.' + String(now.getDate()).padStart(2, '0');
+  const version = `${stamp}-${fingerprint(root)}`;
+  const swPath = path.join(root, 'sw.js'), vPath = path.join(root, 'js/version.js');
   fs.writeFileSync(swPath, fs.readFileSync(swPath, 'utf8').replace(/const VERSION = '[^']*';/, `const VERSION = '${version}';`));
   fs.writeFileSync(vPath, fs.readFileSync(vPath, 'utf8').replace(/APP_VERSION = '[^']*';/, `APP_VERSION = '${version}';`));
-  console.log('VERSION =', version);
+  return version;
+}
+/**
+ * Publication automatique (workflow release.yml) : ne fait RIEN si la VERSION correspond déjà aux fichiers
+ * (donc jamais de nouvelle version « pour une simple date », qui dérangerait les téléphones pour rien).
+ * @returns {{released: boolean, version: string}}
+ */
+export function ensureRelease(root = ROOT, now = new Date()) {
+  if (!needsRelease(root)) return { released: false, version: currentVersion(root) };
+  return { released: true, version: release(root, now) };
+}
+
+if (process.argv[1] === new URL(import.meta.url).pathname) {
+  if (process.argv.includes('--if-needed')) {
+    const r = ensureRelease();
+    console.log(r.released ? 'VERSION = ' + r.version + ' (publiée)' : 'VERSION à jour : ' + r.version);
+  } else {
+    console.log('VERSION =', release());
+  }
 }

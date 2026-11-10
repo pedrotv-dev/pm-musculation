@@ -13,10 +13,10 @@ console.log('Parcours Pierre');
 await page.goto(srv.url);
 await step('choisir Pierre', async () => {
   await page.click('[data-select-profile="pierre"]');
-  await page.waitForSelector('.nav-btn[data-go="programme"]');
+  await page.waitForSelector('.nav-btn[data-go="seances"]');
 });
 await step('importer le programme collé (JSON)', async () => {
-  await page.click('.nav-btn[data-go="programme"]');
+  await page.click('.nav-btn[data-go="seances"]');
   await page.click('.pm-import summary');
   await page.fill('.pm-textarea', JSON.stringify(exampleProgram()));
   await page.click('.pm-action-verify');
@@ -39,17 +39,17 @@ await step('échauffement : durée réelle puis « Fait »', async () => {
   assert.match(await text(screen), /Chest Press/);
 });
 await step('modifier la charge sans valider, fermer, rouvrir : valeurs retrouvées', async () => {
-  const kg = page.locator(screen + ' .pm-set-row').first().locator('input').first();
-  const reps = page.locator(screen + ' .pm-set-row').first().locator('input').nth(1);
+  const kg = page.locator('#pm-current-kg');
+  const reps = page.locator('#pm-current-reps');
   await kg.fill('42,5'); await reps.fill('9');
   await page.waitForTimeout(700); // sauvegarde automatique du brouillon
   await page.reload();
   await page.waitForSelector('#pm-home-resume, .pm-home-card .pm-validate');
   await page.click('.pm-home-card .pm-validate:has-text("Reprendre")');
   await page.waitForSelector(screen + ':not([hidden])');
-  const v = await page.locator(screen + ' .pm-set-row').first().locator('input').first().inputValue();
+  const v = await page.locator('#pm-current-kg').inputValue();
   assert.equal(v, '42,5');
-  assert.equal(await page.locator(screen + ' .pm-set-row').first().locator('input').nth(1).inputValue(), '9');
+  assert.equal(await page.locator('#pm-current-reps').inputValue(), '9');
   assert.match(await text(screen), /Chest Press/); // dernière machine retrouvée
 });
 await step('valider une série : annulation possible, chrono lancé', async () => {
@@ -116,6 +116,7 @@ await step('terminer en partielle depuis le récapitulatif', async () => {
   await page.click(screen + ' .pm-validate:has-text("Valider ma séance")');
   await page.click('.pm-modal .pm-primary');
   await page.waitForSelector(screen + ' .pm-done-icon');
+  await page.locator('.pm-levelup-overlay .pm-primary').click({ timeout: 1500 }).catch(() => {}); // plein écran « Niveau supérieur » éventuel
   await page.click(screen + ' button:has-text("Voir l’historique")');
 });
 await step('retrouver la séance dans l’historique et corriger une série', async () => {

@@ -30,7 +30,7 @@ console.log('Retours du samedi');
 await page.goto(srv.url);
 await step('importer un programme avec Rotary Hip, 2 Hip Abduction, Escalier et réglages cardio', async () => {
   await page.click('[data-select-profile="pierre"]');
-  await page.click('.nav-btn[data-go="programme"]');
+  await page.click('.nav-btn[data-go="seances"]');
   await page.click('.pm-import summary');
   await page.fill('.pm-textarea', JSON.stringify(program()));
   await page.click('.pm-action-verify');
@@ -118,6 +118,7 @@ await step('récapitulatif puis fin : comparaison idiote affichée, bouton « Un
   assert.match(recap, /Durée réelle : 8 min · niveau 7/);
   await page.click(screen + ' .pm-validate:has-text("Valider ma séance")');
   await page.waitForSelector(screen + ' .pm-done-icon');
+  await page.locator('.pm-levelup-overlay .pm-primary').click({ timeout: 1500 }).catch(() => {}); // plein écran « Niveau supérieur » éventuel
   const first = await text(screen + ' .pm-fun-text');
   assert.ok(first.length > 15 && !/undefined|NaN/.test(first), first);
   assert.match(await text(screen + ' .pm-fun-kicker'), /kg de volume/i);

@@ -12,16 +12,17 @@ import {
   getWorkoutDuration, getPostponedActivities
 } from './workouts.js';
 import { el, btn, clear, add, dialog, confirmDialog, toast, formatClock, formatMinutes, fmtNum, parseNum, localISODate } from './dom.js';
+import { icon, withIcon } from './icons.js';
 import { loadCatalog, machineImage } from './catalog.js';
-import { ALL_PROFILES as KNOWN, isRealProfile } from './profiles.js';
+import { ALL_PROFILES as KNOWN, isRealProfile, PROFILE_INFO } from './profiles.js';
 import { machineHistory, isClosed } from './stats.js';
 import { runBackup } from './backup.js';
 import { holdAwake } from './wakelock.js';
 import { getUiSettings, peekUiSettings } from './ui-settings.js';
-import { plannedIndex, SIDE_LABEL, SIDE_SHORT } from './machine-rules.js';
+import { plannedIndex, SIDE_LABEL, SIDE_SHORT, stepWeight } from './machine-rules.js';
 import { funComparisons } from './fun-volume.js';
-import { rewardFor } from './gamification.js';
-import { rewardCard } from './jeu-ui.js';
+import { rewardFor, progressionStartFor } from './gamification.js';
+import { rewardCard, doneHero, celebrate } from './jeu-ui.js';
 import { fx } from './fx.js';
 import { metricsFor, metricsText } from './cardio.js';
 
@@ -100,7 +101,7 @@ function closeWorkout({ goTo } = {}) {
   S.session = null; S.selected = null; ++S.rev;
   leaveScreen();
   emit('pm:workout-changed', { profile: S.profile });
-  if (goTo) document.querySelector('.nav-btn[data-go="' + goTo + '"]')?.click();
+  if (goTo) document.querySelector('[data-go="' + goTo + '"]')?.click();
 }
 function startPosition(session) {
   const cursor = session.cursor && act(session, session.cursor);
@@ -119,6 +120,7 @@ function showWorkout(session) {
   S.clock = setInterval(tickClock, 1000);
   S.history = [];
   const profile = S.profile, rev = S.rev;
+  S.revealed = null;
   listWorkouts(profile).then(rows => { if (valid(profile, rev)) { S.history = rows.filter(r => r.id !== session.id && isClosed(r)); render(); } }).catch(() => {});
   render();
   emit('pm:workout-open', { profile: S.profile, sessionId: session.id, activityKey: S.selected });
@@ -136,6 +138,7 @@ function tickClock() {
 }
 
 function select(key, { persist = true } = {}) {
+  S.revealed = null; // retour sur une machine : son cadre « Série en cours » est remis en vue
   if (!S.session || !act(S.session, key) || key === S.selected) { S.view = 'activity'; render(); return; }
   flushAll();
   S.selected = key; S.view = 'activity';
@@ -173,42 +176,137 @@ function plannedFor(a, idx) {
 }
 const sideName = set => (set.side ? SIDE_LABEL[set.side] : '');
 const setLabel = (a, idx) => 'série ' + (idx + 1) + (a.sets[idx]?.side ? ' · côté ' + sideName(a.sets[idx]).toLowerCase() : '');
+/** Charges connues pour cette machine (programme, séance, historique) : les boutons − / + sautent de l'une à l'autre. */
+function knownWeights(a) {
+  const set = new Set();
+  (a.planned?.sets || []).forEach(t => set.add(t.kg));
+  a.sets.forEach(t => set.add(t.kg));
+  for (const s of S.history) for (const x of s.activities || []) if (x.machineId === a.machineId) (x.sets || []).forEach(t => { if (t.done) set.add(t.kg); });
+  return [...set].filter(Number.isFinite).sort((x, y) => x - y);
+}
+function stepper({ id, label, value, kind, onStep }) {
+  const wrap = el('div', 'pm-stepper');
+  const name = el('span', 'pm-stepper-name', label); name.id = id + '-label';
+  const row = el('div', 'pm-stepper-row');
+  const input = el('input', 'pm-input pm-stepper-input');
+  input.id = id; input.type = 'text'; input.inputMode = kind === 'reps' ? 'numeric' : 'decimal';
+  input.autocomplete = 'off'; input.setAttribute('enterkeyhint', 'done'); input.setAttribute('aria-labelledby', name.id);
+  input.value = fmtNum(value);
+  input.addEventListener('focus', () => input.select());
+  const minus = add(btn('', 'pm-step-btn', () => onStep(input, -1)), icon('moins'));
+  const plus = add(btn('', 'pm-step-btn', () => onStep(input, 1)), icon('plus'));
+  minus.setAttribute('aria-label', 'Moins : ' + label.toLowerCase()); plus.setAttribute('aria-label', 'Plus : ' + label.toLowerCase());
+  add(row, minus, input, plus);
+  add(wrap, name, row);
+  return { wrap, input };
+}
+/**
+ * Série en cours visible sans défiler (audit V1, C2) : quand la série en cours CHANGE (ouverture d'une machine,
+ * validation, reprise), le cadre charge / répétitions / « Valider » est amené entre le haut de l'écran et le chrono
+ * de récupération. Défilement minimal et instantané ; un simple rafraîchissement de la même série ne bouge rien.
+ */
+function revealCurrentSet() {
+  const box = panel.querySelector('.pm-current-set');
+  if (!box || panel.hidden) return;
+  const rest = document.querySelector('.pm-rest-ui:not([hidden])');
+  const limit = (rest ? rest.getBoundingClientRect().top : window.innerHeight) - 8;
+  const r = box.getBoundingClientRect();
+  if (r.top >= 8 && r.bottom <= limit) return;
+  const delta = r.bottom > limit ? Math.min(r.bottom - limit, r.top - 8) : r.top - 8;
+  if (Math.abs(delta) >= 1) window.scrollBy(0, delta);
+}
+function scheduleReveal(key) {
+  if (S.revealed === key) return;
+  S.revealed = key;
+  // deux passages : après l'affichage, puis après l'ouverture du chrono (sa hauteur change à la validation)
+  requestAnimationFrame(() => revealCurrentSet());
+  setTimeout(() => { if (S.revealed === key) revealCurrentSet(); }, 320);
+}
 function renderSets(card, a) {
-  const current = a.sets.find(s => !s.done)?.id;
+  const current = a.sets.find(s => !s.done);
+  const curIdx = current ? a.sets.indexOf(current) : -1;
   const done = a.sets.filter(s => s.done).length;
-  card.append(el('h3', 'pm-sets-title', 'Séries · ' + done + '/' + a.sets.length));
-  if (a.perSide) card.append(el('p', 'pm-muted pm-side-note', '1 série = 1 côté : gauche, puis droite.'));
-  const list = el('div', 'pm-sets');
-  const rows = [];
-  a.sets.forEach((set, idx) => {
-    const row = el('div', 'pm-set-row' + (set.done ? ' pm-set-done' : '') + (set.id === current ? ' pm-set-current' : ''));
-    const kg = inputField('kg', set.kg, { kind: 'kg' });
-    const reps = inputField('reps', set.reps, { kind: 'reps' });
-    const marker = el('span', 'pm-set-mark', set.done ? '✓' : String(idx + 1));
-    if (set.side) {
-      const side = el('span', 'pm-set-side pm-side-' + set.side, SIDE_SHORT[set.side]);
-      side.title = 'Côté ' + sideName(set).toLowerCase(); side.setAttribute('aria-label', 'côté ' + sideName(set).toLowerCase());
-      marker.append(side);
-    }
+
+  // ---- cadre « Série en cours » : charge et répétitions avec − / + (brouillon enregistré avant validation)
+  let box = null;
+  if (current) {
+    box = el('section', 'pm-current-set');
+    box.setAttribute('aria-label', 'Série en cours');
+    const head = el('div', 'pm-current-head');
+    const tag = el('span', 'pm-current-tag', 'Série en cours');
+    add(head, tag, el('span', 'pm-current-count', 'Série ' + (curIdx + 1) + ' / ' + a.sets.length + (current.side ? ' · côté ' + sideName(current).toLowerCase() : '')));
     let timer = null;
+    const known = knownWeights(a);
+    const kgF = stepper({ id: 'pm-current-kg', label: 'Charge (kg)', value: current.kg, kind: 'kg',
+      onStep: (input, dir) => { input.value = fmtNum(stepWeight(parseNum(input.value), known, dir)); schedule(); } });
+    const repsF = stepper({ id: 'pm-current-reps', label: 'Répétitions', value: current.reps, kind: 'reps',
+      onStep: (input, dir) => { const r = parseNum(input.value); input.value = String(Math.max(1, (Number.isInteger(r) ? r : current.reps) + dir)); schedule(); } });
     const save = async ({ final = false } = {}) => {
       clearTimeout(timer);
-      const v = readSet(kg.input, reps.input);
-      if (!v || (v.kg === set.kg && v.reps === set.reps)) return;
-      set.kg = v.kg; set.reps = v.reps; // evite les doubles ecritures
-      // brouillon : charge et repetitions sont conservees meme sans validation
-      await commit((p, id) => updateSet(p, id, a.key, set.id, v), { silent: !final || formFocused() });
+      const v = readSet(kgF.input, repsF.input);
+      if (!v || (v.kg === current.kg && v.reps === current.reps)) return;
+      current.kg = v.kg; current.reps = v.reps; // évite les doubles écritures
+      await commit((p, id) => updateSet(p, id, a.key, current.id, v), { silent: !final || formFocused() });
     };
     const schedule = () => { clearTimeout(timer); timer = setTimeout(() => save(), 350); };
-    for (const i of [kg.input, reps.input]) {
+    for (const i of [kgF.input, repsF.input]) {
       i.addEventListener('input', schedule);
       i.addEventListener('blur', () => save());
       i.addEventListener('keydown', e => { if (e.key === 'Enter') i.blur(); });
     }
-    const flusher = () => save({ final: true });
-    S.flushers.add(flusher);
-    rows.push({ set, kg, reps, save });
-    row.append(marker, kg.wrap, reps.wrap);
+    S.flushers.add(() => save({ final: true }));
+    const grid = el('div', 'pm-current-grid');
+    add(grid, kgF.wrap, repsF.wrap);
+    const plan = plannedFor(a, curIdx);
+    add(box, head, grid);
+    if (plan) box.append(el('p', 'pm-current-plan', 'Objectif du programme : ' + fmtNum(plan.kg) + ' kg × ' + plan.reps));
+    box.inputs = { kg: kgF.input, reps: repsF.input };
+    // « Valider » fait partie du cadre : charge, répétitions et validation restent groupées (audit V1, C2)
+    const idx = curIdx, next = { set: current };
+    const validate = withIcon(btn('Valider la ' + setLabel(a, idx), 'pm-validate', async () => {
+      if (S.busy) return;
+      const v = readSet(box.inputs.kg, box.inputs.reps);
+      if (!v) { setStatus('Renseigne une charge et des répétitions valides.', 'error'); toast('Charge ou répétitions invalides.'); return; }
+      S.busy = true;
+      try {
+        await flushAll();
+        const session = await commit((p, id) => logSet(p, id, a.key, next.set.id, v), {
+          after: () => {
+            fx('set-validated', { machineId: a.machineId });
+            if (a.sets.every(x => x.done || x.id === next.set.id)) fx('activity-done', { kind: 'strength', machineId: a.machineId });
+            emit('pm:workout-set-validated', {
+              profile: S.profile, sessionId: S.session.id, activityKey: a.key, machineId: a.machineId,
+              setId: next.set.id, restSeconds: a.restSeconds
+            });
+          }
+        });
+        if (session) offerUndo(a, next.set.id);
+      } finally { S.busy = false; }
+    }), 'valider');
+    validate.id = 'pm-validate-set';
+    box.append(validate);
+    card.append(box);
+    scheduleReveal(S.session.id + ':' + a.key + ':' + current.id);
+  }
+
+  // ---- liste des séries : ✓ faite · ◉ en cours · ○ à faire
+  card.append(el('h3', 'pm-sets-title', 'Séries · ' + done + '/' + a.sets.length));
+  if (a.perSide) card.append(el('p', 'pm-muted pm-side-note', '1 série = 1 côté : gauche, puis droite.'));
+  const list = el('ol', 'pm-sets');
+  a.sets.forEach((set, idx) => {
+    const isCur = current && set.id === current.id;
+    const row = el('li', 'pm-set-row' + (set.done ? ' pm-set-done' : '') + (isCur ? ' pm-set-current' : ''));
+    const mark = el('span', 'pm-set-mark', set.done ? '✓' : isCur ? '◉' : '○');
+    mark.setAttribute('aria-hidden', 'true');
+    const label = el('span', 'pm-set-label', 'Série ' + (idx + 1));
+    if (set.side) {
+      const side = el('span', 'pm-set-side pm-side-' + set.side, SIDE_SHORT[set.side]);
+      side.title = 'Côté ' + sideName(set).toLowerCase(); side.setAttribute('aria-label', 'côté ' + sideName(set).toLowerCase());
+      label.append(' ', side);
+    }
+    const state = el('span', 'pm-visually-hidden', set.done ? ' (faite)' : isCur ? ' (en cours)' : ' (à faire)');
+    const value = el('span', 'pm-set-value', fmtNum(set.kg) + ' kg × ' + set.reps);
+    add(row, mark, add(label, state), value);
     const plan = plannedFor(a, idx);
     if (set.done && plan && (set.reps < plan.reps || set.kg < plan.kg)) {
       const gap = el('span', 'pm-gap', 'objectif ' + fmtNum(plan.kg) + ' kg × ' + plan.reps);
@@ -235,37 +333,9 @@ function renderSets(card, a) {
   });
   card.append(list);
 
-  const next = rows.find(r => !r.set.done);
-  if (next) {
-    const idx = a.sets.indexOf(next.set);
-    const validate = btn('Valider la ' + setLabel(a, idx), 'pm-validate', async () => {
-      if (S.busy) return;
-      const v = readSet(next.kg.input, next.reps.input);
-      if (!v) { setStatus('Renseigne une charge et des répétitions valides.', 'error'); toast('Charge ou répétitions invalides.'); return; }
-      S.busy = true;
-      try {
-        await flushAll();
-        const session = await commit((p, id) => logSet(p, id, a.key, next.set.id, v), {
-          after: () => {
-            fx('set-validated', { machineId: a.machineId });
-            if (a.sets.every(x => x.done || x.id === next.set.id)) fx('activity-done', { kind: 'strength', machineId: a.machineId });
-            emit('pm:workout-set-validated', {
-              profile: S.profile, sessionId: S.session.id, activityKey: a.key, machineId: a.machineId,
-              setId: next.set.id, restSeconds: a.restSeconds
-            });
-          }
-        });
-        if (session) offerUndo(a, next.set.id);
-      } finally { S.busy = false; }
-    });
-    validate.id = 'pm-validate-set';
-    card.append(validate);
-  } else if (a.sets.length) {
+  if (!current && a.sets.length) {
     card.append(el('p', 'pm-machine-done', '✓ Machine terminée'));
   }
-  const extra = el('div', 'pm-row-actions');
-  add(extra, btn('+ Série', 'pm-secondary', () => commit((p, id) => addSet(p, id, a.key))));
-  card.append(extra);
 }
 function offerUndo(a, setId) {
   if (S.undo) S.undo.dismiss();
@@ -354,24 +424,25 @@ function renderMachine(a) {
       () => commit((p, id) => completeActivity(p, id, a.key, { done: false }))));
   }
 
-  const tools = el('div', 'pm-row-actions');
+  const tools = el('div', 'pm-row-actions pm-quick-actions');
   if (a.type === 'strength' && a.status === 'pending' && !a.postponed && !a.sets.some(s => s.done)) {
-    add(tools, btn('Machine occupée — Reporter', 'pm-secondary', async () => {
+    add(tools, withIcon(btn('Machine occupée', 'pm-secondary pm-quick', async () => {
       await flushAll();
       const successor = neighbour(S.session, a.key, 1);
       const s = await commit((p, id) => postponeActivity(p, id, a.key));
       if (s) { const n = (successor && act(s, successor)?.status === 'pending' && successor) || getNextActivity(s)?.key; if (n) select(n); }
-    }));
+    }), 'machine-occupee'));
   }
+  if (a.type === 'strength') add(tools, withIcon(btn('Ajouter une série', 'pm-secondary pm-quick', () => commit((p, id) => addSet(p, id, a.key))), 'plus'));
   if (a.postponed) add(tools, btn('↶ Y revenir maintenant', 'pm-secondary', () => commit((p, id) => returnToPostponed(p, id, a.key))));
   if (a.status !== 'skipped' && a.status !== 'done') {
-    add(tools, btn('Passer', 'pm-warning', async () => {
+    add(tools, withIcon(btn('Passer', 'pm-warning pm-quick', async () => {
       if (!(await confirmDialog('Passer cette activité ? La séance ne pourra alors se terminer qu’en partielle.', { ok: 'Passer', danger: true }))) return;
       await flushAll();
       const successor = neighbour(S.session, a.key, 1);
       const s = await commit((p, id) => skipActivity(p, id, a.key, true));
       if (s) { const n = (successor && act(s, successor)?.status === 'pending' && successor) || getNextActivity(s)?.key; if (n) select(n); }
-    }));
+    }), 'passer'));
   } else if (a.status === 'skipped') {
     add(tools, btn('Annuler le saut', 'pm-secondary', () => commit((p, id) => skipActivity(p, id, a.key, false))));
   }
@@ -384,7 +455,7 @@ function renderMachine(a) {
     const n = act(S.session, nextKey);
     card.append(btn('Machine suivante : ' + nameOf(n) + ' ›', finished ? 'pm-validate' : 'pm-secondary', () => select(nextKey)));
   } else if (finished) {
-    card.append(btn('Terminer la séance ›', 'pm-validate', () => showRecap()));
+    card.append(withIcon(btn('Terminer la séance', 'pm-validate', () => showRecap()), 'drapeau'));
   }
   return card;
 }
@@ -428,7 +499,7 @@ function renderList() {
   });
   box.append(list);
   box.append(btn('+ Ajouter une machine', 'pm-secondary', addMachineDialog));
-  box.append(btn('Retour à la machine', 'pm-validate', () => { S.view = 'activity'; render(); }));
+  box.append(btn('Retour à la machine', 'pm-validate', () => { S.view = 'activity'; S.revealed = null; render(); window.scrollTo(0, 0); }));
   return box;
 }
 async function addMachineDialog() {
@@ -461,12 +532,40 @@ async function showRecap() {
 }
 const FEELINGS = [['1', 'Très dur'], ['2', 'Dur'], ['3', 'Correct'], ['4', 'Bien'], ['5', 'Très bien']];
 
+/** Bloc « Ressenti » + « Remarques » de la fin de séance (mêmes saisies et enregistrements qu'avant). */
+function feedbackBlock(s) {
+  const fb = el('section', 'pm-recap-feedback');
+  fb.setAttribute('aria-label', 'Ressenti et remarques');
+  fb.append(el('h2', 'pm-sets-title', 'Ressenti')); // h2 : premier titre de la carte, avant « Récapitulatif » (ordre des titres)
+  const feelings = el('div', 'pm-feelings');
+  let feeling = s.feedback?.feeling ?? null;
+  FEELINGS.forEach(([v, label]) => {
+    const b = btn(v + ' · ' + label, 'pm-feeling' + (String(feeling) === v ? ' pm-on' : ''), () => {
+      feeling = Number(v) === feeling ? null : Number(v);
+      feelings.querySelectorAll('.pm-feeling').forEach(x => x.classList.toggle('pm-on', x.dataset.v === String(feeling)));
+      commit((p, id) => setWorkoutFeedback(p, id, { feeling }), { silent: true });
+    });
+    b.dataset.v = v; feelings.append(b);
+  });
+  fb.append(feelings);
+  const note = el('textarea', 'pm-textarea-note');
+  note.placeholder = 'Remarques, difficultés, douleurs…'; note.maxLength = 1000; note.value = s.feedback?.note || '';
+  note.setAttribute('aria-label', 'Remarques sur la séance');
+  let t = null;
+  note.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => commit((p, id) => setWorkoutFeedback(p, id, { note: note.value }), { silent: true }), 500); });
+  note.addEventListener('blur', () => { clearTimeout(t); commit((p, id) => setWorkoutFeedback(p, id, { note: note.value }), { silent: true }); });
+  fb.append(el('h2', 'pm-sets-title', 'Remarques'), note);
+
+  return fb;
+}
+
 function renderRecap() {
   const s = S.session;
   const sum = getWorkoutSummary(s, new Date());
   const box = el('article', 'pm-workout-card');
   const notDone = s.activities.filter(a => a.status !== 'done');
   const complete = notDone.length === 0;
+  box.append(feedbackBlock(s)); // V1-UX2-03 : Ressenti et Remarques d'abord, puis le récapitulatif
   box.append(el('h2', '', 'Récapitulatif'),
     el('p', 'pm-recap-kind pm-chip ' + (complete ? 'pm-chip-done' : 'pm-chip-postponed'),
       complete ? 'Séance complète' : 'Séance partielle : ' + notDone.length + ' activité(s) non réalisée(s)'));
@@ -506,28 +605,8 @@ function renderRecap() {
     box.append(block);
   }
 
-  box.append(el('h3', 'pm-sets-title', 'Ressenti'));
-  const feelings = el('div', 'pm-feelings');
-  let feeling = s.feedback?.feeling ?? null;
-  FEELINGS.forEach(([v, label]) => {
-    const b = btn(v + ' · ' + label, 'pm-feeling' + (String(feeling) === v ? ' pm-on' : ''), () => {
-      feeling = Number(v) === feeling ? null : Number(v);
-      feelings.querySelectorAll('.pm-feeling').forEach(x => x.classList.toggle('pm-on', x.dataset.v === String(feeling)));
-      commit((p, id) => setWorkoutFeedback(p, id, { feeling }), { silent: true });
-    });
-    b.dataset.v = v; feelings.append(b);
-  });
-  box.append(feelings);
-  const note = el('textarea', 'pm-textarea-note');
-  note.placeholder = 'Remarques, difficultés, douleurs…'; note.maxLength = 1000; note.value = s.feedback?.note || '';
-  note.setAttribute('aria-label', 'Remarques sur la séance');
-  let t = null;
-  note.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => commit((p, id) => setWorkoutFeedback(p, id, { note: note.value }), { silent: true }), 500); });
-  note.addEventListener('blur', () => { clearTimeout(t); commit((p, id) => setWorkoutFeedback(p, id, { note: note.value }), { silent: true }); });
-  box.append(note);
-
   box.append(btn('Valider ma séance', 'pm-validate', () => finish(complete)));
-  box.append(btn('Retour à la séance', 'pm-secondary', () => { S.view = 'activity'; render(); }));
+  box.append(btn('Retour à la séance', 'pm-secondary', () => { S.view = 'activity'; S.revealed = null; render(); window.scrollTo(0, 0); }));
   return box;
 }
 
@@ -558,17 +637,18 @@ async function commitPartial() {
 }
 function renderDone(session) {
   clearInterval(S.clock); S.clock = null;
+  if (S.undo) { S.undo.dismiss(); S.undo = null; } // la séance est validée : plus d'« Annuler » sur la dernière série
   S.finished = true; holdAwake(false);
   emit('pm:workout-close', {});
   clear(panel);
   const sum = session.summary || getWorkoutSummary(session);
   const box = el('article', 'pm-workout-card pm-done');
-  add(box, el('div', 'pm-done-icon', '✓'),
-    el('h2', '', session.status === 'completed' ? 'Séance terminée' : 'Séance partielle enregistrée'),
-    el('p', 'pm-muted', sum.setsDone + ' séries · ' + fmtNum(sum.volumeKg) + ' kg de volume · ' + formatMinutes(sum.durationMinutes)));
+  const complete = session.status === 'completed';
+  box.append(doneHero({ complete, name: PROFILE_INFO[S.profile]?.name || '', setsDone: sum.setsDone, volumeKg: sum.volumeKg, durationMinutes: sum.durationMinutes }));
   let reward = null;
-  try { reward = rewardFor([...S.history, session], session.id, { today: localISODate() }); } catch (e) { console.error('PM jeu :', e); }
+  try { reward = rewardFor([...S.history, session], session.id, { today: localISODate(), startDate: progressionStartFor(S.profile) }); } catch (e) { console.error('PM jeu :', e); }
   if (reward) box.append(rewardCard(reward, id => S.catalog.byId.get(id)?.name || id));
+  box.append(btn('Continuer', 'pm-validate pm-done-continue', () => closeWorkout({ goTo: 'accueil' })));
   const jokes = funComparisons(sum.volumeKg, session.id);
   if (jokes.length) {
     let shown = 0;
@@ -590,18 +670,11 @@ function renderDone(session) {
     });
     box.append(save, note);
   }
-  box.append(btn('Voir l’historique', 'pm-validate', () => closeWorkout({ goTo: 'historique' })));
-  box.append(btn('Retour à l’accueil', 'pm-secondary', () => closeWorkout({ goTo: 'accueil' })));
+  box.append(btn('Voir l’historique', 'pm-secondary', () => closeWorkout({ goTo: 'historique' })));
   panel.append(box);
   window.scrollTo(0, 0);
-  // effets : un seul point d'entrée (js/fx.js) pour les sons et animations
-  fx('session-done', { complete: session.status === 'completed', xp: reward ? reward.xp : 0 });
-  if (reward) {
-    fx('xp', { amount: reward.xp });
-    reward.records.forEach(r => fx('record', { machineId: r.machineId, kg: r.kg }));
-    reward.newBadges.forEach(b => fx('badge', { id: b.id, name: b.name }));
-    if (reward.leveledUp) fx('level-up', { level: reward.levelAfter, title: reward.after.title, stage: reward.after.stage });
-  }
+  // effets : un seul point d'entrée (js/fx.js) pour les sons et animations, puis « Niveau supérieur » si besoin
+  celebrate(reward, { complete: session.status === 'completed' });
 }
 
 // ---------------------------------------------------------------- rendu principal
@@ -695,7 +768,8 @@ async function begin(detail) {
   } finally { S.busy = false; }
 }
 const GAP_MS = 2 * 60 * 1000;
-async function resumeExisting() {
+/** `detail.view === 'recap'` (outils de test, profil Démo UNIQUEMENT) : ouvre directement le récapitulatif. */
+async function resumeExisting(detail = {}) {
   if (S.busy || !KNOWN.includes(S.profile)) return;
   const profile = S.profile, rev = S.rev;
   S.busy = true;
@@ -716,7 +790,10 @@ async function resumeExisting() {
         session = await resumeWorkout(profile, session.id, { excludeGap: pick === 'gap' });
       }
     }
-    if (valid(profile, rev)) showWorkout(session);
+    if (valid(profile, rev)) {
+      showWorkout(session);
+      if (detail?.view === 'recap' && profile === 'demo' && S.session?.profileId === 'demo') { S.busy = false; await showRecap(); }
+    }
   } catch (error) { if (valid(profile, rev)) await dialog({ title: 'Reprise impossible', message: error?.message || 'Erreur.' }); }
   finally { S.busy = false; }
 }
@@ -766,7 +843,7 @@ document.addEventListener('pm:back-workout', () => {
 });
 document.addEventListener('pm:profile-changed', e => changeProfile(e.detail.profile));
 document.addEventListener('pm:start-workout', e => begin(e.detail));
-document.addEventListener('pm:resume-workout', () => resumeExisting());
+document.addEventListener('pm:resume-workout', e => resumeExisting(e.detail || {}));
 document.addEventListener('pm:stop-workout', () => stopPartial());
 // Les brouillons sont ecrits avant que l'application passe en arriere-plan.
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushAll(); });

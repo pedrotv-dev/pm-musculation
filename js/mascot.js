@@ -3,6 +3,7 @@
  *
  * Contrat pour les images (à déposer dans assets/mascot/, puis lister dans assets/mascot/index.json → { "available": [...] }) :
  *   stage-<N>.svg | stage-<N>.png                 N = 0…11 : une évolution par palier de titre (voir TITLES dans js/gamification.js)
+ *   Aujourd'hui : KORV (corbeau) au stade 0 seulement ; les stades supérieurs réutilisent le dernier stade existant (pickMascotFile).
  *   stage-<N>-<humeur>.svg | .png                 facultatif ; humeurs : idle, happy, cheer, sleepy, levelup
  * Sans image, le personnage intégré (une boule souriante) s'affiche : l'application est toujours complète.
  * L'animation vient du CSS (`.pm-mascot[data-mood=…]` dans css/jeu.css) et respecte prefers-reduced-motion.
@@ -38,6 +39,21 @@ function fallback(mood) {
   return root;
 }
 /**
+ * Choisit l'image à afficher parmi celles disponibles. Cherche d'abord le stade demandé (humeur précise, puis image du stade),
+ * puis les stades PRÉCÉDENTS : tant que les stades supérieurs ne sont pas dessinés, le personnage reste celui du dernier stade existant
+ * (jamais de retour au personnage de repli). `available` : ensemble des noms listés dans assets/mascot/index.json.
+ * @returns {string|null} nom de fichier, ou null (alors : personnage de repli intégré)
+ */
+export function pickMascotFile(available, stage, mood) {
+  for (let k = Math.max(0, stage | 0); k >= 0; k--) {
+    for (const ext of ['svg', 'png']) {
+      for (const name of [`stage-${k}-${mood}.${ext}`, `stage-${k}.${ext}`]) if (available.has(name)) return name;
+    }
+  }
+  return null;
+}
+
+/**
  * Élément mascotte. Retourne tout de suite (personnage de repli), puis remplace par l'image si elle existe.
  * @param {{mood?: string, stage?: number, size?: 'sm'|'md'|'lg'}} [o]
  */
@@ -48,7 +64,7 @@ export function renderMascot({ mood = 'idle', stage = 0, size = 'md' } = {}) {
   wrap.dataset.mood = m; wrap.dataset.stage = String(stage);
   wrap.append(fallback(m));
   loadAvailable().then(available => {
-    const name = ['svg', 'png'].flatMap(ext => [`stage-${stage}-${m}.${ext}`, `stage-${stage}.${ext}`]).find(f => available.has(f));
+    const name = pickMascotFile(available, stage, m);
     if (!name) return;
     const img = document.createElement('img');
     img.alt = ''; img.decoding = 'async'; img.className = 'pm-mascot-art';

@@ -130,3 +130,40 @@ test('suppression definitive d\'une seance, sans toucher aux autres profils', as
   await deleteWorkout('manon', m.id);
   assert.equal((await listWorkouts('manon')).length, 0);
 });
+
+test('corrections rapides de champs distincts et de deux séries : patches fusionnés sans perte', async () => {
+  await setup();
+  const { id } = await startWorkout('pierre', { now: NOW });
+  await logSet('pierre', id, 'a2', 's1', { kg: 40, reps: 10 });
+  const closed = await finishWorkout('pierre', id, 'partial', { now: at(30) });
+  await Promise.all([
+    correctSet('pierre', id, 'a2', 's1', { kg: 47.5 }),
+    correctSet('pierre', id, 'a2', 's1', { reps: 9 }),
+    correctSet('pierre', id, 'a2', 's2', { kg: 52.5 }),
+    correctSet('pierre', id, 'a2', 's2', { reps: 8 }),
+    correctSet('pierre', id, 'a2', 's1', { kg: 50 }) // la dernière correction de ce champ gagne
+  ]);
+  const saved = await getWorkout('pierre', id);
+  assert.deepEqual(saved.activities[1].sets.map(s => [s.kg, s.reps, s.done]), [[50, 9, true], [52.5, 8, false]]);
+  assert.equal(saved.summary.volumeKg, 450); // seule la série validée compte
+  for (const key of ['date', 'startedAt', 'endedAt', 'updatedAt']) assert.equal(saved[key], closed[key]);
+  assert.equal(saved.summary.durationMinutes, 30);
+  assert.equal((await listWorkouts('manon')).length, 0);
+});
+
+test('échec de correction : transaction annulée, valeur précédente intacte, reprise possible', async () => {
+  await setup();
+  const { id } = await startWorkout('pierre', { now: NOW });
+  await finishWorkout('pierre', id, 'partial', { now: at(30) });
+  const before = await getWorkout('pierre', id);
+  // kg est modifié avant la validation de reps dans correctSet : le rejet doit tout annuler.
+  await assert.rejects(correctSet('pierre', id, 'a2', 's1', { kg: 60, reps: 0 }), e => e.code === 'INVALID_SET');
+  assert.deepEqual(await getWorkout('pierre', id), before);
+  await correctSet('pierre', id, 'a2', 's2', { reps: 12 });
+  await correctSet('pierre', id, 'a2', 's1', { kg: 60 });
+  const after = await getWorkout('pierre', id);
+  assert.equal(after.activities[1].sets[0].kg, 60);
+  assert.equal(after.activities[1].sets[0].reps, 10);
+  assert.equal(after.activities[1].sets[1].reps, 12);
+  assert.equal(after.summary.durationMinutes, before.summary.durationMinutes);
+});

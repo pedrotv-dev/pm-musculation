@@ -1,6 +1,11 @@
 // Fonctionnement hors ligne (service worker) : node tests/e2e/offline-flow.mjs
 import assert from 'node:assert/strict';
 import { serve, launch, exampleProgram, watch, step, summary } from './lib.mjs';
+import fs from 'node:fs';
+import { precacheList } from '../../tools/release.mjs';
+import { checkpoint } from './diagnostics.mjs';
+
+const precached = ['./', ...precacheList(fs.readFileSync(new URL('../../sw.js', import.meta.url), 'utf8'))];
 
 const srv = await serve();
 const { browser, context } = await launch();
@@ -17,12 +22,20 @@ await step('service worker installé et cache de l’application rempli', async 
   await page.waitForFunction(() => navigator.serviceWorker.controller);
   const keys = await page.evaluate(() => caches.keys());
   assert.ok(keys.some(k => /^pm-musculation-/.test(k)), JSON.stringify(keys));
-  const cached = await page.evaluate(async () => (await (await caches.open((await caches.keys())[0])).keys()).length);
-  assert.ok(cached >= 30, 'fichiers en cache : ' + cached);
+  // Vérifier le cache de CETTE version, et chaque ressource attendue, sans dépendre de l'ordre de caches.keys().
+  const missing = await page.evaluate(async files => {
+    const { APP_VERSION } = await import('./js/version.js');
+    const name = 'pm-musculation-' + APP_VERSION;
+    if (!(await caches.keys()).includes(name)) return ['cache absent : ' + name];
+    const cache = await caches.open(name);
+    return (await Promise.all(files.map(async f => (await cache.match(new URL(f, location.href).href, { ignoreSearch: true })) ? null : f))).filter(Boolean);
+  }, precached);
+  assert.deepEqual(missing, []);
+  await checkpoint(page, 'cache initial prêt');
 });
 await step('en ligne : choisir Pierre, importer le programme, démarrer une séance', async () => {
   await page.click('[data-select-profile="pierre"]');
-  await page.click('.nav-btn[data-go="programme"]');
+  await page.click('.nav-btn[data-go="seances"]');
   await page.click('.pm-import summary');
   await page.fill('.pm-textarea', JSON.stringify(exampleProgram()));
   await page.click('.pm-action-verify');
@@ -34,9 +47,11 @@ await step('en ligne : choisir Pierre, importer le programme, démarrer une séa
   await page.click(screen + ' .pm-validate:has-text("Fait")');
   await page.click(screen + ' .pm-validate:has-text("Machine suivante")');
   await page.click('#pm-validate-set'); await page.waitForSelector('.pm-set-done');
+  await page.waitForFunction(() => document.querySelector('#pm-save-state')?.dataset.state === 'ok');
 });
 await step('hors ligne : recharger l’application, retrouver la séance et la reprendre', async () => {
   await context.setOffline(true);
+  await checkpoint(page, 'avant rechargement hors ligne');
   await page.reload();
   await page.waitForSelector('.pm-home-card .pm-validate:has-text("Reprendre")');
   await page.click('.pm-home-card .pm-validate:has-text("Reprendre")');
@@ -45,11 +60,14 @@ await step('hors ligne : recharger l’application, retrouver la séance et la r
   await page.waitForSelector(screen + ':not([hidden])');
   assert.match(await text(screen), /Chest Press/);
   assert.equal(await page.locator(screen + ' .pm-set-done').count(), 1);
+  await checkpoint(page, 'séance reprise hors ligne');
 });
 await step('hors ligne : valider des séries, le catalogue et le chrono fonctionnent', async () => {
   await page.click('#pm-validate-set');
+  await page.waitForFunction(() => document.querySelectorAll('#pm-workout-screen .pm-set-done').length === 2);
   await page.waitForSelector('.pm-rest-ui:not([hidden])');
   await page.click('#pm-validate-set'); await page.waitForSelector('.pm-machine-done');
+  await checkpoint(page, 'trois séries avant fermeture');
 });
 await step('hors ligne : fermer l’onglet, rouvrir, retrouver les 3 séries', async () => {
   await page.close();
@@ -66,6 +84,7 @@ await step('hors ligne : fermer l’onglet, rouvrir, retrouver les 3 séries', a
   await p2.click(screen + ' .pm-validate:has-text("Valider ma séance")');
   await p2.click('.pm-modal .pm-primary');
   await p2.waitForSelector(screen + ' .pm-done-icon');
+  await p2.locator('.pm-levelup-overlay .pm-primary').click({ timeout: 1500 }).catch(() => {}); // plein écran « Niveau supérieur » éventuel
   await p2.click(screen + ' button:has-text("Voir l’historique")');
   await p2.waitForSelector('.pm-history-card');
   assert.match(await p2.locator('[data-page="historique"]').innerText(), /Partielle/);

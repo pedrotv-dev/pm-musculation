@@ -17,7 +17,8 @@ Cibles : **Safari iPhone** (PWA installée) et **Chrome Android**. Interface **e
 ## Qui fait quoi
 - **Toi (ChatGPT)** : l'habillage — CSS, animations, dessins SVG, sons synthétisés. Tu écris **dans les fichiers qui t'appartiennent** (liste ci-dessous).
 - **Claude Code** : la logique, les tests, l'intégration (balises dans `index.html`, liste de précache `sw.js`, numéro de version). **Tu n'y touches pas.** Quand un nouveau fichier est nécessaire, tu le décris dans ta PR et Claude Code l'intègre.
-- **Tu ne fusionnes jamais une PR toi-même.** Tu en ouvres une, tu t'arrêtes, l'utilisateur dit « OK » (puis Claude Code vérifie et fusionne).
+- **Tu ne fusionnes jamais une PR toi-même.** Tu en ouvres une, tu t'arrêtes, l'utilisateur dit « OK » (puis Claude Code vérifie, publie la version, sauvegarde et fusionne **directement dans l'application** : il n'y a pas d'environnement d'aperçu).
+- **Version de l'application : tu n'y touches jamais** (`sw.js`, `js/version.js`). Tout changement de CSS, JS ou image doit être suivi d'une nouvelle `VERSION`, sinon les téléphones gardent l'ancien code (le service worker sert l'application depuis son cache). C'est automatique : les tests de ta PR la simulent, Claude Code la publie à l'intégration, et un workflow la publie si une PR est fusionnée sans elle.
 
 ## Protocole de travail (obligatoire — c'est ce qui évite de planter)
 1. **Pas de grand plan.** Avant de commencer une étape : 5 lignes maximum (ce que tu vas faire, dans quels fichiers).
@@ -74,6 +75,8 @@ Après une séance, ils partent dans cet ordre : `session-done`, `xp`, `record`(
 - Écrans : carte « niveau » (accueil et Progrès) · récompense de fin de séance (`.pm-reward`) · grille de succès (`.pm-badges`) · classements (`.pm-rankings`). Classes et structure : lis `js/jeu-ui.js` (affichage) et `css/jeu.css`.
 
 ## Mascotte (contrat des images)
+**La mascotte existe : KORV**, un corbeau adulte aux plumes graphite et à l'œil turquoise (planche ASCENT). Stade 0 livré (`assets/mascot/stage-0*.png`, 320×320, < 40 Ko). Les 11 autres stades **font évoluer le même personnage** (même tête, mêmes yeux turquoise, même emblème de plume turquoise sur la cape) ; tant qu'un stade n'existe pas, l'application utilise le dernier stade dessiné (`pickMascotFile` dans `js/mascot.js`). Originaux HD : `Ui/korv/`.
+
 - Dossier `assets/mascot/`. Noms : `stage-<N>.svg` ou `stage-<N>.png` (N de 0 à 11, une **évolution par grade**), et facultativement `stage-<N>-<humeur>.svg|png` avec les humeurs `idle`, `happy`, `cheer`, `sleepy`, `levelup`.
 - Chaque fichier créé est **listé dans `assets/mascot/index.json`** : `{ "available": ["stage-0.svg", "stage-0-cheer.svg", …] }`.
 - SVG : `viewBox="0 0 100 100"`, fond transparent, **pas de police externe**, pas de `<script>`, ≤ 6 Ko. Le personnage de repli intégré (une forme turquoise minimale — un simple repère, pas une proposition de style) montre l'échelle et la place.
@@ -81,6 +84,17 @@ Après une séance, ils partent dans cet ordre : `session-done`, `xp`, `record`(
 
 ## Vérifier sans exécuter
 Avant de livrer : (1) chaque fichier cité existe ; (2) aucune ressource externe ; (3) aucun style en ligne ; (4) chaque effet est coupé par `prefers-reduced-motion` ; (5) rien d'autre que les fichiers de ta mission n'est modifié (`git diff --stat`). Écris-le dans la PR sous forme de cases à cocher.
+
+## Référence visuelle FINALE : la planche ASCENT
+**`docs/design/ascent-concept-complet.png`** montre le style final voulu (accueil, séance en cours, fin de séance, niveau supérieur, page « Korv — le guide », palette, composants, badges hexagonaux, icônes). **Toute mission visuelle doit s'en approcher** : fond charbon avec silhouette de montagne, turquoise `#14E6C7` en accent, sauge `#B9F08A` pour les validations, Pierre bleu `#4A8DFF`, Manon violet `#B57DFF`, Korv grand et à droite sur l'accueil, niveau en hexagone, série en cours dans un cadre turquoise avec boutons − / +. Ce qui n'existe pas encore dans l'application (points de compétence, récompenses débloquables, défis, masse estimée…) **ne se dessine pas tant que Claude Code ne l'a pas décidé avec Pierre** : demande avant d'inventer un écran. Les changements de structure (HTML/JS) sont faits par Claude Code d'abord ; le CSS de ChatGPT vient ensuite.
+
+### Décisions de Pierre sur la planche (7 novembre 2026)
+- **Navigation : 4 onglets** — Accueil, Séances (sous-onglets Programme | Historique : `.pm-seances-tabs`, `.pm-subtab`), Progression, Profil.
+- **En-tête : le logo PM actuel** (pas la montagne de la planche).
+- **« Niveau supérieur » : plein écran avec un bouton « Parfait ! »**, comme la planche. C'est la SEULE exception à la règle « jamais bloquant » ; le budget de 3 s vaut pour ses animations.
+- **Pas de** points de compétence, récompenses débloquables, défis, ni masse estimée. « Ta progression » (30 jours) = séances, force moyenne (évolution des charges max), volume.
+- **Page « Korv — le guide »** dans Profil.
+- **Accueil ASCENT en place** (structure Claude Code) : `.pm-hero` (décor `assets/ascent/hero-accueil.webp`, Korv `.pm-hero-korv`, bulle `.pm-korv-bubble`), `.pm-level-strip` avec l'hexagone `.pm-hex`, `.pm-tiles`, carte `.pm-next-card` avec le bouton `.pm-play`. Styles de base dans `css/jeu.css` (section « ASCENT · accueil ») : tu peux les affiner.
 
 ## Identité visuelle actuelle (à respecter ou à faire évoluer avec accord)
 Fond sombre, accent **turquoise `#2ed3c0`** (action principale), texte clair, cartes arrondies (`.panel`), gros bouton « Valider » turquoise. Variables : `css/app.css` (`:root`) et `css/base.css`. Brief visuel complet de l'application : `docs/prompt-design-chatgpt.md`.

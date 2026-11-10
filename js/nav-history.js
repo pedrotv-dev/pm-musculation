@@ -11,6 +11,10 @@
 import { closeTopDialog } from './dom.js';
 import { getUiSettings, peekUiSettings } from './ui-settings.js';
 
+// V1-UX2-04 : l'application gère elle-même le défilement (haut de page à chaque changement de page). Sans cela, le
+// navigateur restaure l'ancienne position quand la garde d'historique est retirée (history.back) ou au retour.
+try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (_) { /* sans effet */ }
+
 const root = document.documentElement;
 let guardPresent = !!(history.state && history.state.pmGuard);
 let ignorePops = 0;

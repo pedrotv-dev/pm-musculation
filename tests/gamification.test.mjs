@@ -111,3 +111,72 @@ test('la démo (30 séances fictives) donne un niveau, des succès et des classe
   assert.equal(p.timeline.length, F.sessions.filter(s => s.status === 'completed' || s.status === 'partial').length);
   assert.deepEqual(computeProgress(JSON.parse(JSON.stringify(F.sessions)), { today: '2026-12-31' }), p); // déterministe
 });
+
+// ---------------------------------------------------------------- date de début de la progression (9 novembre 2026)
+import { PROGRESSION_START, progressionStartFor } from '../js/gamification.js';
+
+const START = '2026-11-09';
+const history = () => [ // vraies séances de Pierre et Manon d'avant le début (dont celle du samedi 7 novembre)
+  session('2026-10-20', [lift('leg-press', 60, 60, 60), cardio(20)], { feedback: { feeling: 5 } }),
+  session('2026-10-27', [lift('leg-press', 66, 66, 66), lift('rotary-hip', 100, 120)]),
+  session('2026-11-03', [lift('leg-press', 70, 73, 73), lift('calf-press', 52)]),
+  session('2026-11-07', [lift('leg-press', 66, 73, 73), lift('hip-abduction', 36, 36, 36, 36, 36, 36), cardio(10)])
+];
+
+test('début de la progression : le 9 novembre 2026 pour Pierre et pour Manon, pas pour la démo', () => {
+  assert.equal(progressionStartFor('pierre'), START);
+  assert.equal(progressionStartFor('manon'), START);
+  assert.equal(progressionStartFor('demo'), null);
+  assert.ok(Object.isFrozen(PROGRESSION_START));
+});
+
+test('avant le début : niveau 1, 0 XP, aucun succès, aucune série de semaines — historique intact', () => {
+  const sessions = history();
+  const copy = JSON.parse(JSON.stringify(sessions));
+  for (const today of ['2026-11-07', '2026-11-08', '2026-11-09', '2026-11-30']) {
+    const p = computeProgress(sessions, { today, startDate: START });
+    assert.deepEqual([p.level, p.xp, p.unlockedCount, p.timeline.length, p.streak.current, p.streak.best], [1, 0, 0, 0, 0, 0], today);
+    assert.ok(p.badges.every(b => !b.unlocked && !b.date));
+    assert.equal(p.notStarted, today < START);
+  }
+  assert.deepEqual(sessions, copy); // aucune donnée modifiée
+  // les classements (performances) gardent tout l'historique
+  const r = computeProgress(sessions, { today: '2026-11-08', startDate: START }).rankings;
+  assert.equal(r.heaviestSessions.length, 4);
+  assert.ok(r.risingMachines.some(m => m.machineId === 'leg-press'));             // 60 -> 73 kg, avant le début
+  assert.ok(r.bestWeeks.length >= 3);
+  // sans date de début (démo), le calcul est inchangé
+  assert.ok(computeProgress(sessions, { today: '2026-11-08' }).xp > 0);
+});
+
+test('à partir du 9 novembre : XP et succès normaux ; un record doit battre TOUT l\'historique', () => {
+  const sessions = [...history(),
+    session('2026-11-09', [lift('leg-press', 73, 73, 73), lift('calf-press', 60)]),   // leg-press égale l'ancien max (73) : pas de record ; calf-press 60 > 52 : record
+    session('2026-11-10', [lift('leg-press', 80)])];                                  // 80 > 73 : record
+  const p = computeProgress(sessions, { today: '2026-11-10', startDate: START });
+  assert.equal(p.timeline.length, 2);
+  assert.equal(p.timeline[0].xpBefore, 0);                                           // on part de 0 XP
+  assert.deepEqual(p.timeline[0].records.map(r => r.machineId), ['calf-press']);
+  assert.deepEqual(p.timeline[1].records, [{ machineId: 'leg-press', kg: 80, previous: 73 }]);
+  assert.equal(p.xp, (4 * XP.perSet + XP.completed + XP.record) + (1 * XP.perSet + XP.completed + XP.record));
+  const got = p.badges.filter(b => b.unlocked).map(b => b.id).sort();
+  assert.deepEqual(got, ['first-record', 'first-session', 'tonne']);                 // gagnés APRÈS le début (2 190 kg le 9) ; aucun succès d'avant
+  assert.equal(p.badges.find(b => b.id === 'first-session').date, '2026-11-09');
+  assert.equal(p.totals.sessions, 2); assert.equal(p.totals.machines, 2);            // l'exploration compte depuis le début
+  assert.equal(p.streak.current, 1);                                                  // la semaine du 2 novembre ne compte pas
+  // récompense de la première séance : niveau 1, « Premier pas », départ de 0 XP
+  const r = rewardFor(sessions, sessions[4].id, { today: '2026-11-09', startDate: START });
+  assert.equal(r.before.xp, 0); assert.ok(r.newBadges.some(b => b.id === 'first-session'));
+  assert.equal(rewardFor(sessions, sessions[3].id, { today: '2026-11-09', startDate: START }), null); // séance d'avant : aucune récompense
+});
+
+test('stable : même résultat à chaque recalcul, après « restauration » (copie JSON) et quel que soit l\'ordre des séances', () => {
+  const sessions = [...history(), session('2026-11-12', [lift('leg-press', 75, 75)])];
+  const a = computeProgress(sessions, { today: '2026-11-13', startDate: START });
+  const restored = JSON.parse(JSON.stringify(sessions)).reverse();
+  const b = computeProgress(restored, { today: '2026-11-13', startDate: START });
+  assert.deepEqual(b, a);
+  assert.deepEqual(computeProgress(sessions, { today: '2026-11-13', startDate: START }), a);
+  assert.deepEqual(a.badges.filter(x => x.unlocked).map(x => x.id).sort(), ['first-record', 'first-session', 'tonne']); // tous datés après le début
+  assert.ok(a.badges.filter(x => x.unlocked).every(x => x.date >= START));
+});

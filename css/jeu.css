@@ -1,44 +1,389 @@
-/* PM Musculation — niveaux, succès, classements personnels, mascotte (sobre : l'habillage final viendra ensuite). */
-.pm-level-card { display:grid; gap:10px; }
-.pm-level-head { display:flex; align-items:center; gap:14px; }
-.pm-level-text { min-width:0; }
-.pm-level-text h3 { margin:2px 0 4px; }
-.pm-xp-track { height:14px; border-radius:99px; background:var(--surface-raised); border:1px solid var(--stroke); overflow:hidden; }
-.pm-xp-fill { height:100%; border-radius:99px; background:var(--turq); transition:width .5s ease-out; }
-.pm-mascot-line-text { margin:0; font-style:italic; color:var(--text); }
-.pm-streak { margin:0; }
+/* PM Musculation — PULSE : progression personnelle, succes et recompenses.
+   Palette retenue : turquoise d'action, lavande reservee aux recompenses. */
+:root { --pulse-reward:#b9f08a; }
 
+/* Carte de niveau : le grade prime sur le chiffre, Korv accompagne en retrait. */
+.pm-level-card { display:grid; gap:14px; }
+.pm-level-head { display:flex; align-items:center; gap:16px; min-width:0; }
+.pm-level-text { min-width:0; flex:1; }
+.pm-level-text .tag {
+  display:inline-block; margin-bottom:7px; padding:5px 10px;
+  border:1px solid rgba(var(--accent-rgb),.30); letter-spacing:.035em;
+}
+.pm-level-text h3 {
+  margin:0 0 6px; font-size:clamp(24px,5.8vw,30px);
+  line-height:1.13; letter-spacing:-.035em; font-weight:870;
+}
+.pm-level-text .pm-muted { font-size:13px; line-height:1.45; }
+.pm-streak { margin:0; font-size:13px; line-height:1.55; color:var(--muted); }
+
+/* XP : remplissage calcule par le JS; pas d'animation de largeur/layout.
+   Un futur effet via transform pourra etre gere par js/effets.js et ses reglages. */
+.pm-xp-track {
+  position:relative; height:11px; overflow:hidden; border-radius:99px;
+  background:var(--surface-raised); border:1px solid var(--stroke);
+}
+.pm-xp-fill {
+  height:100%; border-radius:99px; background:var(--turq);
+  transition:opacity 120ms ease-out, transform 120ms ease-out;
+  transform-origin:left center;
+}
+.pm-level-card .pm-mascot-line-text {
+  padding:10px 12px; border-left:2px solid var(--turq);
+  border-radius:0 10px 10px 0; background:rgba(41,212,194,.055);
+}
+.pm-mascot-line-text {
+  margin:0; color:var(--text); font-size:13px;
+  font-style:normal; line-height:1.5;
+}
+
+/* Korv : conteneur seulement; illustrations et animations dediees en etapes 5/9. */
 .pm-mascot { flex:none; display:grid; place-items:center; }
-.pm-mascot-sm { width:56px; height:56px; } .pm-mascot-md { width:84px; height:84px; } .pm-mascot-lg { width:140px; height:140px; }
+.pm-mascot-sm { width:56px; height:56px; }
+.pm-mascot-md { width:84px; height:84px; }
+.pm-mascot-lg { width:140px; height:140px; }
 .pm-mascot-art { width:100%; height:100%; object-fit:contain; }
-.pm-mascot-body { fill:var(--turq); } .pm-mascot-shadow { fill:rgba(0,0,0,.28); }
+.pm-mascot-body { fill:var(--turq); }
+.pm-mascot-shadow { fill:rgba(0,0,0,.28); }
 .pm-mascot-eye { fill:var(--turq-dark); }
 .pm-mascot-line { fill:none; stroke:var(--turq-dark); stroke-width:4; stroke-linecap:round; }
 .pm-mascot-mouth-open { fill:var(--turq-dark); stroke:var(--turq-dark); stroke-width:3; stroke-linejoin:round; }
-.pm-mascot-star { fill:#ffd84d; stroke:#b58900; stroke-width:1.5; }
-.pm-mascot[data-mood="cheer"], .pm-mascot[data-mood="levelup"] { animation:pm-hop .6s ease-out 1; } /* une seule fois, jamais en boucle */
-@keyframes pm-hop { 0%,100% { transform:translateY(0); } 40% { transform:translateY(-8px); } }
+.pm-mascot-star { fill:var(--pulse-reward); stroke:var(--stroke); stroke-width:1.5; }
 
-.pm-badges { list-style:none; margin:10px 0 0; padding:0; display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; }
-.pm-badge-tile { display:grid; gap:2px; padding:10px; border-radius:13px; border:1px dashed var(--stroke); background:var(--surface-raised); }
-.pm-badge-tile.pm-unlocked { border:1px solid var(--turq); background:rgba(46,211,192,.1); }
-.pm-badge-name { font-weight:850; font-size:14px; }
-.pm-badge-desc { font-size:12px; color:var(--muted); }
+/* Succes : verrouille = discret, debloque = contraste et coche textuelle. */
+.pm-badges {
+  list-style:none; margin:14px 0 0; padding:0;
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px;
+}
+.pm-badge-tile {
+  display:flex; flex-direction:column; align-items:flex-start; gap:6px;
+  min-width:0; min-height:112px; padding:14px 12px; border-radius:13px;
+  border:1px solid var(--stroke); background:var(--surface-raised);
+}
+.pm-badge-tile:not(.pm-unlocked) { opacity:.82; }
+.pm-badge-tile::before {
+  content:'À débloquer'; color:var(--muted); font-size:10px;
+  font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+}
+.pm-badge-tile.pm-unlocked {
+  border:1px solid rgba(41,212,194,.65); background:rgba(41,212,194,.085);
+}
+.pm-badge-tile.pm-unlocked::before { content:'✓ Débloqué'; color:var(--turq); }
+.pm-badge-name {
+  display:block; max-width:100%; overflow-wrap:anywhere;
+  font-weight:850; font-size:15px; line-height:1.25; color:var(--text);
+}
+.pm-badge-desc {
+  font-size:12px; color:var(--muted); line-height:1.5;
+  overflow-wrap:anywhere;
+}
 .pm-unlocked .pm-badge-desc { color:var(--text); }
 
-.pm-rank-title { margin:14px 0 6px; font-size:14px; }
-.pm-rank-list { list-style:none; counter-reset:rank; margin:0; padding:0; display:grid; gap:6px; }
-.pm-rank-list li { counter-increment:rank; display:flex; justify-content:space-between; gap:10px; padding:8px 10px; border-radius:11px; background:var(--surface-raised); font-size:14px; }
-.pm-rank-list li::before { content:counter(rank); font-weight:850; color:var(--turq); min-width:1.2em; }
-.pm-rank-list li > span:first-child { flex:1; }
-.pm-rank-value { font-variant-numeric:tabular-nums; color:var(--muted); text-align:right; }
-.pm-how summary { cursor:pointer; font-weight:750; min-height:44px; display:flex; align-items:center; }
+/* Classements strictement personnels : metriques lisibles, jamais comparatives. */
+.pm-rank-title {
+  margin:20px 0 9px; font-size:13px; color:var(--muted);
+  font-weight:820; letter-spacing:.015em;
+}
+.pm-rank-list {
+  list-style:none; counter-reset:rank; margin:0; padding:0;
+  display:grid; gap:8px;
+}
+.pm-rank-list li {
+  counter-increment:rank; display:flex; align-items:center;
+  gap:10px; min-width:0; padding:12px; border-radius:12px;
+  border:1px solid var(--stroke); background:var(--surface-raised);
+  font-size:13px; line-height:1.45;
+}
+.pm-rank-list li::before {
+  content:counter(rank); flex:none; width:30px; height:30px;
+  border-radius:9px; display:grid; place-items:center;
+  font-size:13px; font-weight:850; color:var(--turq);
+  background:rgba(41,212,194,.10);
+}
+.pm-rank-list li > span:first-child { flex:1; min-width:0; overflow-wrap:break-word; } /* coupe entre les mots, jamais au milieu (« Semaine du ») */
+.pm-rank-value {
+  flex:0 1 auto; min-width:0; font-variant-numeric:tabular-nums;
+  color:var(--text); font-weight:750; text-align:right; overflow-wrap:anywhere;
+}
+.pm-how summary {
+  cursor:pointer; font-weight:750; min-height:44px;
+  display:flex; align-items:center;
+}
 
-.pm-reward { margin:14px 0; padding:14px; border-radius:16px; border:1px solid var(--turq); background:rgba(46,211,192,.08); display:grid; gap:10px; text-align:left; }
-.pm-reward-head { display:flex; align-items:center; gap:14px; }
-.pm-reward-xp { margin:0; font-size:30px; font-weight:900; color:var(--turq); font-variant-numeric:tabular-nums; }
-.pm-reward-parts, .pm-reward-records, .pm-reward-badges { list-style:none; margin:0; padding:0; display:grid; gap:4px; font-size:14px; }
-.pm-reward-parts li { display:flex; justify-content:space-between; }
-.pm-reward-level { margin:0; font-weight:750; }
-.pm-reward-level.pm-levelup { color:var(--turq); font-size:17px; font-weight:900; }
-@media (prefers-reduced-motion: reduce) { .pm-mascot { animation:none !important; } .pm-xp-fill { transition:none; } }
+/* Fin de seance : recompense precise et calme, sans ecran bloquant. */
+.pm-reward {
+  margin:14px 0; padding:19px; border-radius:16px;
+  border:1px solid rgba(184,164,239,.48);
+  background:linear-gradient(145deg,rgba(184,164,239,.095),rgba(41,212,194,.045) 76%),var(--surface);
+  display:grid; gap:15px; text-align:left;
+}
+.pm-reward-head {
+  display:flex; align-items:center; gap:16px; min-width:0;
+}
+.pm-reward-text { min-width:0; }
+.pm-reward-xp {
+  margin:0 0 5px; font-size:clamp(34px,8vw,44px);
+  line-height:1.05; letter-spacing:-.045em; font-weight:900;
+  color:var(--pulse-reward); font-variant-numeric:tabular-nums;
+}
+.pm-reward .pm-mascot-line-text { font-size:13px; color:var(--text); }
+.pm-reward .pm-xp-track { height:12px; background:var(--surface-raised); }
+.pm-reward .pm-xp-fill { background:var(--turq); }
+.pm-reward-parts, .pm-reward-records, .pm-reward-badges {
+  list-style:none; margin:0; padding:0; display:grid; gap:7px; font-size:13px;
+}
+.pm-reward-parts li {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; min-height:28px; border-bottom:1px solid var(--stroke);
+}
+.pm-reward-parts li span:last-child {
+  color:var(--text); font-weight:830; font-variant-numeric:tabular-nums;
+}
+.pm-reward-level { margin:0; font-size:13px; font-weight:750; line-height:1.5; }
+.pm-reward-level.pm-levelup {
+  color:var(--pulse-reward); font-size:17px; font-weight:900; line-height:1.35;
+}
+.pm-reward-records li, .pm-reward-badges li {
+  padding:9px 11px; background:var(--surface-raised);
+  border:1px solid var(--stroke); border-radius:10px;
+  line-height:1.5; overflow-wrap:anywhere;
+}
+.pm-reward-records li { border-left:3px solid var(--pulse-reward); }
+.pm-reward-badges li { border-left:3px solid var(--turq); }
+
+@media (max-width:390px) {
+  .pm-level-head, .pm-reward-head { gap:11px; }
+  .pm-level-head .pm-mascot-md, .pm-reward-head .pm-mascot-md { width:68px; height:68px; }
+  .pm-badges { gap:8px; }
+  .pm-badge-tile { padding:12px 10px; min-height:112px; }
+  /* petit écran : rang | libellé, puis la valeur en dessous du libellé (plus de mot coupé en deux) */
+  .pm-rank-list li { display:grid; grid-template-columns:30px minmax(0,1fr); column-gap:10px; row-gap:2px; }
+  .pm-rank-list li::before { grid-row:1 / span 2; align-self:center; }
+  .pm-rank-list li > span:first-child { grid-column:2; }
+  .pm-rank-list .pm-rank-value { grid-column:2; text-align:left; overflow-wrap:break-word; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .pm-mascot { animation:none!important; }
+  .pm-xp-fill { transition:none!important; }
+}
+
+/* ASCENT — progression sur paliers et recompenses sobres. */
+.pm-level-card {
+  position:relative; overflow:hidden; border-color:var(--ascent-rim);
+  background:linear-gradient(140deg,rgba(20,230,199,.06),transparent 63%),var(--surface);
+}
+.pm-level-card .tag {
+  min-height:35px; display:inline-flex; align-items:center;
+  color:var(--turq); border-color:rgba(20,230,199,.4);
+  background:rgba(20,230,199,.08);
+}
+.pm-level-text h3 { font-weight:860; }
+.pm-xp-track {
+  height:12px; border:1px solid var(--ascent-rim);
+  background:var(--ascent-raised);
+}
+.pm-xp-fill { background:linear-gradient(90deg,var(--turq),var(--ascent-sage)); }
+.pm-level-card .pm-mascot-line-text { background:rgba(20,230,199,.045); border-color:var(--turq); }
+.pm-badge-tile.pm-unlocked {
+  border-color:rgba(185,240,138,.4); background:rgba(185,240,138,.06);
+}
+.pm-badge-tile.pm-unlocked::before { color:var(--ok); }
+.pm-rank-list li { background:var(--surface); border-color:var(--ascent-rim); }
+.pm-reward {
+  background:linear-gradient(150deg,rgba(20,230,199,.085),transparent 70%),var(--surface);
+  border-color:var(--ascent-rim);
+}
+.pm-reward-xp { color:var(--turq); text-shadow:0 0 22px rgba(20,230,199,.16); }
+.pm-reward .pm-xp-fill { background:linear-gradient(90deg,var(--turq),var(--ascent-sage)); }
+.pm-reward-level.pm-levelup { color:var(--ok); }
+.pm-reward-records li { border-left-color:var(--ascent-sage); }
+
+/* ===== ASCENT · accueil (structure posée par Claude Code ; habillage fin : mission 1) ===== */
+.pm-hero { position:relative; display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:auto 1fr; column-gap:6px;
+  min-height:262px; margin:0 0 14px; padding:22px 0 0 18px; border-radius:18px; overflow:hidden; border:1px solid var(--ascent-rim, var(--stroke));
+  background:linear-gradient(180deg, rgba(11,15,18,.10) 0%, rgba(11,15,18,.45) 62%, rgba(11,15,18,.92) 100%), url(../assets/ascent/hero-accueil.webp) center 30% / cover no-repeat, var(--bg); }
+.pm-hero-text { grid-column:1; grid-row:1; min-width:0; }
+.pm-hero-title { margin:0 0 6px; font-size:clamp(26px,7vw,32px); line-height:1.1; letter-spacing:-.035em; }
+.pm-hero-wave { font-size:.85em; }
+.pm-hero-sub { margin:0; color:var(--muted); font-size:15px; }
+.pm-hero-korv { grid-column:2; grid-row:1 / span 2; align-self:end; width:150px; height:188px; margin-right:-6px; }
+.pm-hero-korv > img { width:100%; height:100%; display:block; }
+.pm-hero-korv img { object-fit:contain; object-position:bottom; filter:drop-shadow(0 6px 18px rgba(0,0,0,.55)); }
+.pm-korv-bubble { grid-column:1; grid-row:2; align-self:end; position:relative; margin:16px 0 18px; padding:10px 12px;
+  border-radius:14px; border:1px solid var(--ascent-rim, var(--stroke)); background:rgba(26,33,39,.88); }
+.pm-korv-bubble::after { content:''; position:absolute; right:-7px; top:22px; width:12px; height:12px; transform:rotate(45deg);
+  background:rgba(26,33,39,.88); border-top:1px solid var(--ascent-rim, var(--stroke)); border-right:1px solid var(--ascent-rim, var(--stroke)); }
+.pm-korv-name { display:block; font-size:12px; font-weight:820; color:var(--turq); letter-spacing:.04em; margin-bottom:3px; }
+.pm-korv-line { margin:0; font-size:13px; line-height:1.45; color:var(--text); }
+.pm-mascot-xl { width:150px; height:178px; }
+
+.pm-hex { flex:none; display:grid; place-items:center; width:70px; height:78px;
+  clip-path:polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background:linear-gradient(160deg, var(--turq), rgba(20,230,199,.35)); }
+.pm-hex-inner { display:grid; place-items:center; align-content:center; width:calc(100% - 5px); height:calc(100% - 6px);
+  clip-path:polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background:var(--surface); }
+.pm-hex-label { font-size:10px; font-weight:800; letter-spacing:.08em; color:var(--muted); line-height:1; }
+.pm-hex-value { font-size:26px; font-weight:880; line-height:1.05; color:var(--text); font-variant-numeric:tabular-nums; }
+.pm-level-strip { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; column-gap:14px; row-gap:8px; }
+.pm-level-body { display:grid; gap:8px; min-width:0; }
+.pm-level-top { display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+.pm-level-name { font-size:18px; font-weight:850; letter-spacing:-.02em; }
+.pm-level-next { font-size:12px; color:var(--muted); font-weight:700; }
+.pm-level-xp { margin:0; font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.pm-level-note { grid-column:1 / -1; margin:2px 0 0; }
+
+.pm-progress-home { margin:0 0 14px; }
+.pm-section-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }
+.pm-section-head h3 { margin:0; font-size:18px; }
+.pm-tiles { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; }
+.pm-tile { display:grid; justify-items:center; gap:4px; padding:14px 6px 12px; border-radius:14px; text-align:center;
+  border:1px solid var(--ascent-rim, var(--stroke)); background:var(--surface); }
+.pm-tile svg { width:24px; height:24px; color:var(--turq); stroke-width:1.9; }
+.pm-tile strong { font-size:20px; font-weight:860; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.pm-tile span { font-size:12px; color:var(--muted); }
+
+.pm-next-card .pm-section-head { margin-bottom:12px; }
+.pm-next-when { font-size:13px; color:var(--muted); font-weight:700; }
+.pm-next-row { display:flex; align-items:center; gap:12px; padding:12px; border-radius:14px; background:var(--surface-raised); border:1px solid var(--ascent-rim, var(--stroke)); }
+.pm-next-icon { flex:none; display:grid; place-items:center; width:44px; height:44px; border-radius:12px; background:rgba(20,230,199,.10); color:var(--turq); }
+.pm-next-icon svg { width:24px; height:24px; stroke-width:1.9; }
+.pm-next-info { flex:1; min-width:0; display:grid; gap:2px; }
+.pm-next-info strong { font-size:16px; overflow-wrap:anywhere; }
+.pm-play { flex:none; display:grid; place-items:center; width:52px; height:52px; border:0; border-radius:14px; cursor:pointer;
+  background:var(--turq); color:var(--turq-dark); box-shadow:0 4px 16px rgba(20,230,199,.22); }
+.pm-play svg { width:22px; height:22px; }
+.pm-play:active { transform:scale(.96); }
+.pm-play:focus-visible { outline:3px solid var(--text); outline-offset:3px; }
+@media (max-width:370px) { .pm-hero-korv { width:120px; height:150px; } .pm-tile strong { font-size:17px; } }
+
+/* ===== ASCENT · fin de séance et niveau supérieur (structure Claude Code ; habillage fin : mission 1) ===== */
+.pm-done { padding-top:0; overflow:hidden; }
+.pm-done::before { content:none; }
+.pm-done-hero { margin:14px 0 6px; padding:28px 14px 18px; border-radius:14px; text-align:center;
+  background:linear-gradient(180deg, rgba(11,15,18,.05), rgba(11,15,18,.55) 70%, var(--surface)), url(../assets/ascent/hero-fin.webp) center 25% / cover no-repeat; }
+.pm-done-hero h2 { margin:10px 0 4px; font-size:clamp(26px,7vw,32px); letter-spacing:-.03em; }
+.pm-done-sub { margin:0 0 6px; color:var(--text); font-size:15px; }
+.pm-done-continue { margin:16px 0 6px; }
+.pm-reward { text-align:center; }
+.pm-reward .pm-reward-xp { margin:0; font-size:clamp(40px,11vw,52px); color:var(--turq); }
+.pm-reward-levels { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; }
+.pm-reward-mid { display:grid; gap:6px; }
+.pm-reward-xpcount { margin:0; font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.pm-hex-sm { width:50px; height:56px; } .pm-hex-sm .pm-hex-value { font-size:18px; } .pm-hex-sm .pm-hex-label { font-size:8px; }
+.pm-hex-lg { width:120px; height:134px; } .pm-hex-lg .pm-hex-value { font-size:44px; } .pm-hex-lg .pm-hex-label { font-size:13px; }
+.pm-reward-parts { text-align:left; }
+.pm-reward-cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:10px; }
+.pm-reward-card { display:grid; justify-items:center; align-content:start; gap:4px; padding:12px 10px; border-radius:14px; text-align:center;
+  border:1px solid var(--ascent-rim, var(--stroke)); background:var(--surface-raised); }
+.pm-reward-card-kicker { margin:0 0 4px; font-size:12px; font-weight:820; color:var(--turq); }
+.pm-reward-record .pm-reward-card-kicker { color:var(--ok); }
+.pm-reward-card strong { font-size:15px; }
+.pm-reward-record-kg { font-size:24px !important; font-weight:880; }
+.pm-reward-gain { margin-top:4px; padding:2px 10px; border-radius:99px; font-size:12px; font-weight:800; color:var(--ok); border:1px solid rgba(185,240,138,.45); }
+.pm-reward-korv { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:10px; text-align:left; }
+.pm-reward-korv .pm-mascot-md { width:76px; height:76px; }
+.pm-reward-korv .pm-korv-bubble { margin:0; }
+.pm-reward-korv .pm-korv-bubble::after { left:-7px; right:auto; transform:rotate(-135deg); }
+
+.pm-levelup-overlay { align-items:stretch; padding:0; background:rgba(5,8,12,.94); }
+.pm-levelup-overlay .pm-modal { width:100%; max-width:none; min-height:100%; margin:0; border-radius:0; border:0; display:flex; flex-direction:column; justify-content:center;
+  text-align:center; padding:28px 20px calc(24px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg, rgba(11,15,18,.15), rgba(11,15,18,.85) 60%, var(--bg)), url(../assets/ascent/hero-fin.webp) center top / cover no-repeat, var(--bg); }
+.pm-levelup-overlay .pm-modal-title { order:1; margin-top:-6px; font-size:clamp(28px,8vw,36px); margin:0 0 14px; letter-spacing:-.03em; }
+.pm-levelup-overlay .pm-levelup { display:contents; }
+.pm-levelup-overlay .pm-levelup-korv { order:0; align-self:center; }
+.pm-levelup-overlay .pm-levelup-hex { order:2; align-self:center; margin-bottom:14px; }
+.pm-levelup-overlay .pm-levelup-lines { order:3; align-self:center; }
+.pm-levelup-overlay .pm-modal-actions { order:4; margin-top:20px; }
+.pm-levelup-overlay .pm-modal-btn.pm-primary { width:100%; min-height:58px; font-size:18px; font-weight:850; }
+.pm-levelup-korv { width:170px; height:212px; filter:drop-shadow(0 0 22px rgba(20,230,199,.28)); }
+.pm-levelup-korv img { width:100%; height:100%; object-fit:contain; -webkit-mask-image:linear-gradient(180deg, #000 72%, transparent); mask-image:linear-gradient(180deg, #000 72%, transparent); }
+.pm-levelup-hex { position:relative; filter:drop-shadow(0 0 18px rgba(20,230,199,.35)); }
+.pm-levelup-lines { list-style:none; margin:0; padding:0; display:grid; gap:8px; width:100%; max-width:420px; text-align:left; }
+.pm-levelup-lines li { display:flex; align-items:center; gap:12px; min-height:48px; padding:8px 14px; border-radius:12px; border:1px solid var(--ascent-rim, var(--stroke)); background:rgba(26,33,39,.85); font-size:15px; }
+.pm-levelup-ico { flex:none; width:22px; text-align:center; color:var(--turq); font-weight:900; }
+@media (prefers-reduced-motion: reduce) { .pm-levelup-overlay * { animation:none !important; transition:none !important; } }
+.pm-reward-korv .pm-korv-bubble { grid-column:2; grid-row:1; }
+
+/* ASCENT — barres d'XP : lisibles, sans mouvement de mise en page. */
+.pm-xp-track {
+  height:14px;
+  border:1px solid rgba(20,230,199,.24);
+  border-radius:999px;
+  background:linear-gradient(180deg,#101a1e,#2a353a);
+  box-shadow:inset 0 2px 3px rgba(0,0,0,.35);
+  isolation:isolate;
+}
+.pm-xp-track::after {
+  content:'';
+  position:absolute; inset:0; z-index:2;
+  border-radius:inherit;
+  background:linear-gradient(90deg,rgba(255,255,255,.12) 1px,transparent 1px);
+  background-size:25% 100%;
+  pointer-events:none;
+}
+.pm-xp-fill {
+  position:relative; z-index:1; min-height:100%;
+  background:linear-gradient(90deg,#14e6c7 4%,#37e8bd 62%,#b9f08a 100%);
+  box-shadow:0 0 10px rgba(20,230,199,.23);
+  transition:none; /* largeur fournie par js/jeu-ui.js, jamais animee */
+}
+.pm-xp-fill::after {
+  content:''; position:absolute; inset:0 0 auto; height:40%;
+  border-radius:inherit; background:rgba(255,255,255,.16);
+  pointer-events:none;
+}
+.pm-level-card .pm-xp-track { margin:1px 0 2px; }
+.pm-level-xp,.pm-reward-xpcount { font-variant-numeric:tabular-nums; }
+.pm-level-xp { color:var(--text); font-weight:740; letter-spacing:.01em; }
+.pm-level-next { color:var(--muted); font-variant-numeric:tabular-nums; }
+.pm-reward .pm-xp-track { height:16px; }
+.pm-reward .pm-xp-fill {
+  background:linear-gradient(90deg,#14e6c7,#5ae9ba 64%,#b9f08a);
+}
+.pm-reward-xpcount { font-weight:780; color:var(--text); }
+
+/* Effet bref, a activer uniquement si animations=true via l'integration JS.
+   Sans classe pm-xp-celebrate, la barre reste strictement statique. */
+.pm-xp-track.pm-xp-celebrate .pm-xp-fill {
+  animation:ascent-xp-emphasis 380ms var(--ease-out, ease-out) both;
+}
+@keyframes ascent-xp-emphasis {
+  from { opacity:.75; transform:scaleX(.975); }
+  to { opacity:1; transform:scaleX(1); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .pm-xp-track.pm-xp-celebrate .pm-xp-fill { animation:none!important; }
+}
+
+/* intégration PR #48 : la barre d'XP se remplit depuis la gauche (js/effets.js anime scaleX) */
+.pm-xp-fill { transform-origin:left center; }
+
+/* ASCENT · page Progression et guide de Korv */
+.pm-panel-title-ico { display:flex; align-items:center; gap:9px; }
+.pm-panel-title-ico .pm-ico { width:22px; height:22px; color:var(--turq); }
+.pm-stats .pm-stat { border-radius:14px; }
+.pm-stats .pm-stat strong { font-size:22px; }
+.pm-korv-guide > summary { display:flex; align-items:center; gap:12px; list-style:none; cursor:pointer; min-height:56px; }
+.pm-korv-guide > summary::-webkit-details-marker { display:none; }
+.pm-korv-guide-img { flex:none; width:56px; height:56px; border-radius:14px; object-fit:cover; object-position:70% 20%; border:1px solid var(--ascent-rim, var(--stroke)); }
+.pm-korv-guide-title { display:grid; gap:2px; min-width:0; }
+.pm-korv-guide-title strong { font-size:17px; }
+.pm-korv-guide[open] > summary { margin-bottom:12px; }
+.pm-korv-guide h4 { margin:16px 0 6px; font-size:13px; color:var(--turq); text-transform:uppercase; letter-spacing:.06em; }
+
+/* V1-DEV1 · « Outils de test » (profil Démo uniquement) et aperçu des récompenses */
+.pm-demo-tools > summary { display:flex; flex-direction:column; gap:2px; min-height:48px; justify-content:center; cursor:pointer; list-style:none; }
+.pm-demo-tools > summary::-webkit-details-marker { display:none; }
+.pm-demo-tools[open] > summary { margin-bottom:10px; }
+.pm-demo-group { display:grid; gap:10px; padding:14px 0; border-top:1px solid var(--ascent-rim, var(--stroke)); }
+.pm-demo-group h4 { margin:0; font-size:13px; color:var(--turq); text-transform:uppercase; letter-spacing:.06em; }
+.pm-demo-group p { margin:0; }
+.pm-demo-field { display:grid; gap:5px; }
+.pm-demo-label { font-size:13px; font-weight:750; color:var(--muted); }
+.pm-demo-field .pm-select { width:100%; min-height:48px; font-size:16px; }
+.pm-demo-check { min-height:44px; display:flex; align-items:center; gap:8px; }
+.pm-demo-note { font-size:13px; }
+.pm-demo-preview .pm-modal { max-height:calc(100dvh - 24px); overflow-y:auto; }
+.pm-demo-preview-card { margin:0; }
+.pm-demo-preview-note { margin:0 0 10px; font-size:12px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--turq); text-align:center; }
+.pm-demo-medal-preview { display:grid; place-items:center; padding:6px 0 12px; }

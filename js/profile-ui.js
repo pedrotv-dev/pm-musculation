@@ -10,6 +10,8 @@ import { buildBilan } from './bilan.js';
 import { mondayOf } from './programs.js';
 import { addDays } from './stats.js';
 import { loadCatalog } from './catalog.js';
+import { demoToolsSection } from './demo-tools.js';
+import { korvGuide } from './jeu-ui.js';
 import { isRealProfile as real } from './profiles.js';
 import { APP_VERSION } from './version.js';
 import { getUiSettings, setUiSettings } from './ui-settings.js';
@@ -84,10 +86,10 @@ function usageSection(profile, ui) {
     return wrap;
   };
   return section('Pendant une séance', 'Réglages d’usage, propres à ce profil.',
-    row('Garder l’écran allumé', isWakeLockSupported()
-      ? 'L’écran ne s’éteint pas tant que la séance est en cours (libéré en pause et à la fin).'
+    row('Garder l’écran allumé pendant l’entraînement', isWakeLockSupported()
+      ? 'L’écran ne s’éteint pas tant que la séance est en cours sur l’écran de séance (libéré en pause, à la fin et quand l’application passe en arrière-plan). Tant que l’écran reste allumé, aucun son n’est joué pendant le repos : ta musique n’est pas baissée.'
       : 'Non disponible sur ce navigateur : l’écran s’éteindra selon les réglages du téléphone.', 'keepAwake', isWakeLockSupported()),
-    row('Alerte de fin de repos, écran verrouillé', 'Joue un son système (silence, puis trois bips à la fin du repos) pour te prévenir même si le téléphone est verrouillé ou l’application en arrière-plan. Suit le volume « médias » ; peut mettre en pause la musique d’une autre application : décoche si ça te gêne.', 'lockAlert'),
+    row('Alerte de fin de repos, écran verrouillé', 'Si l’écran peut se verrouiller, joue un son système pendant le repos (silence, puis trois bips à la fin) pour te prévenir même téléphone verrouillé. Suit le volume « médias » ; pendant ce son, le téléphone peut baisser ou mettre en pause la musique d’une autre application : garde l’écran allumé (option ci-dessus) ou décoche si ça te gêne.', 'lockAlert'),
     row('Bouton retour du téléphone', 'Revient d’un niveau dans l’application (ferme un dialogue, retourne à la machine, à l’accueil…) au lieu de la quitter. À l’accueil, « retour » quitte normalement.', 'backButton'));
 }
 
@@ -129,8 +131,8 @@ function backupSection(profile) {
     try {
       const [rows, cat] = await Promise.all([listWorkouts(profile), loadCatalog()]);
       const names = new Map([...cat.byId].map(([id, m]) => [id, m.name]));
-      await saveTextFile('pm-musculation-' + profile + '-resultats.csv', resultsCsv(rows, names), 'text/csv');
-      status.textContent = rows.length + ' séance(s) exportée(s).';
+      const how = await saveTextFile('pm-musculation-' + profile + '-resultats.csv', resultsCsv(rows, names), 'text/csv');
+      status.textContent = how === 'cancelled' ? 'Export annulé.' : rows.length + ' séance(s) exportée(s).';
     } catch (e) { status.textContent = 'Échec : ' + (e.message || e); }
   });
   const file = el('input'); file.type = 'file'; file.accept = '.json,application/json'; file.setAttribute('aria-label', 'Fichier de sauvegarde à restaurer');
@@ -247,7 +249,9 @@ function localDataSection(profile) {
 
 function demoSection(profile) {
   if (profile === 'demo') {
+    const tools = demoToolsSection(); // « Outils de test » : profil Démo uniquement (revérifié à chaque action)
     return section('Mode démo', 'Données fictives, enregistrées uniquement en mémoire. Ne touche jamais aux profils de Pierre et Manon.',
+      ...(tools ? [tools] : []),
       btn('Réinitialiser la démo', 'pm-secondary', async () => {
         if (!(await confirmDialog('Remettre la démo dans son état de départ ?', { ok: 'Réinitialiser' }))) return;
         resetDemoWeights(); await stopRest('demo').catch(() => {}); await resetDemoWorkouts();
@@ -273,7 +277,7 @@ async function render() {
   const head = section('', '');
   head.replaceChildren(el('h3', '', PEOPLE[profile].name), el('p', 'pm-muted', profile === 'demo' ? 'Mode démo — données fictives' : PEOPLE[profile].goal.replace(/^./, c => c.toUpperCase())),
     btn('Changer de profil', 'pm-secondary', () => document.getElementById('switch-profile')?.click()));
-  add(page, el('div', 'eyebrow', 'Mon espace'), el('h2', '', 'Profil'), head, chronoSection(profile, config), usageSection(profile, ui), effectsSection(profile, ui), backupSection(profile), bilan, localDataSection(profile), demoSection(profile));
+  add(page, el('div', 'eyebrow', 'Mon espace'), el('h2', '', 'Profil'), head, korvGuide(profile), chronoSection(profile, config), usageSection(profile, ui), effectsSection(profile, ui), backupSection(profile), bilan, localDataSection(profile), demoSection(profile));
   page.append(section('À propos', null, el('p', 'pm-muted', 'PM Musculation · version ' + APP_VERSION + ' · fonctionne hors connexion après installation.')));
   const update = btn('Rechercher une mise à jour', 'pm-secondary', async () => {
     try {

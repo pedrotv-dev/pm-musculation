@@ -9,7 +9,7 @@ page.setDefaultTimeout(10000);
 const screen = '#pm-workout-screen';
 await page.goto(srv.url);
 await page.click('[data-select-profile="pierre"]');
-await page.click('.nav-btn[data-go="programme"]'); await page.click('.pm-import summary');
+await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-import summary');
 await page.fill('.pm-textarea', JSON.stringify(exampleProgram())); await page.click('.pm-action-verify');
 await page.waitForSelector('.pm-action-save:not([disabled])'); await page.click('.pm-action-save'); await page.waitForSelector('.pm-start-workout');
 await page.click('.pm-day-tab:has-text("Mardi")'); await page.click('.pm-start-workout'); await page.waitForSelector(screen + ':not([hidden])');
@@ -26,7 +26,7 @@ await step('stockage plein : la série n’est PAS affichée comme enregistrée'
   assert.ok(await page.locator('.pm-toast').isVisible());
 });
 await step('brouillon refusé : message d’erreur, valeurs encore saisies à l’écran', async () => {
-  const kg = page.locator(screen + ' .pm-set-row').first().locator('input').first();
+  const kg = page.locator('#pm-current-kg');
   await kg.fill('51'); await kg.blur(); await page.waitForTimeout(500);
   assert.equal(await page.locator('#pm-save-state').getAttribute('data-state'), 'error');
 });
