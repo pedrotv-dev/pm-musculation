@@ -187,3 +187,22 @@ Anomalie corrigée : la section « Changements récents » de la demande ChatGPT
 - **Progression** : charges machine par machine et records d’abord, puis fréquence et volume, poids corporel, et
   « Succès et classements · N / 18 » replié en bas (niveau toujours visible en haut).
 - Tests : `tests/lot3.test.mjs`, `tests/e2e/v2-lot2-flow.mjs`, `tests/e2e/v2-lot3-flow.mjs`.
+
+## V2-UX-FINALISATION (branche locale `claude/v2-ux-final`, non publiée)
+
+- **Zéro profil précréé** : installation vierge → « Bienvenue sur PM Musculation » (« Créer mon profil », « Essayer le mode Démo »).
+  Pierre et Manon ne sont inscrits au registre que lors de la migration d'une ancienne installation qui contient des données
+  à leur nom ; ensuite le registre fait autorité. Profils proposés = fiches du registre uniquement (`isListedProfile`).
+- **Suppression de tout profil** (y compris Pierre et Manon) : refusée pendant une séance ouverte, données concernées
+  affichées, « Sauvegarder d'abord » proposé, double confirmation. Les identifiants historiques supprimés sont notés dans
+  `meta.deletedLegacy` (même transaction) : ils ne réapparaissent jamais, sauf restauration volontaire d'une sauvegarde.
+- **Inscription guidée** (`js/onboarding.js`, 7 étapes, une par écran, enregistrée à chaque étape, reprise possible) :
+  prénom, objectif, ancienneté (< 3 mois / 3-12 mois / > 1 an), intensité (Hard autorisée), jours (fréquence = jours,
+  réductible), durée max, étape facultative (« Passer cette étape » / « Terminer »). Modifiable ensuite dans Réglages.
+- **Premier Accueil** : 3 choix (séance libre, « Renseigner mes charges », « Préparer mon programme avec ChatGPT »), affiché
+  tant qu'il n'y a ni programme ni séance ; les trois fonctions restent accessibles ailleurs.
+- **« Mes charges »** (`js/declared-loads.js`, `js/declared-ui.js`) : groupes musculaires repliables, kg × reps facultatifs,
+  machine vide ignorée, partielle signalée sans bloquer. Jamais comptées comme séance. Référence = performance réelle la
+  plus récente (une déclaration plus récente reste proposée, jamais appliquée seule) ; records à part ; demande ChatGPT.
+- **Calibrage** : le cran « Essayer +/− » suit les charges déjà utilisées sur la machine (2,5 kg seulement sans historique).
+- Tests : `profiles-legacy-delete`, `profiles-v1-partial`, `declared-loads` (Node) ; `v2-final-flow`, `v2-lot2-flow` (Chromium).
