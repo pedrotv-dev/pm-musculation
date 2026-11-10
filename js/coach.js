@@ -122,10 +122,23 @@ export function weightLines(sport, weights, today) {
   return L;
 }
 
+/**
+ * Valeur lisible d'un changement mémorisé (V2-RECETTE-1) : l'historique stocke les valeurs brutes (« 3 », « debutant »,
+ * « 60 ») ; la demande les présente avec leur sens (« Normale », « Débutant… », « 60 min ») — y compris pour les
+ * entrées déjà enregistrées.
+ */
+function readable(field, v) {
+  if (v === undefined || v === null || v === '' || v === '—') return '—';
+  const lists = { level: LEVELS, intensity: INTENSITIES, fatigue: FATIGUE, sleep: SLEEP };
+  if (lists[field]) return (lists[field].find(([k]) => String(k) === String(v)) || [])[1] || v;
+  if (field === 'durationMin') return v + ' min';
+  if (field === 'targetWeightKg') return num(Number(v)) + ' kg';
+  return v;
+}
 function changesBlock(sport, gym, today) {
   const since = addDays(today, -60);
   const all = [...(sport.history || []), ...(gym.history || [])].filter(h => h.at.slice(0, 10) >= since).sort((a, b) => a.at.localeCompare(b.at));
-  return all.length ? all.map(h => '- ' + date(h.at) + ' — ' + h.label + ' : ' + h.from + ' → ' + h.to) : ['- aucun changement enregistré ces 60 derniers jours'];
+  return all.length ? all.map(h => '- ' + date(h.at) + ' — ' + h.label + ' : ' + readable(h.field, h.from) + ' → ' + readable(h.field, h.to)) : ['- aucun changement enregistré ces 60 derniers jours'];
 }
 
 function gymBlock(gym, catalog) {
