@@ -6,8 +6,8 @@ import { spawn } from 'node:child_process';
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const suites = {
-  core: ['pierre-flow', 'demo-flow', 'data-flow', 'offline-flow', 'update-flow', 'css-update-flow', 'isolation-flow', 'jeu-flow', 'nav-flow', 'retours-flow', 'rest-audio-race-flow', 'v2-profiles-flow', 'v2-tabs-flow', 'v2-workout-target-flow', 'v2-history-target-flow', 'v2-workout-draft-flow', 'v2-set-integrity-flow', 'v2-fix4-flow', 'v2-fix5-flow', 'v2-fix6-flow', 'v2-fix7-flow', 'v2-fix8-flow', 'v2-fix9-flow', 'v2-profile-create-flow', 'v2-qa9-flow', 'v2-complete-flow', 'v2-charges-flow'],
-  mobile: ['v1-mobile-flow', 'v1-m1-mobile-flow', 'history-edit-flow', 'v1-ux2-flow', 'demo-tools-flow', 'v1-ui1-flow'],
+  core: ['pierre-flow', 'demo-flow', 'data-flow', 'offline-flow', 'update-flow', 'css-update-flow', 'isolation-flow', 'jeu-flow', 'nav-flow', 'retours-flow', 'rest-audio-race-flow', 'v2-profiles-flow', 'v2-tabs-flow', 'v2-workout-target-flow', 'v2-history-target-flow', 'v2-workout-draft-flow', 'v2-set-integrity-flow', 'v2-fix4-flow', 'v2-fix5-flow', 'v2-fix6-flow', 'v2-fix7-flow', 'v2-fix8-flow', 'v2-fix9-flow', 'v2-profile-create-flow', 'v2-qa9-flow', 'v2-complete-flow', 'v2-charges-flow', 'v2-home-flow'],
+  mobile: ['v1-mobile-flow', 'v1-m1-mobile-flow', 'history-edit-flow', 'v1-ux2-flow', 'demo-tools-flow', 'v1-ui1-flow', 'v2-parcours-flow'],
   audits: ['audit-faults', 'audit-a11y', 'audit-ui'],
   offline: ['offline-flow']
 };

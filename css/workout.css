@@ -302,4 +302,6 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 /* V2 — dernière charge validée (indication discrète, proposition explicite) */
 .pm-last-load { margin-top:8px; display:flex; flex-direction:column; gap:6px; }
 .pm-last-load-text { margin:0; font-size:13px; color:var(--muted); }
-.pm-last-apply { min-height:44px; }
+.pm-last-load-info { margin:0; font-size:13px; }
+.pm-last-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.pm-last-apply { min-height:44px; flex:1 1 180px; }

@@ -1,7 +1,7 @@
 /**
  * PM Musculation V2 — configuration sportive et salle d'un profil (données locales).
- * - Profil sportif : objectifs, niveau, disponibilités, durée, mensurations, performances de départ, intensité (RPE),
- *   fatigue et récupération, mouvements à éviter, contraintes, préférences, santé (facultative). Aucun champ obligatoire.
+ * - Profil sportif : objectifs, niveau, disponibilités, durée maximale par séance, poids cible (facultatif), mensurations, performances de départ, intensité (RPE),
+ *   fatigue et récupération, mouvements à éviter, contraintes, préférences, santé (facultative). Aucun champ obligatoire pour enregistrer ; la demande ChatGPT exige les informations essentielles (missingEssentials).
  * - Salle : machines disponibles (null = toutes celles du catalogue) et machines à éviter.
  * Stockage : réglages du profil (`coach.profile`, `coach.gym`) → inclus dans les sauvegardes du profil, restaurables.
  * Démo : mémoire seulement. Chaque modification ajoute une entrée datée à `history` (changements d'objectifs, de
@@ -23,16 +23,18 @@ export const MEASURES = Object.freeze([['heightCm', 'Taille', 'cm', 100, 250], [
 export const TEXT_MAX = 600;
 const HISTORY_MAX = 40;
 /** Champs dont les changements sont historisés (cités dans le bilan). */
-const TRACKED = Object.freeze({ mainGoal: 'objectif principal', goals: 'objectifs secondaires', goalNote: 'précision des objectifs', level: 'niveau', frequency: 'séances par semaine', days: 'jours disponibles', durationMin: 'durée des séances', intensity: 'intensité souhaitée', fatigue: 'fatigue', sleep: 'sommeil', avoid: 'mouvements à éviter', constraints: 'contraintes', preferences: 'préférences' });
+const TRACKED = Object.freeze({ mainGoal: 'objectif principal', goals: 'objectifs secondaires', goalNote: 'précision des objectifs', level: 'niveau', frequency: 'séances par semaine', days: 'jours disponibles', durationMin: 'durée maximale par séance', targetWeightKg: 'poids cible', intensity: 'intensité souhaitée', fatigue: 'fatigue', sleep: 'sommeil', avoid: 'mouvements à éviter', constraints: 'contraintes', preferences: 'préférences' });
 
 export const EMPTY_SPORT = Object.freeze({
-  mainGoal: null, goals: [], goalNote: '', level: null, frequency: null, days: [], durationMin: null, measures: {}, initialPerf: '',
+  mainGoal: null, goals: [], goalNote: '', level: null, frequency: null, days: [], durationMin: null, targetWeightKg: null, measures: {}, initialPerf: '',
   intensity: null, fatigue: null, sleep: null, recoveryNote: '', avoid: '', constraints: '', preferences: '',
   health: '', healthInBilan: false, updatedAt: null, history: []
 });
 export const EMPTY_GYM = Object.freeze({ available: null, avoid: [], note: '', updatedAt: null, history: [] });
 
 const memory = new Map(); // démo (et repli) : profil -> { sport, gym }
+/** Profil sportif FICTIF du mode Démo (mémoire seulement) : complet, pour essayer la demande ChatGPT. */
+const DEMO_SPORT = Object.freeze({ mainGoal: 'Remise en forme', goals: ['Renforcement'], level: 'intermediaire', frequency: 3, days: ['lundi', 'mercredi', 'vendredi'], durationMin: 60 });
 const clone = v => JSON.parse(JSON.stringify(v));
 const text = (v, field) => {
   const s = String(v ?? '').replace(/\r\n?/g, '\n').trim();
@@ -45,6 +47,29 @@ const oneOf = (v, list, field) => {
   return v;
 };
 
+/** Poids corporel facultatif (kg, 20 à 400, une décimale) ; vide → null. */
+export function weightOrNull(v, field = 'Poids') {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(String(v).replace(',', '.'));
+  if (!Number.isFinite(n) || n < 20 || n > 400) throw new Error(field + ' : entre 20 et 400 kg.');
+  return Math.round(n * 10) / 10;
+}
+/** Objectif principal identifiable : choisi, ou le seul objectif coché (anciens profils). */
+export const mainGoalOf = sport => sport.mainGoal || (sport.goals.length === 1 ? sport.goals[0] : null);
+/**
+ * Informations essentielles pour préparer une demande de programme (V2, parcours) : objectif principal, niveau,
+ * séances par semaine, jours disponibles, durée maximale. Le reste (mensurations, santé, poids cible, performances de
+ * départ…) reste facultatif. @returns {{key:string, label:string}[]} informations manquantes (vide = complet)
+ */
+export function missingEssentials(sport) {
+  const out = [];
+  if (!mainGoalOf(sport)) out.push({ key: 'mainGoal', label: sport.goals.length ? 'objectif principal (choisis-le parmi tes objectifs)' : 'objectif principal' });
+  if (!sport.level) out.push({ key: 'level', label: 'niveau d’expérience' });
+  if (!sport.frequency) out.push({ key: 'frequency', label: 'nombre de séances par semaine' });
+  if (!sport.days.length) out.push({ key: 'days', label: 'jours disponibles' });
+  if (!sport.durationMin) out.push({ key: 'durationMin', label: 'durée maximale par séance' });
+  return out;
+}
 /** Normalise et vérifie un profil sportif complet. @throws {Error} message lisible (français). */
 export function sanitizeSport(raw = {}) {
   const r = raw && typeof raw === 'object' ? raw : {};
@@ -63,9 +88,10 @@ export function sanitizeSport(raw = {}) {
   if (out.frequency && out.days.length && out.days.length < out.frequency) throw new Error('Choisis au moins autant de jours disponibles que de séances par semaine (ou laisse les jours vides).');
   if (r.durationMin !== null && r.durationMin !== undefined && r.durationMin !== '') {
     const d = Number(r.durationMin);
-    if (!DURATIONS.includes(d)) throw new Error('Durée des séances non reconnue.');
+    if (!DURATIONS.includes(d)) throw new Error('Durée maximale par séance non reconnue.');
     out.durationMin = d;
   }
+  out.targetWeightKg = weightOrNull(r.targetWeightKg, 'Poids cible');
   out.measures = {};
   for (const [k, label, , min, max] of MEASURES) {
     const v = r.measures && r.measures[k];
@@ -113,7 +139,11 @@ export function diffSport(before, after, at) {
 }
 
 async function read(profileId, key, empty, sanitize) {
-  if (!isRealProfile(profileId)) { const m = memory.get(profileId + '|' + key); return m ? clone(m) : clone(empty); }
+  if (!isRealProfile(profileId)) {
+    const m = memory.get(profileId + '|' + key);
+    if (m) return clone(m);
+    return profileId === 'demo' && key === SPORT_KEY ? sanitize({ ...DEMO_SPORT }) : clone(empty);
+  }
   try { return sanitize(await getSetting(profileId, key, null) || {}); }
   catch (_) { return clone(empty); }
 }

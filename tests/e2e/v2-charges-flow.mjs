@@ -1,6 +1,7 @@
-// V2 — dernières charges validées (Chromium, vraie base IndexedDB, données FICTIVES) :
-// Leg Press prévue 45 kg → 80 kg × 12 validés → proposée à la séance suivante (même semaine, nouvelle semaine, séance
-// libre), séries non validées ignorées, aucune hausse automatique, objectif du programme conservé, profils isolés.
+// V2 — charges réelles mémorisées (Chromium, vraie base IndexedDB, données FICTIVES) :
+// Leg Press prévue 45 kg → 80 kg × 12 validés → 80 kg PRÉREMPLIS à la séance suivante (même semaine, nouvelle semaine,
+// séance libre), rien de validé, séries non validées ignorées, échauffement distinct, retour à la charge du programme,
+// programme et séances passées inchangés, profils isolés.
 // node tests/e2e/v2-charges-flow.mjs
 import assert from 'node:assert/strict';
 import { serve, launch, watch, step, summary } from './lib.mjs';
@@ -56,24 +57,30 @@ await step('première séance (lundi) : aucune référence ; 30 validés, 80 × 
   await finishPartial();
 });
 
-await step('même semaine (vendredi) : « Dernière charge validée : 80 kg × 12 », rien de changé sans décision', async () => {
+await step('même semaine (vendredi) : 80 kg PRÉREMPLIS sans bouton, « Dernière fois : 80 kg × 12 », rien de validé', async () => {
+  const monday = JSON.stringify(await db(async id => (await (await import('./js/workouts.js')).listWorkouts(id)).filter(s => s.status === 'partial'), alex));
   await start(alex, 'vendredi', week);
   await page.waitForSelector('.pm-last-load');
-  assert.match(await page.locator('.pm-last-load-text').innerText(), /Dernière charge validée : 80 kg × 12/);
-  assert.equal(await page.inputValue('#pm-current-kg'), '30', 'aucune hausse automatique');
-  assert.deepEqual(await legSets(alex), [[30, 12, false], [45, 12, false], [45, 12, false]]);
+  assert.match(await page.locator('.pm-last-load-text').innerText(), /^Dernière fois : 80 kg × 12/);
+  assert.match(await page.locator('.pm-last-load-info').innerText(), /préremplies d’après ta dernière séance/);
+  assert.deepEqual(await legSets(alex), [[45, 12, false], [80, 12, false], [80, 12, false]], 'travail 80 ; échauffement 45 (pas 80) ; 100 non validé ignoré');
+  assert.equal(await page.inputValue('#pm-current-kg'), '45');
+  const plan = await db(async id => (await (await import('./js/workouts.js')).getResumableWorkout(id)).activities[0].planned.sets.map(x => x.kg), alex);
+  assert.deepEqual(plan, [30, 45, 45], 'programme d’origine conservé');
+  assert.match(await page.locator('.pm-current-plan').innerText(), /Objectif du programme : 30 kg/);
+  const after = JSON.stringify(await db(async id => (await (await import('./js/workouts.js')).listWorkouts(id)).filter(s => s.status === 'partial'), alex));
+  assert.equal(after, monday, 'séance du lundi inchangée');
 });
 
-await step('« Reprendre mes dernières charges » : 80 sur les séries de travail, échauffement à 65 (écart prévu), programme inchangé', async () => {
+await step('« Revenir à la charge du programme » puis « Reprendre mes dernières charges » ; conservé après rechargement', async () => {
+  await page.click('button:has-text("Revenir à la charge du programme")');
+  await page.waitForFunction(async id => (await (await import('./js/workouts.js')).getResumableWorkout(id)).activities[0].sets[1].kg === 45, alex);
+  assert.deepEqual(await legSets(alex), [[30, 12, false], [45, 12, false], [45, 12, false]]);
   await page.click('button:has-text("Reprendre mes dernières charges")');
   await page.waitForFunction(async id => (await (await import('./js/workouts.js')).getResumableWorkout(id)).activities[0].sets[1].kg === 80, alex);
-  assert.deepEqual(await legSets(alex), [[65, 12, false], [80, 12, false], [80, 12, false]]);
-  assert.equal(await page.inputValue('#pm-current-kg'), '65');
-  const plan = await db(async id => (await (await import('./js/workouts.js')).getResumableWorkout(id)).activities[0].planned.sets.map(x => x.kg), alex);
-  assert.deepEqual(plan, [30, 45, 45], 'objectif du programme conservé');
-  assert.match(await page.locator('.pm-current-plan').innerText(), /Objectif du programme : 30 kg/);
+  assert.deepEqual(await legSets(alex), [[45, 12, false], [80, 12, false], [80, 12, false]]);
   await page.reload();
-  assert.deepEqual(await legSets(alex), [[65, 12, false], [80, 12, false], [80, 12, false]], 'après rechargement');
+  assert.deepEqual(await legSets(alex), [[45, 12, false], [80, 12, false], [80, 12, false]], 'après rechargement');
 });
 
 await step('modification manuelle toujours possible, puis séance terminée (60 et 82,5 validés)', async () => {
@@ -85,28 +92,30 @@ await step('modification manuelle toujours possible, puis séance terminée (60 
   await finishPartial();
 });
 
-await step('nouvelle semaine : la référence est la dernière séance (82,5 kg × 12) ; séries non validées ignorées', async () => {
+await step('nouvelle semaine : 82,5 kg préremplis (dernière séance), échauffement 45 ; seul l’échauffement validé', async () => {
   await start(alex, 'lundi', next);
   await page.waitForSelector('.pm-last-load');
-  assert.match(await page.locator('.pm-last-load-text').innerText(), /82,5 kg × 12/);
-  await page.click('button:has-text("Reprendre mes dernières charges")');
-  await page.waitForFunction(async id => (await (await import('./js/workouts.js')).getResumableWorkout(id)).activities[0].sets[2].kg === 82.5, alex);
-  assert.deepEqual(await legSets(alex), [[67.5, 12, false], [82.5, 12, false], [82.5, 12, false]]);
+  assert.match(await page.locator('.pm-last-load-text').innerText(), /^Dernière fois : 82,5 kg × 12/);
+  assert.deepEqual(await legSets(alex), [[45, 12, false], [82.5, 12, false], [82.5, 12, false]]);
   await validateCurrent();
   await finishPartial();
 });
 
-await step('séance libre : « Ajouter une machine » Leg Press préremplie avec la dernière charge validée (modifiable)', async () => {
+await step('séance libre : « Ajouter une machine » Leg Press préremplie avec la dernière charge de TRAVAIL validée (modifiable)', async () => {
   await page.evaluate(id => document.dispatchEvent(new CustomEvent('pm:start-workout', { detail: { profileId: id, free: true } })), alex);
   await page.waitForSelector(screen + ' button:has-text("Ajouter une machine")');
   await page.click(screen + ' button:has-text("Ajouter une machine")');
   await page.locator('.pm-modal select').selectOption('leg-press');
   const vals = await page.evaluate(() => [...document.querySelectorAll('.pm-modal .pm-input')].map(i => i.value));
-  assert.deepEqual(vals.slice(1, 3), ['67,5', '12'], 'dernière série validée : 67,5 kg × 12 (seule validée la dernière fois)');
-  assert.match(await page.locator('.pm-modal .pm-last-load-text').innerText(), /Dernière charge validée : 67,5 kg × 12/);
+  assert.deepEqual(vals.slice(1, 3), ['82,5', '12'], 'séance où seul l’échauffement a été validé : non retenue comme référence');
+  assert.match(await page.locator('.pm-modal .pm-last-load-text').innerText(), /Dernière fois : 82,5 kg × 12/);
   await page.locator('.pm-modal select').selectOption('arm-curl');
   assert.match(await page.locator('.pm-modal .pm-last-load-text').innerText(), /Jamais faite/);
-  await page.click('.pm-modal .pm-modal-btn:has-text("Annuler")');
+  await page.locator('.pm-modal select').selectOption('leg-press');
+  await page.locator('.pm-modal .pm-input').nth(1).fill('85');
+  await page.click('.pm-modal .pm-modal-btn:has-text("Ajouter")');
+  await page.waitForFunction(async id => (await (await import('./js/workouts.js')).getResumableWorkout(id))?.activities.some(a => a.machineId === 'leg-press' && a.sets[0].kg === 85 && !a.sets[0].done), alex);
+  await db(async id => { const W = await import('./js/workouts.js'); const s = await W.getResumableWorkout(id); await W.discardWorkout(id, s.id); }, alex);
 });
 
 await step('profils indépendants : un autre profil, même programme, aucune référence', async () => {

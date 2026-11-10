@@ -67,21 +67,56 @@ dans le dépôt) ; chaque cas est rejoué par `tests/e2e/v2-qa9-flow.mjs` (6 éc
 | Limite | Course audio « blob: » (son de repos) corrigée dans `main` par la PR #68, pas encore dans cette branche | CI `offline-flow` répété | intermittente, sans effet sur les données ; disparaît à l'intégration de `main` |
 | Limite | Pas de test sur iPhone / Safari réel ni lecteur d'écran | — | à vérifier sur téléphone |
 
-## Dernières charges validées et objectifs polyvalents (branche `claude/v2-charges-objectifs`)
+## V2-CONSOLIDATION (branche `claude/v2-charges-objectifs`)
 
-- **Dernière charge validée** — sur l'écran d'une machine : « Dernière charge validée : 80 kg × 12 · date »
-  (séries **validées** seulement, séance terminée la plus récente du profil, toutes semaines et séances libres).
-  Rien n'est appliqué automatiquement : le bouton « Reprendre mes dernières charges » met la dernière charge de
-  travail sur les séries non validées et conserve l'écart prévu des séries plus légères (échauffement, montée en
-  charge) ; jamais au-delà de la dernière charge validée. Les séries validées, le programme (« Objectif du programme »)
-  et les séances passées ne changent pas ; tout reste modifiable à la main. Appliqué dans la transaction : une série
-  modifiée entre-temps n'est pas écrasée (`setLoads`, SET_CONFLICT).
-  - Machines par côté : référence prise sur le même côté. Machines assistées (Dip / Chin Assist) : la référence est
-    l'assistance la plus faible validée (moins d'assistance = plus difficile).
-  - Séance libre : « Ajouter une machine » est prérempli avec la dernière charge validée de la machine choisie.
-  - Aucune nouvelle base : calcul à partir de l'historique des séances.
-- **Objectifs polyvalents** — profil sportif : objectif principal (facultatif) et objectifs secondaires. La demande
-  pour ChatGPT présente un « coach sportif » et une section « Orientation du programme » : repères propres à chaque
-  objectif (répartition musculation / cardio, séries, répétitions, repos, intensité), au niveau, et rappel d'adapter à
-  la fatigue, aux machines et au temps disponible ; une séance peut être principalement cardio. Les dernières séries
-  validées par machine et le dernier cardio réalisé (durée, réglages) sont inclus. Format JSON inchangé.
+### 1. Accueil et activation des programmes
+- Programme de la semaine en cours : séance du jour, sinon prochaine séance de la semaine, sinon « Rattraper une
+  séance » (première journée non faite) ou « Semaine terminée ».
+- Aucun programme cette semaine mais un programme FUTUR enregistré : « Programme prêt pour la semaine du 16 novembre »,
+  « Il s’activera automatiquement le lundi 16 novembre », bouton « Voir mon programme » (onglet Programme sur cette
+  semaine, marquée « À venir »). Distinct de « Aucun programme cette semaine ».
+- Activation le lundi sans écriture (le moteur lit la semaine courante) ; l’accueil se rafraîchit à l’import, au retour
+  sur l’application, au rechargement et à minuit si l’application reste ouverte.
+- Une séance d’une semaine future n’est jamais démarrée automatiquement ; depuis l’onglet Programme, confirmation.
+
+### 2. Charges réelles mémorisées
+- Au démarrage d’une séance du programme, les séries de travail sont **préremplies** avec la dernière charge de
+  travail **validée** sur la machine (profil courant ; même semaine, semaines suivantes, séances libres). Rien n’est
+  validé ; le programme reste dans `planned` (« Objectif du programme ») ; les séances passées ne changent pas.
+- Affichage discret : « Dernière fois : 80 kg × 12 · date », « Charges préremplies d’après ta dernière séance ».
+  Boutons « Revenir à la charge du programme » et « Reprendre mes dernières charges » (séries non validées seulement,
+  vérifiées dans la transaction : une saisie plus récente n’est jamais écrasée).
+- Règles (`js/last-loads.js`) : P = charge de travail prévue, L = dernière charge validée, R = charge prévue lors de
+  la séance de référence. P < L → L, sauf décharge prévue (P < R) conservée. P > L → progression prévue (P > R)
+  conservée ; sinon L (même objectif non atteint : prudent). Jamais de hausse décidée par l’application.
+- Échauffement : proportion prévue conservée, arrondie à une charge déjà utilisée sur la machine (jamais au-dessus).
+- Séance allégée identifiable (nom « décharge », « allégée », « deload », charge prévue plus basse que la séance
+  précédente) ou séance où seul l’échauffement a été validé : pas retenue comme référence s’il en existe une plus ancienne.
+- Par côté : référence du même côté. Dip / Chin Assist : kg = assistance (moins = plus difficile), comparaisons inversées.
+- Aucune nouvelle base : calcul sur l’historique ; décision mémorisée dans la séance (`activities[].prefill`).
+
+### 3. Poids actuel et poids cible
+- Profil sportif : « Poids actuel » (dernière mesure affichée ; une nouvelle valeur enregistre une pesée datée du jour
+  dans le système de pesées existant ; même jour → correction, pas de doublon) ; « Poids cible » facultatif, supprimable.
+- Progression : saisie inchangée ; une mesure identique (même date, même poids) n’est pas dupliquée.
+- Demande ChatGPT : dernier poids et date, évolution si plusieurs mesures, poids cible seulement s’il existe (présenté
+  comme objectif personnel, ni obligation médicale ni promesse de résultat).
+
+### 4. Coaching personnalisé
+- Coach sportif polyvalent ; 12 éléments à analyser ; démarche scientifique (sources fiables, aucune référence
+  inventée, établi / débattu, répartition libre, volume cohérent, progression raisonnable, hypothèses signalées).
+- Orientation par objectif : axes de raisonnement, **pas de grille** (aucune plage de répétitions, de repos ou de durée
+  imposée) ; perte de graisse : alimentation = levier principal, cardio = complément, repos courts non nécessaires.
+- Réponse : justification courte (3 à 5 lignes) puis un seul bloc JSON strict (`schemaVersion: 1`, schéma inchangé).
+  L’import accepte la réponse complète : seul l’unique bloc de code JSON est lu.
+
+### 5. Parcours
+- Ordre du Profil : Mon profil sportif → Mes machines → Préparer mon programme avec ChatGPT.
+- Informations essentielles : objectif principal (ou objectif unique d’un ancien profil), niveau, séances par semaine,
+  jours disponibles, durée maximale. Tant qu’il en manque : liste « Compléter : … » avec accès direct au champ ; sinon
+  « Générer ma demande ». Le reste est facultatif. Mode Démo : profil sportif fictif complet en mémoire.
+
+### 6. Durée maximale par séance
+- Réglage renommé « Durée maximale par séance » (30, 45, 60, 75, 90, 120 min, inchangés).
+- Demande : plafond, jamais à remplir ; durée réaliste (échauffement, séries, repos, transitions, cardio).
+- Import : « Durée estimée : environ N min (estimation) » par jour, avertissement si l’estimation dépasse la durée maximale.

@@ -287,7 +287,7 @@ async function render() {
   head.replaceChildren(el('h3', '', person(profile).name), el('p', 'pm-muted', profile === 'demo' ? 'Mode démo — données fictives' : person(profile).goal.replace(/^./, c => c.toUpperCase())),
     btn('Changer de profil', 'pm-secondary', () => document.getElementById('switch-profile')?.click()));
   const identity = identitySection(profile);
-  add(page, el('div', 'eyebrow', 'Mon espace'), el('h2', '', 'Profil'), head, korvGuide(profile), ...(identity ? [identity] : []), coachSection(profile), sport, gym, chronoSection(profile, config), usageSection(profile, ui), effectsSection(profile, ui), backupSection(profile), bilan, localDataSection(profile), demoSection(profile));
+  add(page, el('div', 'eyebrow', 'Mon espace'), el('h2', '', 'Profil'), head, korvGuide(profile), ...(identity ? [identity] : []), sport, gym, coachSection(profile), chronoSection(profile, config), usageSection(profile, ui), effectsSection(profile, ui), backupSection(profile), bilan, localDataSection(profile), demoSection(profile));
   page.append(section('À propos', null, el('p', 'pm-muted', 'PM Musculation · version ' + APP_VERSION + ' · fonctionne hors connexion après installation.')));
   const update = btn('Rechercher une mise à jour', 'pm-secondary', async () => {
     try {
