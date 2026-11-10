@@ -27,10 +27,10 @@ async function audit(label) {
 
 await page.goto(srv.url); await audit('choix profil');
 await page.click('[data-select-profile="demo"]'); await page.waitForSelector('.pm-home-card'); await audit('accueil');
-for (const [nav, label] of [['programme', 'programme'], ['historique', 'historique'], ['progres', 'progrès'], ['profil', 'profil']]) {
-  await page.click(`${nav === 'historique' ? '.pm-subtab' : '.nav-btn'}[data-go="${nav === 'programme' ? 'seances' : nav}"]`); await audit(label);
+for (const [nav, label] of [['programme', 'programme'], ['progres', 'progrès'], ['historique', 'historique'], ['profil', 'réglages']]) {
+  await page.click(`${{ historique: '.pm-subtab', profil: '.pm-settings-btn' }[nav] || '.nav-btn'}[data-go="${nav}"]`); await audit(label);
 }
-await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]'); await page.click('.pm-history-card'); await page.waitForSelector('.pm-hist-set'); await audit('historique détail');
+await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]'); await page.click('.pm-history-card'); await page.waitForSelector('.pm-hist-set'); await audit('historique détail');
 await page.click('.nav-btn[data-go="accueil"]');
 await page.click('.pm-home-card .pm-validate:has-text("Reprendre")'); await page.click('.pm-modal .pm-primary'); await page.waitForSelector('#pm-validate-set'); await audit('séance');
 await page.click('#pm-validate-set'); await page.waitForSelector('.pm-rest-ui:not([hidden])'); await audit('séance + repos');

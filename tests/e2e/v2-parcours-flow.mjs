@@ -15,7 +15,9 @@ const errors = watch(page);
 const db = (fn, arg) => page.evaluate(fn, arg);
 const coach = '.pm-coach-section';
 const openFold = async title => { const d = page.locator('details.pm-fold', { has: page.locator('summary', { hasText: new RegExp('^' + title + '$') }) }); if (!(await d.evaluate(x => x.open))) await d.locator('summary').click(); return d; };
-const goProfil = async () => { await page.click('.nav-btn[data-go="profil"]'); await page.waitForSelector(coach + ' h3'); };
+// LOT 1 : profil sportif et machines dans Réglages (⚙︎) ; « Préparer mon programme avec ChatGPT » dans l'onglet Programme
+const goProfil = async () => { await page.click('.pm-settings-btn[data-go="profil"]'); await page.waitForSelector('[data-page="profil"] .pm-sport-fold'); };
+const goCoach = async () => { await page.click('.nav-btn[data-go="programme"]'); await page.waitForSelector('[data-page="programme"] ' + coach + ' h3'); };
 const weights = id => db(async id => (await (await import('./js/weights.js')).listBodyWeights(id)).map(w => [w.date, w.kg]).sort(), id);
 const setting = (id, k) => db(async ([id, k]) => (await import('./storage.js')).getSetting(id, k, null), [id, k]);
 const saveSport = async f => { await f.locator('.pm-coach-status').evaluate(p => { p.dataset.state = ''; p.textContent = ''; }); await f.locator('button:has-text("Enregistrer mon profil sportif")').click(); await f.locator('.pm-coach-status[data-state="ok"]').waitFor(); };
@@ -32,13 +34,15 @@ await step('1 · mardi 10 novembre 2026 : création du profil « Alex fictif »'
 });
 
 await step('2 · profil incomplet : informations manquantes listées, génération absente', async () => {
-  await goProfil();
+  await goCoach();
   await page.waitForSelector(coach + ' .pm-coach-missing');
   const t = await page.locator(coach).innerText();
   for (const want of ['objectif principal', 'niveau d’expérience', 'nombre de séances par semaine', 'jours disponibles', 'durée maximale par séance']) assert.ok(t.includes('Compléter : ' + want), want);
   assert.equal(await page.locator(coach + ' button:has-text("Générer ma demande")').count(), 0);
-  const order = await page.evaluate(() => [...document.querySelectorAll('[data-page="profil"] .pm-profile-section')].map(x => x.querySelector('h3, summary')?.textContent));
-  assert.ok(order.indexOf('Mon profil sportif') < order.indexOf('Préparer mon programme avec ChatGPT') && order.indexOf('Mes machines') < order.indexOf('Préparer mon programme avec ChatGPT'), 'profil, machines, puis demande');
+  // LOT 1 : la demande est dans Programme, juste au-dessus de l'import ; profil sportif et machines dans Réglages
+  const order = await page.evaluate(() => [...document.querySelectorAll('[data-page="programme"] .pm-coach-section, [data-page="programme"] .pm-import')].map(x => x.className));
+  assert.ok(/pm-coach-section/.test(order[0]) && /pm-import/.test(order[1]), 'demande puis import, dans le même onglet');
+  assert.equal(await page.locator('[data-page="profil"] .pm-coach-section').count(), 0, 'plus de demande dans Réglages');
 });
 
 await step('3 · accès direct : « Compléter : niveau d’expérience » ouvre le profil sportif sur le champ', async () => {
@@ -68,7 +72,8 @@ await step('5 · profil complété (poids actuel 80,4, poids cible 75) → « G�
   assert.equal(await noOverflow(), true, 'sans débordement (390 px)');
   await saveSport(f);
   assert.match(await f.locator('.pm-coach-status').innerText(), /Pesée enregistrée : 80,4 kg/);
-  await page.waitForSelector(coach + ' button:has-text("Générer ma demande")');
+  await f.locator('.pm-to-coach').click(); // « Préparer mon programme avec ChatGPT → » : retour direct dans Programme
+  await page.waitForSelector('[data-page="programme"] ' + coach + ' button:has-text("Générer ma demande")');
   assert.equal(await page.locator(coach + ' .pm-coach-missing').count(), 0);
   const s = await setting(alex, 'coach.profile');
   assert.deepEqual([s.mainGoal, s.goals, s.level, s.frequency, s.days, s.durationMin, s.targetWeightKg, s.health], ['Force', ['Endurance'], 'debutant', 3, ['lundi', 'mardi', 'jeudi', 'samedi'], 120, 75, '']);
@@ -132,8 +137,9 @@ await step('9 · ancien profil (un seul objectif, sans objectif principal) : dem
   });
   await page.evaluate(id => document.dispatchEvent(new CustomEvent('pm:select-profile', { detail: { profile: id } })), old);
   await page.waitForFunction(id => document.documentElement.dataset.pmProfile === id, old);
-  await goProfil();
+  await goCoach();
   await page.waitForSelector(coach + ' button:has-text("Générer ma demande")');
+  await goProfil();
   assert.equal(await page.locator('#pm-sport-mainGoal').inputValue(), 'Endurance', 'objectif principal identifié');
   await page.evaluate(id => document.dispatchEvent(new CustomEvent('pm:select-profile', { detail: { profile: id } })), alex);
   await page.waitForFunction(id => document.documentElement.dataset.pmProfile === id, alex);
@@ -144,6 +150,7 @@ await step('10 · modification d’un profil existant (2 séances) : demande tou
   const f = await openFold('Mon profil sportif');
   await f.getByLabel('Séances par semaine').selectOption('2');
   await saveSport(f);
+  await goCoach();
   await page.click(coach + ' button:has-text("Générer ma demande")');
   await page.waitForFunction(() => document.querySelector('.pm-coach-out')?.value.includes('Séances souhaitées par semaine : 2'));
   const hist = (await setting(alex, 'coach.profile')).history.map(h => h.field);

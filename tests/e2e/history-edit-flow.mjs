@@ -47,7 +47,7 @@ try {
     }
     return window.__historySession.id;
   });
-  await page.click('.nav-btn[data-go="seances"]');
+  await page.click('.nav-btn[data-go="progres"]');
   await page.click('.pm-subtab[data-go="historique"]');
   await page.locator('.pm-history-card').click();
   await kg(0).waitFor();
@@ -160,7 +160,7 @@ try {
     await gate();
     await kg(0).fill('65'); await reps(0).focus();
     await page.click('#switch-profile'); await page.click('[data-select-profile="manon"]');
-    await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+    await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
     await page.locator('.pm-history-card').click();
     await kg(0).waitFor();
     await release(); await waitSet(0, 'kg', 65);
@@ -172,7 +172,7 @@ try {
   await step('rechargement et sauvegarde/restauration : corrections, dates et durée conservées', async () => {
     await page.reload();
     await page.click('#switch-profile'); await page.click('[data-select-profile="pierre"]');
-    await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+    await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
     await page.locator('.pm-history-card').click();
     assert.equal(await kg(0).inputValue(), '65'); assert.equal(await reps(0).inputValue(), '13');
     const result = await page.evaluate(async id => {

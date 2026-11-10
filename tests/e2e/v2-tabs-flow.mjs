@@ -59,7 +59,7 @@ await step('B : profil X créé, programme importé, séance démarrée, série 
   x = await create(pageB, 'X fictif', 'turquoise');
   await api(pageB, id => (import('./js/profiles.js')).then(P => P.selectProfile(id)), x);
   await pageB.waitForFunction(id => document.documentElement.dataset.pmProfile === id, x);
-  await pageB.click('.nav-btn[data-go="seances"]');
+  await pageB.click('.nav-btn[data-go="programme"]');
   await pageB.click('.pm-import summary');
   await pageB.fill('.pm-textarea', JSON.stringify(programFor(x)));
   await pageB.click('.pm-action-verify');

@@ -36,7 +36,7 @@ for (const [w, h] of SIZES) {
   await page.waitForSelector('.pm-home-card');
 
   await step(`C1 · historique : chaque réglage cardio a son libellé collé à son champ, sans chevauchement ni débordement (${w} px)`, async () => {
-    await page.click('.nav-btn[data-go="seances"]');
+    await page.click('.nav-btn[data-go="progres"]');
     await page.click('.pm-subtab[data-go="historique"]');
     await page.click('.pm-history-card');
     await page.waitForSelector('.pm-hist-metrics');

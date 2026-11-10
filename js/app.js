@@ -8,19 +8,23 @@ import { PROFILE_STORAGE_KEY, PROFILE_COLORS, NAME_MAX, isKnownProfile, isLegacy
 const root = document.documentElement;
 const $ = selector => document.querySelector(selector);
 const pages = [...document.querySelectorAll('[data-page]')];
-const navButtons = [...document.querySelectorAll('.nav-btn, .pm-subtab')];
-const SEANCES = ['programme', 'historique']; // l'onglet « Séances » regroupe ces deux pages
+const navButtons = [...document.querySelectorAll('.nav-btn, .pm-subtab, .pm-settings-btn')];
+// LOT 1 : trois onglets (Accueil, Programme, Progression) + Réglages (icône en haut, page « profil »).
+// L'onglet « Progression » regroupe la vue d'ensemble et l'historique des séances.
+const PROGRESSION = ['progres', 'historique'];
+const ALIASES = { seances: 'programme', reglages: 'profil' }; // anciens noms (liens internes, tests) : même page
 let currentProfile = null;
 
 function navigate(target) {
-  const page = target === 'seances' ? 'programme' : target;
+  const page = ALIASES[target] || target;
   if (!currentProfile || !pages.some(section => section.dataset.page === page)) return;
   pages.forEach(section => { section.hidden = section.dataset.page !== page; });
-  const inSeances = SEANCES.includes(page);
-  $('#seances-tabs').hidden = !inSeances;
+  const inProgression = PROGRESSION.includes(page);
+  $('#progress-tabs').hidden = !inProgression;
+  root.dataset.pmPage = page;
   navButtons.forEach(button => {
-    const go = button.dataset.go;
-    const active = go === page || (go === 'seances' && inSeances);
+    const go = ALIASES[button.dataset.go] || button.dataset.go;
+    const active = button.classList.contains('nav-btn') && go === 'progres' ? inProgression : go === page;
     button.classList.toggle('active', active);
     if (active) button.setAttribute('aria-current', 'page');
     else button.removeAttribute('aria-current');
@@ -47,6 +51,7 @@ function chooseProfile(profile, persist = true) {
   $('#app-pages').hidden = false;
   $('#bottom-nav').hidden = false;
   $('#switch-profile').hidden = false;
+  $('#open-settings').hidden = false;
   if (persist) {
     try { localStorage.setItem(PROFILE_STORAGE_KEY, profile); }
     catch (error) { console.warn('Impossible de mémoriser le profil sur cet appareil.', error); }
@@ -62,6 +67,7 @@ function changeProfile() {
   $('#app-pages').hidden = true;
   $('#bottom-nav').hidden = true;
   $('#switch-profile').hidden = true;
+  $('#open-settings').hidden = true;
   $('#screen-select').hidden = false;
   try { localStorage.removeItem(PROFILE_STORAGE_KEY); }
   catch (error) { console.warn('Impossible de modifier le profil mémorisé.', error); }

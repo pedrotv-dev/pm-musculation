@@ -26,7 +26,7 @@ console.log('V2-PROF1-FIX2 · charge de la série en cours');
 await step('préparation : séance fictive de Pierre, première machine, série 1 à 40 kg', async () => {
   await page.goto(srv.url);
   await page.click('[data-select-profile="pierre"]');
-  await page.click('.nav-btn[data-go="seances"]');
+  await page.click('.nav-btn[data-go="programme"]');
   await page.click('.pm-import summary');
   await page.fill('.pm-textarea', JSON.stringify(exampleProgram()));
   await page.click('.pm-action-verify');

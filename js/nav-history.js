@@ -6,7 +6,7 @@
  *
  * Technique : une SEULE entrée « garde » est ajoutée à l'historique du navigateur tant qu'il y a quelque chose à
  * fermer (et retirée sinon). « Retour » consomme la garde (événement popstate), on exécute le niveau, puis on la remet
- * s'il reste un niveau. Réglable par profil (Profil → Pendant une séance) ; désactivé = comportement normal du navigateur.
+ * s'il reste un niveau. Réglable par profil (Réglages → Pendant une séance) ; désactivé = comportement normal du navigateur.
  */
 import { closeTopDialog } from './dom.js';
 import { getUiSettings, peekUiSettings } from './ui-settings.js';
@@ -25,8 +25,9 @@ const workoutVisible = () => { const w = document.getElementById('pm-workout-scr
 const historyDetail = () => { const p = document.querySelector('[data-page="historique"]'); return !!p && !p.hidden && p.dataset.view === 'detail'; };
 const otherTab = () => {
   const pages = document.getElementById('app-pages');
-  const active = document.querySelector('.nav-btn.active');
-  return !!pages && !pages.hidden && !!active && active.dataset.go !== 'accueil';
+  // LOT 1 : page affichée (fixée par app.js) — Réglages compris, qui n'a pas de bouton dans la barre du bas
+  const page = root.dataset.pmPage;
+  return !!pages && !pages.hidden && !!page && page !== 'accueil';
 };
 /** Y a-t-il un niveau à fermer ? (à l'accueil, ou sur le choix du profil : non → « retour » quitte l'application) */
 function hasLayer() {

@@ -12,6 +12,7 @@ import { getProgram } from '../storage.js';
 import { getDemoProgram } from './workouts.js';
 import { el as node, add, clear as wipe, btn } from './dom.js';
 import { loadCatalog } from './catalog.js';
+import { coachSection } from './coach-ui.js';
 import { isPerSide } from './machine-rules.js';
 import { metricsText } from './cardio.js';
 import { PROFILE_STORAGE_KEY, isKnownProfile, isRealProfile, getProfileInfo } from './profiles.js';
@@ -176,9 +177,15 @@ select.addEventListener('change', () => {
 weekField.append(select);
 add(weekHeader, weekInfo, weekField);
 add(infoCard, weekHeader, historyView);
+// LOT 1 : « Préparer mon programme avec ChatGPT » (auparavant dans Profil) est ici, juste au-dessus de l'import :
+// préparer, copier, coller et importer se font dans le même onglet.
+const coachSlot = node('div', 'pm-coach-slot');
+const drawCoach = () => { coachSlot.replaceChildren(...(isKnownProfile(state.profile) ? [coachSection(state.profile)] : [])); };
 parent.replaceChildren(node('div', 'eyebrow', 'Entraînement'), node('h2', '', 'Programme'),
   node('p', 'description', 'Choisis une journée pour consulter les exercices, charges et répétitions.'),
-  infoCard, importCard);
+  infoCard, coachSlot, importCard);
+// À chaque ouverture de l'onglet : semaines proposées à jour (la demande déjà générée est conservée)
+document.addEventListener('click', e => { if (e.target.closest?.('.nav-btn[data-go="programme"]') && !parent.hidden) drawCoach(); });
 
 function resetPreview() {
   ++state.previewVersion;
@@ -492,6 +499,7 @@ async function setProfile(profileId) {
   resetPreview();
   wipe(select); select.disabled = true;
   wipe(historyView); importCard.hidden = true;
+  drawCoach();
 
   if (!recognized) return;
   importCard.hidden = profileId === 'demo';

@@ -43,7 +43,7 @@ for (const [w, h] of SIZES) {
     return out;
   });
   const openTools = async () => {
-    await page.click('.nav-btn[data-go="profil"]');
+    await page.click('.pm-settings-btn[data-go="profil"]');
     await page.waitForSelector(tools);
     if (!(await page.locator(tools).evaluate(d => d.open))) await page.click(tools + ' > summary');
   };
@@ -76,7 +76,7 @@ for (const [w, h] of SIZES) {
   await step(`isolation : aucun « Outils de test » pour Pierre ni Manon (${w} px)`, async () => {
     for (const p of ['pierre', 'manon']) {
       await page.click('[data-select-profile="' + p + '"]');
-      await page.click('.nav-btn[data-go="profil"]');
+      await page.click('.pm-settings-btn[data-go="profil"]');
       await page.waitForSelector('[data-page="profil"] .pm-profile-section');
       assert.equal(await page.locator(tools).count(), 0, p);
       assert.equal(await page.locator('text=Outils de test').count(), 0, p);

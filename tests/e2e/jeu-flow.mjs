@@ -45,7 +45,7 @@ await step('démo : Progrès = succès, classements personnels, « comment gagne
   assert.match(await dtext('.pm-how'), /Série validée/);
 });
 await step('Profil : section Ambiance (animations, bruitages, jingles) activables', async () => {
-  await demo.click('.nav-btn[data-go="profil"]');
+  await demo.click('.pm-settings-btn[data-go="profil"]');
   await demo.waitForSelector('text=Ambiance');
   const boxes = demo.locator('[data-page="profil"] .pm-profile-option:has-text("Animations") input, [data-page="profil"] .pm-profile-option:has-text("Petits bruitages") input, [data-page="profil"] .pm-profile-option:has-text("Jingles") input');
   assert.equal(await boxes.count(), 3);
@@ -61,7 +61,7 @@ await step('Pierre (vide) : niveau 1, « Recrue », aucun succès', async () => 
   assert.match(t, /Niveau 1/); assert.match(t, /Recrue/); assert.match(t, /0 \/ 200 XP/);
 });
 await step('séance de Pierre : récompense (XP, succès Premier pas) et événements d’effets', async () => {
-  await page.click('.nav-btn[data-go="seances"]');
+  await page.click('.nav-btn[data-go="programme"]');
   await page.click('.pm-import summary');
   await page.fill('.pm-textarea', JSON.stringify(program()));
   await page.click('.pm-action-verify');
@@ -103,7 +103,7 @@ await step('passage de niveau : plein écran « Niveau supérieur » avec Korv, 
   const prog = { schemaVersion: 1, weekStart: mondayISO(new Date(2026, 10, 10)), programs: { manon: { days: ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'].map(id => ({
     id, name: 'Jambes', activities: [{ type: 'strength', machineId: 'leg-press', shared: true, restSeconds: 30, sets: Array.from({ length: 15 }, () => ({ kg: 40, reps: 12 })) }] })) } } };
   await p.goto(srv.url); await p.click('[data-select-profile="manon"]');
-  await p.click('.nav-btn[data-go="seances"]'); await p.click('.pm-import summary');
+  await p.click('.nav-btn[data-go="programme"]'); await p.click('.pm-import summary');
   await p.fill('.pm-textarea', JSON.stringify(prog)); await p.click('.pm-action-verify');
   await p.waitForSelector('.pm-action-save:not([disabled])'); await p.click('.pm-action-save');
   await p.click('.pm-start-workout'); await p.waitForSelector('#pm-validate-set');

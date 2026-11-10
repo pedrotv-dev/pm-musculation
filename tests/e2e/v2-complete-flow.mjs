@@ -19,7 +19,9 @@ const db = (fn, arg) => page.evaluate(fn, arg);
 const active = () => page.evaluate(() => document.documentElement.dataset.pmProfile);
 const noOverflow = () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
 const openFold = async title => { const d = page.locator('details.pm-fold', { has: page.locator('summary', { hasText: new RegExp('^' + title + '$') }) }); if (!(await d.evaluate(x => x.open))) await d.locator('summary').click(); return d; };
-const goProfil = async () => { await page.click('.nav-btn[data-go="profil"]'); await page.waitForSelector('h3:has-text("Préparer mon programme avec ChatGPT")'); };
+// LOT 1 : profil sportif et machines dans Réglages (⚙︎) ; « Préparer mon programme avec ChatGPT » dans l'onglet Programme
+const goProfil = async () => { await page.click('.pm-settings-btn[data-go="profil"]'); await page.waitForSelector('[data-page="profil"] .pm-sport-fold'); };
+const goCoach = async () => { await page.click('.nav-btn[data-go="programme"]'); await page.waitForSelector('[data-page="programme"] h3:has-text("Préparer mon programme avec ChatGPT")'); };
 const toSelect = async () => { await page.click('#switch-profile'); await page.waitForSelector('#screen-select:not([hidden])'); };
 const settingOf = (profile, key) => db(async ([p, k]) => (await import('./storage.js')).getSetting(p, k, null), [profile, key]);
 let alex, today, week, programJson, backupText;
@@ -92,6 +94,7 @@ await step('4 · machines : Leg Press indisponible, Calf Press à éviter', asyn
 });
 
 await step('5 · demande pour ChatGPT : profil, machines, disponibilités, format JSON ; aucune donnée inventée', async () => {
+  await goCoach();
   await page.getByLabel('Semaine à préparer').selectOption(week);
   await page.click('button:has-text("Générer ma demande")');
   await page.waitForSelector('.pm-coach-out:not([hidden])');
@@ -148,13 +151,13 @@ await step('8-10 · séance : échauffement, séries validées, fin de séance a
 await step('11 · historique : la séance apparaît', async () => {
   await page.evaluate(() => document.dispatchEvent(new CustomEvent('pm:back-workout')));
   await page.waitForSelector(screen + '[hidden]', { state: 'attached' });
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
   await page.waitForSelector('.pm-history-card');
   assert.match(await page.locator('.pm-history-card').first().innerText(), /Haut du corps fictif/);
 });
 
 await step('12 · nouveau bilan : la séance, la charge et le ressenti réels sont repris', async () => {
-  await goProfil();
+  await goCoach();
   await page.getByLabel('Semaine à préparer').selectOption(await db(async w => (await import('./js/stats.js')).addDays(w, 7), week));
   await page.click('button:has-text("Générer ma demande")');
   await page.waitForSelector('.pm-coach-out:not([hidden])');
@@ -167,7 +170,7 @@ await step('12 · nouveau bilan : la séance, la charge et le ressenti réels so
 await step('13 · modification du programme de la semaine : remplacement seulement après confirmation', async () => {
   const dayId = DAYS[(new Date().getDay() + 6) % 7];
   const updated = program(alex, week, dayId, { dayName: 'Haut du corps modifié', withUnavailable: false });
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="programme"]');
+  await page.click('.nav-btn[data-go="programme"]');
   if (!(await page.locator('.pm-import[open]').count())) await page.click('.pm-import summary');
   await page.fill('.pm-textarea', JSON.stringify(updated));
   await page.click('.pm-action-verify');
@@ -258,7 +261,7 @@ await step('second profil « Sam fictif » : indépendant (vide), séance libre,
 await step('démo : fonctionne, rien en base ; profil sportif Démo en mémoire seulement', async () => {
   await page.evaluate(() => document.dispatchEvent(new CustomEvent('pm:select-profile', { detail: { profile: 'demo' } })));
   await page.waitForFunction(() => document.documentElement.dataset.pmProfile === 'demo');
-  await goProfil();
+  await goCoach();
   await page.click('button:has-text("Générer ma demande")');
   await page.waitForSelector('.pm-coach-out:not([hidden])');
   assert.equal(await db(async () => (await import('./storage.js')).countProfileRows(['demo'])), 0);

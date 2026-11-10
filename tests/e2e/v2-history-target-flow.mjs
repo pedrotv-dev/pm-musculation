@@ -39,7 +39,7 @@ const sessionOf = (profile, id) => page.evaluate(async ([profile, id]) => {
 }, [profile, id]);
 const openDetail = async profile => {
   await page.click(`[data-select-profile="${profile}"]`);
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
   await page.locator('.pm-history-card').first().click();
   await page.waitForSelector('.pm-hist-set input');
 };
@@ -85,7 +85,7 @@ await step('retrait d’une série confirmé après passage à Manon et ouvertur
   await page.waitForSelector('.pm-modal');
   await switchTo('manon');
   await page.waitForFunction(() => document.documentElement.dataset.pmProfile === 'manon');
-  await page.evaluate(() => { document.querySelector('.nav-btn[data-go="seances"]').click(); document.querySelector('.pm-subtab[data-go="historique"]').click(); });
+  await page.evaluate(() => { document.querySelector('.nav-btn[data-go="progres"]').click(); document.querySelector('.pm-subtab[data-go="historique"]').click(); });
   await page.waitForSelector('.pm-history-card');
   await page.evaluate(() => document.querySelector('.pm-history-card').click()); // détail de Manon, même identifiant
   await page.waitForSelector('.pm-hist-set input');
@@ -106,7 +106,7 @@ await step('changement de SÉANCE (même profil) pendant la confirmation d’un 
   }, mondayISO());
   const second0 = await sessionOf('pierre', second);
   await page.click('[data-select-profile="pierre"]');
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
   await page.waitForSelector('.pm-history-card');
   const cards = await page.locator('.pm-history-card').count();
   assert.equal(cards, 2);
@@ -158,13 +158,13 @@ await step('FIX2 · changement de profil pendant un chargement retardé : l’an
   await fresh();
   assert.match(pierre0, /^40x9,/);
   await page.click('[data-select-profile="pierre"]');
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
   await page.waitForSelector('.pm-history-card');
   await page.evaluate(() => { window.__oldCard = document.querySelector('.pm-history-card'); }); // référence à l'ancienne carte
   await holdSessions();                                        // le prochain chargement de l'historique est retardé
   await switchTo('manon');
   await page.waitForFunction(() => document.documentElement.dataset.pmProfile === 'manon');
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]'); // chargement de Manon : en attente
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]'); // chargement de Manon : en attente
   const visibleOldCards = await page.locator('[data-page="historique"] .pm-history-card').count();
   // clic sur l'ancienne carte (affichée ou non) AVANT la fin du chargement, puis correction 40 → 55
   const opened = await page.evaluate(() => {
@@ -187,13 +187,13 @@ await step('FIX2 · changement de profil pendant un chargement retardé : l’an
 await step('FIX2 · chargements terminés dans le désordre (Pierre → Manon → Pierre) : liste et corrections de Pierre seulement', async () => {
   await fresh();
   await page.click('[data-select-profile="pierre"]');
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
   await page.waitForSelector('.pm-history-card');
   await holdSessions();
   await switchTo('manon');
-  await page.evaluate(() => { document.querySelector('.nav-btn[data-go="seances"]').click(); document.querySelector('.pm-subtab[data-go="historique"]').click(); });
+  await page.evaluate(() => { document.querySelector('.nav-btn[data-go="progres"]').click(); document.querySelector('.pm-subtab[data-go="historique"]').click(); });
   await switchTo('pierre');
-  await page.evaluate(() => { document.querySelector('.nav-btn[data-go="seances"]').click(); document.querySelector('.pm-subtab[data-go="historique"]').click(); });
+  await page.evaluate(() => { document.querySelector('.nav-btn[data-go="progres"]').click(); document.querySelector('.pm-subtab[data-go="historique"]').click(); });
   await release();
   await page.waitForSelector('[data-page="historique"] .pm-history-card');
   await page.locator('.pm-history-card').first().click();
