@@ -1,5 +1,5 @@
 // Environnement d'aperçu : isolation des données de production, garde-fous de construction, assemblage du site : node --test
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -12,7 +12,12 @@ import { buildPreview, checkPreviewSource, PreviewError } from '../tools/build-p
 import { syncProd, syncPreview, clearPreview } from '../tools/assemble-site.mjs';
 
 const ROOT = path.resolve(new URL('..', import.meta.url).pathname);
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'pm-apercu-'));
+// Dossiers temporaires créés par CE fichier, supprimés à la fin (même en cas d'échec) : seulement ceux-là, jamais /tmp en bloc.
+const created = [];
+const tmp = () => { const d = fs.mkdtempSync(path.join(os.tmpdir(), 'pm-apercu-')); created.push(d); return d; };
+const cleanup = () => { for (const d of created.splice(0)) { try { fs.rmSync(d, { recursive: true, force: true }); } catch (_) { /* déjà supprimé */ } } };
+after(cleanup);
+process.on('exit', cleanup);
 const SKIP = new Set(['.git', '.github', 'node_modules']);
 const files = (dir, base = dir, out = []) => {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {

@@ -1,7 +1,7 @@
 // Retours du test réel : séries par côté, réglages de cardio, Escalier, deux Hip Abduction, son de fin de repos, comparaisons idiotes.
 // node tests/e2e/retours-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, watch, step, summary, mondayISO } from './lib.mjs';
+import { serve, launch, watch, step, summary, mondayISO, legacyInstall } from './lib.mjs';
 
 const srv = await serve();
 const { browser, context } = await launch();
@@ -28,6 +28,7 @@ const program = () => ({ schemaVersion: 1, weekStart: mondayISO(), programs: { p
 
 console.log('Retours du samedi');
 await page.goto(srv.url);
+  await legacyInstall(page); // V2-UX-FINALISATION : Pierre et Manon n'existent que sur une ancienne installation
 await step('importer un programme avec Rotary Hip, 2 Hip Abduction, Escalier et réglages cardio', async () => {
   await page.click('[data-select-profile="pierre"]');
   await page.click('.nav-btn[data-go="programme"]');

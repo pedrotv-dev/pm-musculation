@@ -6,7 +6,7 @@
  */
 import { isClosed, sessionFigures, addDays, machineHistory } from './stats.js';
 import { buildBilan } from './bilan.js';
-import { GOALS, LEVELS, INTENSITIES, FATIGUE, SLEEP, MEASURES, usableMachines, mainGoalOf } from './sport-profile.js';
+import { GOALS, LEVELS, SENIORITY, INTENSITIES, FATIGUE, SLEEP, MEASURES, usableMachines, mainGoalOf } from './sport-profile.js';
 import { isAssisted } from './last-loads.js';
 import { metricsText, metricsOf } from './cardio.js';
 
@@ -124,6 +124,7 @@ function profileBlock(sport, weights, today) {
   if (main) L.push('- Objectif principal : ' + main);
   L.push('- Objectifs' + (main ? ' secondaires' : '') + ' : ' + (secondary.length ? [...new Set(secondary)].join(', ') : main ? 'aucun' : NR) + (sport.goalNote ? ' — précision : ' + sport.goalNote : ''));
   L.push('- Niveau d’expérience : ' + (labelOf(LEVELS, sport.level) || NR));
+  if (sport.seniority) L.push('- Ancienneté en musculation : ' + labelOf(SENIORITY, sport.seniority) + ' (indique la technique et la prudence de progression, PAS l’intensité : l’intensité choisie ci-dessous s’applique)');
   L.push('- Séances souhaitées par semaine : ' + orNR(sport.frequency));
   L.push('- Jours disponibles : ' + (sport.days.length ? sport.days.join(', ') : NR + ' (à toi de proposer une répartition)'));
   L.push('- Durée maximale par séance : ' + (sport.durationMin ? sport.durationMin + ' min (maximum disponible, pas une durée à atteindre)' : NR));
@@ -171,7 +172,7 @@ export function weightLines(sport, weights, today) {
  */
 function readable(field, v) {
   if (v === undefined || v === null || v === '' || v === '—') return '—';
-  const lists = { level: LEVELS, intensity: INTENSITIES, fatigue: FATIGUE, sleep: SLEEP };
+  const lists = { level: LEVELS, seniority: SENIORITY, intensity: INTENSITIES, fatigue: FATIGUE, sleep: SLEEP };
   if (lists[field]) return (lists[field].find(([k]) => String(k) === String(v)) || [])[1] || v;
   if (field === 'durationMin') return v + ' min';
   if (field === 'targetWeightKg') return num(Number(v)) + ' kg';
@@ -226,6 +227,25 @@ function weeksBlock(sessions, programs, targetWeek) {
   return L;
 }
 
+/**
+ * V2-UX-FINALISATION : charges DÉCLARÉES (« Mes charges », saisies à la main, jamais réalisées en séance dans
+ * l'application) — seulement celles qui ne sont pas dépassées par une performance réelle plus récente.
+ */
+function declaredBlock(declared, sessions, catalogById) {
+  const rows = Object.entries(declared?.machines || {});
+  if (!rows.length) return [];
+  const closed = sessions.filter(isClosed);
+  const out = [];
+  for (const [id, d] of rows) {
+    const h = machineHistory(closed, id);
+    const last = h.length ? h[h.length - 1] : null;
+    const dDate = d.at ? d.at.slice(0, 10) : '';
+    if (last && last.date >= dDate) continue; // une performance réelle plus récente fait foi (listée plus haut)
+    out.push('- ' + (catalogById.get(id)?.name || id) + ' (' + id + ') : ' + num(d.kg) + ' kg × ' + d.reps + (dDate ? ' (déclarée le ' + date(dDate) + ')' : ''));
+  }
+  return out.length ? ['', 'Charges que je déclare connaître (saisies à la main, pas encore réalisées dans l’application) : utilise-les comme point de départ réel, sans les inventer ni les réduire arbitrairement.', ...out] : [];
+}
+const FEEL_TEXT = { easy: 'TROP FACILE (augmenter prudemment)', ok: 'adapté', hard: 'TROP DIFFICILE (alléger ou garder)' };
 function loadsBlock(sessions, catalogById, today) {
   const closed = sessions.filter(isClosed);
   const recent = new Set();
@@ -238,10 +258,12 @@ function loadsBlock(sessions, catalogById, today) {
     const sess = closed.find(s => s.id === last.sessionId);
     const done = sess ? sess.activities.filter(a => a.type === 'strength' && a.machineId === id).flatMap(a => a.sets.filter(x => x.done)) : [];
     const assisted = isAssisted(id);
+    const feel = sess ? (sess.activities.find(a => a.type === 'strength' && a.machineId === id && a.feel) || {}).feel : null; // LOT 3
     L.push('- ' + (catalogById.get(id)?.name || id) + ' (' + id + ') : dernière fois ' + date(last.date) + ' — ' + num(last.topKg) + ' kg' +
       (last.repsAtTop ? ' × ' + last.repsAtTop : '') + ' ; meilleure charge ' + num(best) + ' kg ; ' + h.length + ' séance(s)' +
       (done.length ? ' ; séries validées la dernière fois : ' + done.map(x => (x.side ? (x.side === 'left' ? 'G ' : 'D ') : '') + num(x.kg) + ' × ' + x.reps).join(' / ') : '') +
-      (assisted ? ' (kg = ASSISTANCE : moins = plus difficile)' : '') + (sess && sess.importedFrom ? ' (historique importé)' : ''));
+      (assisted ? ' (kg = ASSISTANCE : moins = plus difficile)' : '') + (sess && sess.importedFrom ? ' (historique importé)' : '') +
+      (feel ? ' ; ressenti noté : ' + FEEL_TEXT[feel] : ''));
   }
   return L.length ? L : ['- aucune séance de musculation enregistrée ces 8 dernières semaines'];
 }
@@ -290,7 +312,7 @@ function formatBlock(profileId, targetWeek, strength, cardio, sport = {}) {
  *   weights?:object[], programs?:object[], targetWeek:string, today:string}} input
  * @returns {string} texte à copier dans ChatGPT
  */
-export function buildCoachPrompt({ profileId, name, sport, gym, catalog, sessions = [], weights = [], programs = [], targetWeek, today }) {
+export function buildCoachPrompt({ profileId, name, sport, gym, catalog, sessions = [], weights = [], programs = [], declared = null, targetWeek, today }) {
   const list = (catalog || []).filter(m => !m.deprecated);
   const byId = new Map((catalog || []).map(m => [m.id, m]));
   const gymInfo = gymBlock(gym, list);
@@ -337,6 +359,7 @@ export function buildCoachPrompt({ profileId, name, sport, gym, catalog, session
   L.push('');
   L.push('## Mes charges récentes par machine (8 dernières semaines)');
   L.push(...loadsBlock(sessions, byId, today));
+  L.push(...declaredBlock(declared, sessions, byId));
   const imported = sessions.filter(x => x && x.importedFrom && isClosed(x));
   if (imported.length) {
     const d = imported.map(x => x.date).sort();

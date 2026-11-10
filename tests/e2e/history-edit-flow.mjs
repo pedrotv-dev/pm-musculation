@@ -1,6 +1,6 @@
 // Corrections d'historique : vrais champs + IndexedDB, contexte vierge, aucune donnée personnelle.
 import assert from 'node:assert/strict';
-import { serve, launch, watch, step, summary } from './lib.mjs';
+import { serve, launch, watch, step, summary, legacyInstall } from './lib.mjs';
 
 const srv = await serve();
 // Latence contrôlée avant la transaction réelle, uniquement dans ce serveur de test.
@@ -26,6 +26,7 @@ const release = () => page.evaluate(() => { window.__releaseHistory(); window.__
 
 try {
   await page.goto(srv.url);
+  await legacyInstall(page); // V2-UX-FINALISATION : Pierre et Manon n'existent que sur une ancienne installation
   await page.click('[data-select-profile="pierre"]');
   sessionId = await page.evaluate(async () => {
     const { importProgram } = await import('./js/programs.js');

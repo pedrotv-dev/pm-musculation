@@ -16,6 +16,10 @@ export const GOALS = Object.freeze(['Prise de muscle', 'Perte de graisse', 'Renf
 export const LEVELS = Object.freeze([['debutant', 'Débutant (moins de 6 mois de pratique)'], ['intermediaire', 'Intermédiaire (6 mois à 2 ans)'], ['confirme', 'Confirmé (plus de 2 ans)']]);
 export const DAYS = Object.freeze(['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']);
 export const DURATIONS = Object.freeze([30, 45, 60, 75, 90, 120]);
+/** V2-UX-FINALISATION : ancienneté en musculation (distincte de l'intensité souhaitée). */
+export const SENIORITY = Object.freeze([['lt3m', 'Moins de 3 mois'], ['3to12m', 'De 3 à 12 mois'], ['gt1y', 'Plus d’un an']]);
+/** Niveau d'expérience déduit de l'ancienneté (compatibilité : la technique et la prudence de progression). */
+export const LEVEL_OF_SENIORITY = Object.freeze({ lt3m: 'debutant', '3to12m': 'intermediaire', gt1y: 'confirme' });
 export const INTENSITIES = Object.freeze([['moderee', 'Modérée — RPE 6-7 (3 à 4 répétitions en réserve)'], ['soutenue', 'Soutenue — RPE 7-8 (2 à 3 en réserve)'], ['elevee', 'Hard / élevée — RPE 8-9 (1 à 2 en réserve)']]);
 export const FATIGUE = Object.freeze([[1, 'Très en forme'], [2, 'En forme'], [3, 'Normale'], [4, 'Fatigué(e)'], [5, 'Très fatigué(e)']]);
 export const SLEEP = Object.freeze([['bon', 'Bon sommeil'], ['moyen', 'Sommeil moyen'], ['mauvais', 'Mauvais sommeil']]);
@@ -23,10 +27,10 @@ export const MEASURES = Object.freeze([['heightCm', 'Taille', 'cm', 100, 250], [
 export const TEXT_MAX = 600;
 const HISTORY_MAX = 40;
 /** Champs dont les changements sont historisés (cités dans le bilan). */
-const TRACKED = Object.freeze({ mainGoal: 'objectif principal', goals: 'objectifs secondaires', goalNote: 'précision des objectifs', level: 'niveau', frequency: 'séances par semaine', days: 'jours disponibles', durationMin: 'durée maximale par séance', targetWeightKg: 'poids cible', intensity: 'intensité souhaitée', fatigue: 'fatigue', sleep: 'sommeil', avoid: 'mouvements à éviter', constraints: 'contraintes', preferences: 'préférences' });
+const TRACKED = Object.freeze({ mainGoal: 'objectif principal', goals: 'objectifs secondaires', goalNote: 'précision des objectifs', level: 'niveau', seniority: 'ancienneté', frequency: 'séances par semaine', days: 'jours disponibles', durationMin: 'durée maximale par séance', targetWeightKg: 'poids cible', intensity: 'intensité souhaitée', fatigue: 'fatigue', sleep: 'sommeil', avoid: 'mouvements à éviter', constraints: 'contraintes', preferences: 'préférences' });
 
 export const EMPTY_SPORT = Object.freeze({
-  mainGoal: null, goals: [], goalNote: '', level: null, frequency: null, days: [], durationMin: null, targetWeightKg: null, measures: {}, initialPerf: '',
+  mainGoal: null, goals: [], goalNote: '', level: null, seniority: null, frequency: null, days: [], durationMin: null, targetWeightKg: null, measures: {}, initialPerf: '',
   intensity: null, fatigue: null, sleep: null, recoveryNote: '', avoid: '', constraints: '', preferences: '',
   health: '', healthInBilan: false, updatedAt: null, history: []
 });
@@ -94,6 +98,7 @@ export function sanitizeSport(raw = {}) {
   out.goals = Array.isArray(r.goals) ? [...new Set(r.goals.filter(g => GOALS.includes(g) && g !== out.mainGoal))] : [];
   out.goalNote = text(r.goalNote, 'Précision des objectifs');
   out.level = oneOf(r.level, LEVELS, 'Niveau');
+  out.seniority = oneOf(r.seniority, SENIORITY, 'Ancienneté');
   if (r.frequency !== null && r.frequency !== undefined && r.frequency !== '') {
     const f = Number(r.frequency);
     if (!Number.isInteger(f) || f < 1 || f > 7) throw new Error('Séances par semaine : de 1 à 7.');

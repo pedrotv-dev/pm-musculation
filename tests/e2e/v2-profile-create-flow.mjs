@@ -3,7 +3,7 @@
 // automatique, profil vide, reprise du dernier profil, migration V1 → V2 et isolation Pierre / Manon / nouveau profil.
 // node tests/e2e/v2-profile-create-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, exampleProgram, watch, step, summary } from './lib.mjs';
+import { serve, launch, exampleProgram, watch, step, summary, finishOnboardingUI } from './lib.mjs';
 
 const srv = await serve();
 const { browser } = await launch();
@@ -33,15 +33,13 @@ let pierreBefore, manonBefore, camille;
 console.log('V2 · création d’un profil local');
 await step('installation « V1 » (Pierre : programme ; Manon : poids) puis mise à jour : migration automatique', async () => {
   await page.goto(srv.url);
-  await page.click('[data-select-profile="pierre"]');
-  await page.click('.nav-btn[data-go="programme"]');
-  await page.click('.pm-import summary');
-  await page.fill('.pm-textarea', JSON.stringify(exampleProgram()));
-  await page.click('.pm-action-verify');
-  await page.waitForSelector('.pm-action-save:not([disabled])');
-  await page.click('.pm-action-save');
-  await page.waitForSelector('.pm-start-workout');
-  await page.evaluate(async () => { const { addBodyWeight } = await import('./js/weights.js'); await addBodyWeight('manon', 58.2, '2026-11-03'); });
+  // V2-UX-FINALISATION : installation neuve sans profil précréé → données « V1 » écrites comme la V1 (stockage direct)
+  assert.equal(await page.locator('[data-select-profile="pierre"]').isVisible(), false);
+  await page.evaluate(async p => {
+    await (await import('./js/programs.js')).importProgram('pierre', p);
+    await (await import('./js/weights.js')).addBodyWeight('manon', 58.2, '2026-11-03');
+    localStorage.setItem('pm-musculation:profile:v2', 'pierre');
+  }, exampleProgram());
   await page.reload();
   await page.waitForFunction(async () => (await (await import('./storage.js')).loadProfileRegistry()).meta);
   pierreBefore = await exportOf('pierre'); manonBefore = await exportOf('manon');
@@ -88,11 +86,14 @@ await step('échec d’écriture : erreur affichée, nom conservé, rien d’éc
   camille = list[0];
   assert.equal(camille.name, 'Camille fictive');
   assert.equal(await page.evaluate(() => document.documentElement.dataset.pmProfile), camille.id, 'ouvert automatiquement');
+  await page.waitForSelector('#screen-onboarding:not([hidden]) #pm-ob-title:has-text("objectif")'); // inscription guidée, étape 2
+  assert.equal(await page.locator('#bottom-nav').isVisible(), false, 'pas d’Accueil normal avant les informations obligatoires');
+  await finishOnboardingUI(page);
   await page.waitForSelector('.pm-hero-title:has-text("Salut Camille fictive")');
 });
 
 await step('nouveau profil vide : aucune séance, aucun programme, aucun historique ; Pierre et Manon intacts', async () => {
-  await page.waitForSelector('[data-page="accueil"] h3:has-text("Aucun programme cette semaine")');
+  await page.waitForSelector('[data-page="accueil"] h3:has-text("Aucun programme cette semaine"), [data-page="accueil"] h3:has-text("Par quoi veux-tu commencer")');
   const d = JSON.parse(await exportOf(camille.id)).data;
   assert.deepEqual([d.sessions.length, d.programs.length, d.weights.length], [0, 0, 0]);
   assert.equal(await exportOf('pierre'), pierreBefore);
@@ -110,6 +111,7 @@ await step('double appui sur « Créer » : un seul profil créé', async () => 
   const lou = (await userProfiles()).filter(p => p.name === 'Lou fictif');
   assert.equal(lou.length, 1, 'une seule fiche : ' + JSON.stringify(await userProfiles()));
   assert.equal(await page.evaluate(() => document.documentElement.dataset.pmProfile), lou[0].id);
+  await finishOnboardingUI(page);
 });
 
 await step('rechargement : dernier profil utilisé (Lou) rouvert ; sélecteur : les deux profils créés', async () => {

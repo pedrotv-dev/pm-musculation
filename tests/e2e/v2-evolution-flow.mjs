@@ -3,7 +3,7 @@
 // suppression refusée pendant une séance), programme incomplet (1 séance au lieu de 5) refusé puis accepté en exception.
 // node tests/e2e/v2-evolution-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, watch, step, summary } from './lib.mjs';
+import { serve, launch, watch, step, summary, createProfileApi } from './lib.mjs';
 
 const srv = await serve();
 const { browser } = await launch();
@@ -31,7 +31,7 @@ await step('préparation : ancien profil Pierre (2 séances terminées/partielle
   });
   await page.reload();
   await page.waitForSelector('#screen-select:not([hidden])');
-  await page.click('#create-profile'); await page.fill('#new-profile-name', 'Pierre2 fictif'); await page.click('#create-profile-submit');
+  await createProfileApi(page, 'Pierre2 fictif'); // profil existant (fiche seule) : l'inscription guidée a son propre parcours
   await page.waitForFunction(() => /^p-/.test(document.documentElement.dataset.pmProfile || ''));
   pierre2 = await db(() => document.documentElement.dataset.pmProfile);
 });
@@ -84,7 +84,7 @@ await step('gérer mes profils : renommer puis supprimer un profil créé (doubl
   assert.equal(await db(async id => (await (await import('./js/profiles.js')).listProfiles()).some(p => p.id === id), tmp), false);
 });
 
-await step('suppression refusée pendant une séance en cours ; Pierre (protégé) : pas de « Supprimer », masquage réversible', async () => {
+await step('suppression refusée pendant une séance en cours ; Pierre supprimable sur confirmation, masquage réversible', async () => {
   const busy = await db(async () => {
     const P = await import('./js/profiles.js'); const W = await import('./js/workouts.js');
     const p = await P.createProfile({ name: 'En séance fictif', color: 'bleu' }); const s = await W.startWorkout(p.id, { free: true }); return p.id;
@@ -95,7 +95,7 @@ await step('suppression refusée pendant une séance en cours ; Pierre (protég�
   await f.locator('li[data-profile="' + busy + '"] button:has-text("Supprimer")').click();
   await f.locator('.pm-coach-status:has-text("séance en cours")').waitFor();
   assert.equal(await db(async id => (await (await import('./js/profiles.js')).listProfiles()).some(p => p.id === id), busy), true, 'profil conservé');
-  assert.equal(await f.locator('li[data-profile="pierre"] button:has-text("Supprimer")').count(), 0, 'Pierre protégé');
+  assert.equal(await f.locator('li[data-profile="pierre"] button:has-text("Supprimer")').count(), 1, 'V2-UX-FINALISATION : Pierre supprimable (avec confirmation)');
   await f.locator('li[data-profile="pierre"] button:has-text("Masquer")').click();
   await f.locator('li[data-profile="pierre"] .pm-manage-tags:has-text("masqué")').waitFor();
   await page.click('#switch-profile'); await page.waitForSelector('#screen-select:not([hidden])');
@@ -132,7 +132,7 @@ await step('fréquence : profil 5 séances (mardi → samedi), JSON d’UNE séa
 await step('demande ChatGPT de Pierre2 : 5 séances exigées, Hard RPE 8–9, charges importées utilisées (82,5 kg)', async () => {
   await page.click('.nav-btn[data-go="programme"]'); await page.waitForSelector('[data-page="programme"] .pm-coach-section h3'); // LOT 1 : demande dans Programme
   await page.getByLabel('Semaine à préparer').selectOption('2026-11-23');
-  await page.click('.pm-coach-section button:has-text("Générer ma demande")');
+  await page.click('.pm-coach-section button:has-text("Copier ma demande")');
   await page.waitForSelector('.pm-coach-out:not([hidden])');
   const t = await page.inputValue('.pm-coach-out');
   for (const want of ['Prépare EXACTEMENT 5 séances, une sur chacun de ces jours : mardi, mercredi, jeudi, vendredi, samedi', 'Intensité choisie : HARD — RPE 8 à 9', 'Ne réduis PAS toutes les charges sous prétexte que je suis débutant(e)', 'Leg Press (leg-press) : dernière fois', '82,5 kg', 'importées d’un ancien profil']) assert.ok(t.includes(want), want);

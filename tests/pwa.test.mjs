@@ -109,6 +109,7 @@ test('publication automatique : release --if-needed ne change rien quand la VERS
   const { ensureRelease, needsRelease, fingerprint, currentVersion } = await import('../tools/release.mjs');
   const fs2 = await import('node:fs'), os = await import('node:os'), path2 = await import('node:path');
   const dir = fs2.mkdtempSync(path2.join(os.tmpdir(), 'pm-release-'));
+  try { // dossier temporaire supprimé même en cas d'échec
   for (const f of ['sw.js', 'js/version.js']) { fs2.mkdirSync(path2.dirname(path2.join(dir, f)), { recursive: true }); fs2.copyFileSync(path2.join(ROOT, f), path2.join(dir, f)); }
   for (const f of [...sw.match(/const PRECACHE = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]).filter(f => f !== './' && f !== 'js/version.js')) {
     fs2.mkdirSync(path2.dirname(path2.join(dir, f)), { recursive: true }); fs2.copyFileSync(path2.join(ROOT, f), path2.join(dir, f));
@@ -127,4 +128,5 @@ test('publication automatique : release --if-needed ne change rien quand la VERS
   assert.equal(needsRelease(dir), false);
   assert.match(fs2.readFileSync(path2.join(dir, 'js/version.js'), 'utf8'), new RegExp(r.version));
   assert.deepEqual(ensureRelease(dir, new Date(2031, 0, 6)), { released: false, version: r.version }); // idempotent
+  } finally { fs2.rmSync(dir, { recursive: true, force: true }); }
 });

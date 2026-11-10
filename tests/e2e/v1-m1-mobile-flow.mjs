@@ -110,6 +110,7 @@ for (const [w, h] of SIZES) {
     await page.click('button:has-text("Retour à la machine")');
     await page.click('#pm-workout-screen .pm-bar-actions button:has-text("Quitter")');
     await page.click('.nav-btn[data-go="progres"]');
+    await page.click('.pm-game-fold summary'); // LOT 4 : succès et classements repliés en bas de Progression
     await page.waitForSelector('.pm-medal');
     const a = await page.evaluate(() => { const p = document.querySelector('[data-page="progres"]');
       return { turq: getComputedStyle(p.querySelector('.pm-level-card')).backgroundImage.includes('20, 230, 199'), ico: p.querySelectorAll('.pm-panel-title-ico .pm-ico').length, med: p.querySelectorAll('.pm-medal').length }; });

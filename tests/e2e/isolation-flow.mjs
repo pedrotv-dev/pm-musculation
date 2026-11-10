@@ -5,7 +5,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { launch, watch, step, summary, mondayISO } from './lib.mjs';
+import { launch, watch, step, summary, mondayISO, legacyInstall } from './lib.mjs';
 import { buildPreview } from '../../tools/build-preview.mjs';
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname);
@@ -60,6 +60,7 @@ console.log('Isolation production / aperçu (même origine)');
 let prod, prev;
 await step('production : Pierre importe son programme « PROD-SEANCE »', async () => {
   prod = await open(PROD);
+  await legacyInstall(prod, ['pierre']); // V2-UX-FINALISATION : ancienne installation fictive (Pierre a des données)
   assert.equal(await prod.evaluate(() => document.documentElement.dataset.pmEnv ?? null), null); // aucun bandeau, aucun changement visible
   assert.ok(!(await prod.title()).startsWith('[Aperçu]'));
   await importProgram(prod, 'PROD-SEANCE');
@@ -70,7 +71,9 @@ await step('aperçu : bandeau visible, titre marqué, AUCUN profil mémorisé, a
   assert.equal(await prev.evaluate(() => document.documentElement.dataset.pmEnv), 'preview');
   assert.match(await prev.title(), /^\[Aperçu\]/);
   assert.match(await prev.evaluate(() => getComputedStyle(document.body, '::before').content), /APERÇU/);
-  await prev.waitForSelector('[data-select-profile="pierre"]'); // l'écran de choix du profil s'affiche : la mémoire de production n'est pas lue
+  await prev.waitForSelector('#create-profile'); // l'écran de choix du profil s'affiche : la mémoire de production n'est pas lue
+  assert.equal(await prev.locator('[data-select-profile="pierre"]').isVisible(), false, 'aucun profil précréé dans l’aperçu');
+  await legacyInstall(prev, ['pierre']); // ancienne installation fictive de l'aperçu (base séparée)
   assert.equal(await prev.locator('.nav-btn[data-go="accueil"]').isVisible().catch(() => false), false);
   assert.equal(await prev.evaluate(() => document.querySelector('link[rel="manifest"]').href.endsWith('/preview/manifest.webmanifest')), true);
 });

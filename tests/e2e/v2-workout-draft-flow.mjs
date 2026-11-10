@@ -3,7 +3,7 @@
 // valeur saisie ; une modification ultérieure des seules répétitions ne renvoie pas l'ancienne charge.
 // Données FICTIVES, base de test vierge.  node tests/e2e/v2-workout-draft-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, exampleProgram, watch, step, summary } from './lib.mjs';
+import { serve, launch, exampleProgram, watch, step, summary, legacyInstall } from './lib.mjs';
 
 const srv = await serve();
 const { browser, context } = await launch();
@@ -25,6 +25,7 @@ const rows = () => page.locator('.pm-sets .pm-set-row').count();
 console.log('V2-PROF1-FIX2 · charge de la série en cours');
 await step('préparation : séance fictive de Pierre, première machine, série 1 à 40 kg', async () => {
   await page.goto(srv.url);
+  await legacyInstall(page); // V2-UX-FINALISATION : Pierre et Manon n'existent que sur une ancienne installation
   await page.click('[data-select-profile="pierre"]');
   await page.click('.nav-btn[data-go="programme"]');
   await page.click('.pm-import summary');

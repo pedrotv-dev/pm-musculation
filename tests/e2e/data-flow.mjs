@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { serve, launch, exampleProgram, watch, step, summary } from './lib.mjs';
+import { serve, launch, exampleProgram, watch, step, summary, legacyInstall } from './lib.mjs';
 
 const srv = await serve();
 const { browser, context } = await launch({ acceptDownloads: true });
@@ -42,6 +42,7 @@ async function shortSession(p) {
 
 console.log('Parcours données');
 await page.goto(srv.url);
+  await legacyInstall(page); // V2-UX-FINALISATION : Pierre et Manon n'existent que sur une ancienne installation
 await step('réparation : une base vide préexistante est complétée sans erreur', async () => {
   await page.evaluate(() => new Promise((res, rej) => { const r = indexedDB.open('pm-musculation-v2'); r.onsuccess = () => { r.result.close(); res(); }; r.onerror = rej; }));
   await page.click('[data-select-profile="pierre"]');

@@ -155,11 +155,12 @@ test('8 · export et restauration : fiche jointe, restauration dans le bon profi
   assert.ok(gens(after).every((g, i) => typeof g === 'string' && g && g !== gens(pierreBefore)[i]), 'jetons renouvelés');
 });
 
-test('9 · suppression d’un profil supplémentaire : confirmation explicite, ses données seules, jamais Pierre / Manon / Démo', async () => {
+test('9 · suppression d’un profil supplémentaire : confirmation explicite, ses données seules, jamais la Démo', async () => {
   const backup = B.parseBackupText((await B.createBackupFile(extra.id)).text);
   await assert.rejects(() => P.deleteProfile(extra.id), /Confirmation/);
-  for (const id of ['pierre', 'manon', 'demo']) await assert.rejects(() => P.deleteProfile(id, { confirm: id }), /ne peut pas être supprimé/);
-  await assert.rejects(() => S.deleteProfileAndData('pierre'), /ne peut pas être supprimé/);
+  await assert.rejects(() => P.deleteProfile('demo', { confirm: 'demo' }), /ne peut pas être supprimé/);
+  // V2-UX-FINALISATION : Pierre et Manon sont supprimables (tests/profiles-legacy-delete.test.mjs) ; jamais sans confirmation
+  await assert.rejects(() => P.deleteProfile('pierre'), /Confirmation/);
   const others = await Promise.all(['pierre', 'manon', extra2.id].map(exportOf));
   const counts = await P.deleteProfile(extra.id, { confirm: extra.id });
   assert.ok(counts.sessions === 1 && counts.programs === 1 && counts.weights === 1 && counts.settings >= 1, JSON.stringify(counts));

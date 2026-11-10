@@ -2,7 +2,7 @@
 // automatique sans perte ; profil créé par l'API, sélectionné, utilisé, isolé ; redémarrage ; hors ligne ; suppression ;
 // démo inchangée. Données FICTIVES, origine locale neuve. node tests/e2e/v2-profiles-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, exampleProgram, watch, step, summary } from './lib.mjs';
+import { serve, launch, exampleProgram, watch, step, summary, legacyInstall } from './lib.mjs';
 
 const srv = await serve();
 const { browser, context } = await launch();
@@ -35,12 +35,14 @@ let pierreBefore, manonBefore, extra;
 console.log('V2-PROF1 · multi-profils');
 await step('installation « V1 » : Pierre importe un programme, poids de Pierre et Manon ; aucun registre écrit', async () => {
   await page.goto(srv.url);
-  await page.click('[data-select-profile="pierre"]');
-  await importViaUi();
-  await page.evaluate(async () => {
-    const { addBodyWeight } = await import('./js/weights.js');
-    await addBodyWeight('pierre', 81.4, '2026-11-02'); await addBodyWeight('manon', 58.2, '2026-11-03');
-  });
+  // V2-UX-FINALISATION : installation neuve = aucun profil précréé ; les données « V1 » sont donc écrites comme la V1
+  // le faisait (stockage direct, avant tout registre), puis la page est rechargée comme après la mise à jour.
+  assert.equal(await page.locator('[data-select-profile="pierre"]').isVisible(), false, 'aucun profil précréé');
+  await page.evaluate(async p => {
+    const { importProgram } = await import('./js/programs.js'); const { addBodyWeight } = await import('./js/weights.js');
+    await importProgram('pierre', p); await addBodyWeight('pierre', 81.4, '2026-11-02'); await addBodyWeight('manon', 58.2, '2026-11-03');
+    localStorage.setItem('pm-musculation:profile:v2', 'pierre'); // dernier profil utilisé en V1
+  }, programFor());
   assert.deepEqual(await registry(), { meta: false, ids: [] }, 'démarrage sans écriture de registre');
   pierreBefore = await exportOf('pierre'); manonBefore = await exportOf('manon');
   assert.ok(pierreBefore.includes('81.4') && manonBefore.includes('58.2'));
@@ -77,7 +79,7 @@ await step('profil créé par l’API puis sélectionné : même chemin que les 
   assert.equal(await page.locator('#switch-profile').getAttribute('aria-label'), 'Changer de profil (Camille fictive)');
   assert.equal(await page.evaluate(() => document.documentElement.style.getPropertyValue('--accent')), '#14e6c7');
   await page.waitForSelector('.pm-hero-title:has-text("Salut Camille fictive")');
-  await page.waitForSelector('[data-page="accueil"] h3:has-text("Aucun programme cette semaine")');
+  await page.waitForSelector('[data-page="accueil"] h3:has-text("Aucun programme cette semaine"), [data-page="accueil"] h3:has-text("Par quoi veux-tu commencer")');
 });
 
 await step('nouveau profil : import d’un programme et poids, isolés ; Pierre et Manon intacts', async () => {
@@ -111,7 +113,7 @@ await step('redémarrage puis hors ligne : le dernier profil utilisé (créé) e
 
 await step('suppression (API, confirmation explicite) : retour au choix du profil, ses données seules effacées', async () => {
   await assert.rejects(page.evaluate(async id => (await import('./js/profiles.js')).deleteProfile(id), extra), /Confirmation/);
-  await assert.rejects(page.evaluate(async () => (await import('./js/profiles.js')).deleteProfile('pierre', { confirm: 'pierre' })), /ne peut pas/);
+  await assert.rejects(page.evaluate(async () => (await import('./js/profiles.js')).deleteProfile('pierre')), /Confirmation/); // V2-UX-FINALISATION : historique supprimable, jamais sans confirmation
   await page.evaluate(async id => (await import('./js/profiles.js')).deleteProfile(id, { confirm: id }), extra);
   await page.waitForSelector('#screen-select:not([hidden])');
   assert.equal(await rowsOf([extra]), 0);

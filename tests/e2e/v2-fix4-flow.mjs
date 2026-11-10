@@ -6,7 +6,7 @@
 //  P2  récapitulatif après un échec : valeur réellement enregistrée affichée ET échec signalé tant qu'il n'est pas résolu.
 // node tests/e2e/v2-fix4-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, exampleProgram, watch, step, summary } from './lib.mjs';
+import { serve, launch, exampleProgram, watch, step, summary, legacyInstall } from './lib.mjs';
 
 const srv = await serve();
 const { browser } = await launch();
@@ -26,6 +26,7 @@ async function newPage() {
 /** Pierre : programme importé, séance du mardi démarrée, cadre « Série en cours » de la première machine (40 kg × 10). */
 async function startPierre(page) {
   await page.goto(srv.url);
+  await legacyInstall(page); // V2-UX-FINALISATION : Pierre et Manon n'existent que sur une ancienne installation
   await page.click('[data-select-profile="pierre"]');
   await page.click('.nav-btn[data-go="programme"]');
   await page.click('.pm-import summary');
