@@ -3,7 +3,7 @@
  * Stockage/validation : js/programs.js (Claude). Aucune ecriture hors importProgram.
  * Les sessions de demonstration sont uniquement des objets JavaScript en memoire.
  */
-import { prepareProgramImport, importProgram, listProgramWeeks, getActiveProgram, mondayOf, parseProgramJson, readProgramFile } from './programs.js';
+import { prepareProgramImport, importProgram, listProgramWeeks, getActiveProgram, mondayOf, parseProgramJson, readProgramFile, estimateDayMinutes, getProgramStatus } from './programs.js';
 import { getGym, getSportProfile } from './sport-profile.js';
 import { listWorkouts } from './workouts.js';
 import { machineHistory, isClosed } from './stats.js';
@@ -72,11 +72,16 @@ function drawDays(container, program, activeDay, choose) {
   }
   const day = program.days.find(d => d.id === chosen);
   const heading = node('h3', '', day.name || 'Séance du ' + day.id);
-  body.append(heading);
+  body.append(heading, node('p', 'pm-muted', 'Durée estimée : environ ' + estimateDayMinutes(day) + ' min (estimation)'));
+  const week = state.selectedWeek;
+  const future = state.profile !== 'demo' && week && getProgramStatus(week) === 'upcoming';
+  if (future) body.append(node('p', 'pm-muted pm-upcoming-note', 'Programme à venir : il s’activera automatiquement le lundi ' + week.split('-').reverse().join('/') + '.'));
   if (isKnownProfile(state.profile)) {
-    const start = btn('Démarrer cette séance', 'pm-start-workout', () => {
+    const start = btn('Démarrer cette séance', 'pm-start-workout', async () => {
+      // une séance d'une semaine future n'est jamais démarrée sans confirmation explicite
+      if (future && !(await confirmDialog('Ce programme est prévu pour la semaine du ' + week.split('-').reverse().join('/') + '. Démarrer quand même cette séance aujourd’hui ?', { title: 'Séance d’une semaine à venir', ok: 'Démarrer aujourd’hui' }))) return;
       document.dispatchEvent(new CustomEvent('pm:start-workout', {
-        detail: { profileId: state.profile, weekStart: state.selectedWeek, dayId: chosen }
+        detail: { profileId: state.profile, weekStart: week, dayId: chosen }
       }));
     });
     body.append(start);
@@ -122,7 +127,7 @@ const paste = node('textarea', 'pm-textarea');
 const save = btn('Importer ce programme', 'pm-action-save', saveImport);
 const verify = btn('Vérifier et prévisualiser', 'pm-action-verify', previewImport);
 const fileName = node('span', 'pm-file-choice', 'Aucun fichier sélectionné');
-const tip = node('p', 'pm-info', 'Les programmes viennent de ChatGPT. Tu peux importer un fichier ou coller son JSON.');
+const tip = node('p', 'pm-info', 'Les programmes viennent de ChatGPT. Tu peux importer un fichier, coller son JSON, ou coller sa réponse entière (justification + un bloc JSON) : seul le bloc JSON est lu.');
 const importContent = node('div', 'pm-import-content');
 const inputArea = node('div', 'pm-input-grid');
 const actionArea = node('div', 'pm-actions');
@@ -290,6 +295,8 @@ async function profileWarnings(profile, prepared) {
     const seen = new Set();
     for (const day of prepared.program.days) {
       if (sport.days.length && !sport.days.includes(day.id)) out.push('Séance prévue le ' + day.id + ', qui n’est pas dans tes jours disponibles.');
+      const est = estimateDayMinutes(day);
+      if (sport.durationMin && est > sport.durationMin) out.push('Séance du ' + day.id + ' : environ ' + est + ' min estimées, au-delà de ta durée maximale (' + sport.durationMin + ' min). Estimation indicative : vérifie ou demande une séance plus courte.');
       for (const a of day.activities) {
         if (a.type !== 'strength' || seen.has(a.machineId)) continue;
         seen.add(a.machineId);
@@ -340,7 +347,8 @@ function drawPreview(preview) {
     node('p', 'pm-preview-sub', preview.program.days.length + ' jour(s) prévu(s) pour ' + state.profile));
   for (const day of preview.program.days) {
     const block = node('div', 'pm-preview-day');
-    block.append(node('h4', '', day.id[0].toUpperCase() + day.id.slice(1) + (day.name ? ' · ' + day.name : '')));
+    block.append(node('h4', '', day.id[0].toUpperCase() + day.id.slice(1) + (day.name ? ' · ' + day.name : '')),
+      node('p', 'pm-preview-sub', 'Durée estimée : environ ' + estimateDayMinutes(day) + ' min (estimation)'));
     day.activities.forEach((a, i) =>
       block.append(node('p', '', (i + 1) + '. ' + nameOf(a) + ' — ' + metaOf(a))));
     previewView.append(block);
@@ -512,6 +520,15 @@ document.addEventListener('pm:profile-changed', event => {
   const profile = event.detail.profile;
   const started = state.profileVersion + 1;
   setProfile(profile).catch(error => handleProfileError(error, profile, started));
+});
+// Accueil → « Voir mon programme » : affiche la semaine demandée (programme futur déjà enregistré)
+document.addEventListener('pm:show-program-week', event => {
+  const week = event.detail && event.detail.weekStart;
+  const profile = state.profile, generation = state.profileVersion;
+  if (!isRealProfile(profile) || !week) return;
+  ++state.weekLoadVersion;
+  state.selectedWeek = week; state.selectedDay = null;
+  drawWeekOptions().then(ok => { if (ok && sameProfile(profile, generation)) return displayProgram(); }).catch(showError);
 });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') refreshOnForeground().catch(showError);
