@@ -3,9 +3,9 @@
  * Lecture seule : les actions passent par les evenements pm:start-workout / pm:resume-workout / pm:stop-workout.
  */
 import { listWorkouts, getResumableWorkout, getWorkoutSummary, getDemoProgram, dayIdOf } from './workouts.js';
-import { getActiveProgram, mondayOf } from './programs.js';
+import { getActiveProgram, listProgramWeeks, mondayOf } from './programs.js';
 import { loadCatalog } from './catalog.js';
-import { ALL_PROFILES as KNOWN, PROFILE_INFO } from './profiles.js';
+import { isKnownProfile, getProfileInfo } from './profiles.js';
 import { getBackupStatus, backupAdvice, runBackup } from './backup.js';
 import { el, btn, clear, add, fmtNum, formatMinutes, formatDateFr, localISODate, dialog, toast } from './dom.js';
 import { computeProgress, progressionStartFor } from './gamification.js';
@@ -25,7 +25,30 @@ async function loadProgram(profile) {
   const active = await getActiveProgram(profile).catch(() => null);
   return active ? { ...active.program, weekStart: active.weekStart } : null;
 }
+/** Prochain programme enregistré pour une semaine FUTURE (jamais activé avant son lundi), ou null. */
+async function loadUpcoming(profile) {
+  if (profile === 'demo') return null;
+  const weeks = await listProgramWeeks(profile).catch(() => []);
+  return weeks.filter(w => w.status === 'upcoming').map(w => w.weekStart).sort()[0] || null;
+}
+const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+/** « 16 novembre » (année ajoutée si différente). */
+function longDate(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return d + ' ' + MONTHS[m - 1] + (y !== new Date().getFullYear() ? ' ' + y : '');
+}
 const emit = (type, detail) => document.dispatchEvent(new CustomEvent(type, { detail }));
+/** « Voir mon programme » : onglet Programme, semaine choisie. */
+const showWeek = week => { go('programme'); document.dispatchEvent(new CustomEvent('pm:show-program-week', { detail: { weekStart: week } })); };
+/** Carte « Programme prêt pour la semaine du … » (programme enregistré, futur : activé automatiquement le lundi). */
+function upcomingCard(profile, week, { title } = {}) {
+  return add(el('article', 'panel pm-home-card pm-upcoming-card'), el('span', 'tag', 'Programme enregistré'),
+    el('h3', '', title || 'Programme prêt pour la semaine du ' + longDate(week)),
+    el('p', 'pm-muted', (title ? 'Ton programme de la semaine du ' + longDate(week) + ' est enregistré. ' : '') +
+      'Il s’activera automatiquement le lundi ' + longDate(week) + ' : ta séance apparaîtra ici ce jour-là. En attendant, consulte-le ou fais une séance libre.'),
+    btn('Voir mon programme', 'pm-validate', () => showWeek(week)),
+    freeButton(profile));
+}
 const go = p => document.querySelector('[data-go="' + p + '"]')?.click();
 
 
@@ -44,18 +67,20 @@ function progressSection(r) {
   return box;
 }
 
+/** Séance libre (V2) : sans programme, machines ajoutées pendant la séance. */
+const freeButton = profile => btn('Séance libre (sans programme)', 'pm-link', () => emit('pm:start-workout', { profileId: profile, free: true }));
 async function renderHome() {
   const profile = root.dataset.pmProfile;
   const mine = ++rev;
-  if (!KNOWN.includes(profile)) return;
-  const [catalog, resumable, sessions, program] = await Promise.all([
-    loadCatalog(), getResumableWorkout(profile).catch(() => null), listWorkouts(profile).catch(() => []), loadProgram(profile)
+  if (!isKnownProfile(profile)) return;
+  const [catalog, resumable, sessions, program, upcoming] = await Promise.all([
+    loadCatalog(), getResumableWorkout(profile).catch(() => null), listWorkouts(profile).catch(() => []), loadProgram(profile), loadUpcoming(profile)
   ]);
   if (mine !== rev || root.dataset.pmProfile !== profile) return;
   clear(page);
   // ASCENT : salut + Korv sur le décor montagne, puis niveau (calculés depuis l'historique du profil, jamais comparés à l'autre)
   const game = computeProgress(sessions, { today: localISODate(), startDate: progressionStartFor(profile) });
-  page.append(homeHero(game, { name: PROFILE_INFO[profile].name, seed: profile + localISODate(), demo: profile === 'demo' }), levelStrip(game));
+  page.append(homeHero(game, { name: getProfileInfo(profile).name, seed: profile + localISODate(), demo: profile === 'demo' }), levelStrip(game));
   page.append(progressSection(recentProgress(sessions, localISODate(), 30)));
 
   if (resumable) {
@@ -71,22 +96,35 @@ async function renderHome() {
     add(row, btn('Garder en attente', 'pm-secondary', () => go('programme')), btn('Arrêter (séance partielle)', 'pm-warning', () => emit('pm:stop-workout', {})));
     card.append(row);
     page.append(card);
+  } else if (!program && upcoming) {
+    page.append(upcomingCard(profile, upcoming));
   } else if (!program) {
     page.append(add(el('article', 'panel'), el('h3', '', 'Aucun programme cette semaine'),
-      el('p', 'pm-muted', 'Importe le programme de la semaine pour démarrer une séance.'),
-      btn('Importer un programme', 'pm-validate', () => go('programme'))));
+      el('p', 'pm-muted', 'Prépare-le avec ChatGPT (Profil → Préparer mon programme), importe-le, ou fais une séance libre.'),
+      btn('Importer un programme', 'pm-validate', () => go('programme')),
+      btn('Préparer mon programme avec ChatGPT', 'pm-secondary', () => go('profil')),
+      freeButton(profile)));
   } else {
     const today = dayIdOf(new Date());
     const idx = DAYS.indexOf(today);
     const days = program.days || [];
     let day = days.find(d => d.id === today);
     const isToday = !!day;
-    if (!day) day = days.find(d => DAYS.indexOf(d.id) > idx) || days[0];
+    if (!day) day = days.find(d => DAYS.indexOf(d.id) > idx) || null;
+    if (!day && upcoming) { // séances de la semaine passées : la prochaine est dans le programme déjà enregistré
+      page.append(upcomingCard(profile, upcoming, { title: 'Prochaine séance : semaine du ' + longDate(upcoming) }));
+    }
+    const late = !day; // plus aucune séance prévue après aujourd'hui cette semaine : rattrapage possible
+    if (!day) {
+      const closedDays = new Set(sessions.filter(s => s.weekStart === program.weekStart && (s.status === 'completed' || s.status === 'partial')).map(s => s.dayId));
+      day = days.find(d => !closedDays.has(d.id)) || null;
+    }
     const doneToday = sessions.find(s => s.date === localISODate() && s.dayId === day?.id && (s.status === 'completed' || s.status === 'partial'));
     const card = el('article', 'panel pm-home-card pm-next-card');
     const head = el('div', 'pm-section-head');
-    add(head, el('h3', '', isToday ? 'Séance du jour' : 'Prochaine séance'), el('span', 'pm-next-when', isToday ? 'Aujourd’hui' : day ? day.id[0].toUpperCase() + day.id.slice(1) : ''));
+    add(head, el('h3', '', isToday ? 'Séance du jour' : !day ? 'Semaine terminée' : late ? 'Rattraper une séance de cette semaine' : 'Prochaine séance'), el('span', 'pm-next-when', isToday ? 'Aujourd’hui' : day ? day.id[0].toUpperCase() + day.id.slice(1) : ''));
     card.append(head);
+    if (!day) card.append(el('p', 'pm-muted', 'Toutes les séances de ce programme sont enregistrées.'), btn('Choisir une autre journée', 'pm-link', () => go('programme')), freeButton(profile));
     if (day) {
       const machines = day.activities.filter(a => a.type === 'strength').length;
       const row = el('div', 'pm-next-row');
@@ -100,6 +138,7 @@ async function renderHome() {
       card.append(row);
       if (doneToday) card.append(el('p', 'pm-muted', 'Déjà enregistrée aujourd’hui (' + (doneToday.status === 'completed' ? 'complète' : 'partielle') + ').'));
       card.append(btn('Choisir une autre journée', 'pm-link', () => go('programme')));
+      card.append(freeButton(profile));
     }
     page.append(card);
   }
@@ -129,6 +168,15 @@ async function renderHome() {
 }
 
 const refresh = () => renderHome().catch(console.error);
+// Changement de jour (et lundi : activation du programme de la semaine) même si l'application reste ouverte
+let midnight = null;
+function armMidnight() {
+  clearTimeout(midnight);
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
+  midnight = setTimeout(() => { refresh(); armMidnight(); }, Math.min(next - now, 2 ** 31 - 1));
+}
+armMidnight();
 document.addEventListener('pm:profile-changed', refresh);
 // pendant une séance, les autres onglets sont masqués : inutile de relire tout l'historique à chaque série
 document.addEventListener('pm:workout-changed', e => { if (!root.classList.contains('pm-workout-active') || (e.detail && e.detail.final)) refresh(); });

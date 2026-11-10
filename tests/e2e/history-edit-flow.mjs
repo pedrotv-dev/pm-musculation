@@ -184,7 +184,10 @@ try {
       await storage.restoreProfileData('pierre', backup, 'replace');
       return { before, after: await w.getWorkout('pierre', id) };
     }, sessionId);
-    assert.deepEqual(result.after, result.before);
+    // FIX7 : contenu identique ; seul le jeton d'incarnation `gen` est renouvelé par la restauration (jamais repris du fichier)
+    const { gen: genAfter, ...after } = result.after, { gen: genBefore, ...before } = result.before;
+    assert.deepEqual(after, before);
+    assert.ok(genAfter && genAfter !== genBefore, 'nouvelle incarnation après restauration');
     assert.equal(result.after.summary.durationMinutes, 30);
     assert.equal(result.after.activities[1].actual.durationMinutes, 15);
   });

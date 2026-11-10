@@ -4,8 +4,8 @@
  * Mesure : { id, kg, date: 'AAAA-MM-JJ' }.
  */
 import { saveWeight, listWeights as storageList, deleteWeight } from '../storage.js';
+import { isRealProfile } from './profiles.js';
 
-const PROFILES = ['pierre', 'manon'];
 let demo = null;
 
 async function demoStore() {
@@ -30,20 +30,41 @@ const newId = date => 'w-' + date + '-' + Date.now().toString(36) + Math.random(
 /** Mesures du profil, la plus recente d'abord. */
 export async function listBodyWeights(profileId) {
   if (profileId === 'demo') return (await demoStore()).slice().sort((a, b) => b.date.localeCompare(a.date));
-  if (PROFILES.indexOf(profileId) === -1) return [];
+  if (!isRealProfile(profileId)) return [];
   const rows = await storageList(profileId);
   return rows.map(r => ({ id: r.id, ...r.data })).map(m => ({ id: m.id, kg: m.kg, date: m.date || '' }));
 }
 export async function addBodyWeight(profileId, kg, date) {
   check(kg, date);
   const m = { id: newId(date), kg: Math.round(kg * 10) / 10, date };
+  // mesure identique déjà enregistrée (même date, même poids) : aucun doublon
+  const same = (await listBodyWeights(profileId)).find(x => x.date === date && x.kg === m.kg);
+  if (same) return same;
   if (profileId === 'demo') { (await demoStore()).push(m); return m; }
-  if (PROFILES.indexOf(profileId) === -1) throw new Error('Profil inconnu.');
+  if (!isRealProfile(profileId)) throw new Error('Profil inconnu.');
   await saveWeight(profileId, m);
   return m;
 }
+/**
+ * Poids actuel (profil sportif, V2) : une mesure datée par jour. S'il existe déjà une mesure à cette date, elle est
+ * corrigée (même identifiant) au lieu d'en créer une seconde ; sinon une mesure est ajoutée. Valeur identique à la
+ * dernière mesure du jour : rien n'est écrit. Les mesures des autres jours ne sont jamais touchées.
+ * @returns {Promise<{measure:object, change:'added'|'updated'|'unchanged'}>}
+ */
+export async function recordBodyWeight(profileId, kg, date) {
+  check(kg, date);
+  const value = Math.round(kg * 10) / 10;
+  const today = (await listBodyWeights(profileId)).filter(x => x.date === date).sort((a, b) => b.id.localeCompare(a.id)); // la plus récente d'abord
+  if (today.some(x => x.kg === value)) return { measure: today.find(x => x.kg === value), change: 'unchanged' };
+  if (!today.length) return { measure: await addBodyWeight(profileId, value, date), change: 'added' };
+  const m = { id: today[0].id, kg: value, date };
+  if (profileId === 'demo') { const d = await demoStore(); const i = d.findIndex(x => x.id === m.id); if (i >= 0) d[i] = m; return { measure: m, change: 'updated' }; }
+  if (!isRealProfile(profileId)) throw new Error('Profil inconnu.');
+  await saveWeight(profileId, m);
+  return { measure: m, change: 'updated' };
+}
 export async function removeBodyWeight(profileId, id) {
   if (profileId === 'demo') { const d = await demoStore(); const i = d.findIndex(x => x.id === id); if (i >= 0) d.splice(i, 1); return; }
-  if (PROFILES.indexOf(profileId) === -1) throw new Error('Profil inconnu.');
+  if (!isRealProfile(profileId)) throw new Error('Profil inconnu.');
   await deleteWeight(profileId, id);
 }

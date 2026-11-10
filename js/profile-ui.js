@@ -12,15 +12,23 @@ import { addDays } from './stats.js';
 import { loadCatalog } from './catalog.js';
 import { demoToolsSection } from './demo-tools.js';
 import { korvGuide } from './jeu-ui.js';
-import { isRealProfile as real } from './profiles.js';
+import { isRealProfile as real, isKnownProfile, getProfileInfo } from './profiles.js';
 import { APP_VERSION } from './version.js';
 import { getUiSettings, setUiSettings } from './ui-settings.js';
 import { isWakeLockSupported } from './wakelock.js';
+import { identitySection, sportSection, gymSection, coachSection } from './coach-ui.js';
 import { el, btn, clear, add, dialog, confirmDialog, toast, fmtNum, parseNum, formatDateFr } from './dom.js';
 
 const root = document.documentElement;
 const page = document.querySelector('[data-page="profil"]');
-const PEOPLE = { pierre: { name: 'Pierre', goal: 'prise de muscle, force et endurance' }, manon: { name: 'Manon', goal: 'perte de graisse et renforcement musculaire' }, demo: { name: 'Démo', goal: '' } }; // objectifs en minuscules : utilisés dans le texte du bilan
+// Nom et objectif d'un profil (registre V2-PROF1 ; Pierre et Manon : textes historiques). Objectif en minuscules : utilisé
+// dans le texte du bilan. Profil inconnu sur cet appareil (sauvegarde d'un autre appareil) : son identifiant comme nom.
+function person(id) {
+  if (id === 'demo') return { name: 'Démo', goal: '' };
+  const info = getProfileInfo(id);
+  if (!info) return { name: String(id), goal: '' };
+  return { name: info.name, goal: String(info.goal || '').replace(/^./, c => c.toLowerCase()) };
+}
 const S = { other: null, week: null, bilan: '', notice: '', rev: 0 };
 const emitData = profile => document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile } }));
 
@@ -139,7 +147,7 @@ function backupSection(profile) {
   const restore = btn('Restaurer ce fichier', 'pm-secondary', async () => {
     try {
       const backup = parseBackupText(await readFile(file));
-      if (backup.profileId !== profile) throw new Error('Cette sauvegarde est celle de ' + PEOPLE[backup.profileId].name + ' : elle ne peut pas être restaurée dans le profil ' + PEOPLE[profile].name + '.');
+      if (backup.profileId !== profile) throw new Error('Cette sauvegarde est celle de ' + person(backup.profileId).name + ' : elle ne peut pas être restaurée dans le profil ' + person(profile).name + '.');
       const d = describeBackup(backup);
       const pick = await dialog({
         title: 'Restaurer la sauvegarde',
@@ -147,7 +155,7 @@ function backupSection(profile) {
         choices: [{ label: 'Annuler', value: null }, { label: 'Fusionner (garder l’existant)', value: 'merge', kind: 'primary' }, { label: 'Remplacer tout', value: 'replace', kind: 'danger' }]
       });
       if (!pick) return;
-      if (pick === 'replace' && !(await confirmDialog('Remplacer TOUTES les données de ' + PEOPLE[profile].name + ' par celles du fichier ? Les données actuelles de ce profil seront perdues.', { title: 'Remplacer les données', ok: 'Remplacer', danger: true }))) return;
+      if (pick === 'replace' && !(await confirmDialog('Remplacer TOUTES les données de ' + person(profile).name + ' par celles du fichier ? Les données actuelles de ce profil seront perdues.', { title: 'Remplacer les données', ok: 'Remplacer', danger: true }))) return;
       await restoreBackup(profile, backup, pick);
       file.value = '';
       S.notice = 'Restauration terminée (' + (pick === 'merge' ? 'fusion' : 'remplacement') + ') : ' + d.sessions + ' séance(s) dans le fichier.';
@@ -177,10 +185,10 @@ async function bilanSection(profile) {
       const [cat, sessions, weights] = await Promise.all([loadCatalog(), listWorkouts(profile), listBodyWeights(profile)]);
       const program = profile === 'demo' ? await getDemoProgram().catch(() => null) : await getProgram(profile, S.week).catch(() => null);
       const names = new Map([...cat.byId].map(([id, m]) => [id, m.name]));
-      const people = [{ profileId: profile, name: PEOPLE[profile].name, goal: PEOPLE[profile].goal, sessions, weights, program: program && program.weekStart === S.week ? program : null }];
+      const people = [{ profileId: profile, name: person(profile).name, goal: person(profile).goal, sessions, weights, program: program && program.weekStart === S.week ? program : null }];
       if (S.other) {
         const prog = S.other.programs.find(p => p.weekStart === S.week) || null;
-        people.push({ profileId: S.other.profileId, name: PEOPLE[S.other.profileId].name, goal: PEOPLE[S.other.profileId].goal, sessions: S.other.sessions, weights: S.other.weights, program: prog });
+        people.push({ profileId: S.other.profileId, name: person(S.other.profileId).name, goal: person(S.other.profileId).goal, sessions: S.other.sessions, weights: S.other.weights, program: prog });
         people.sort((a, b) => (a.profileId === 'pierre' ? 0 : 1) - (b.profileId === 'pierre' ? 0 : 1));
       }
       S.bilan = buildBilan({ weekStart: S.week, people, machineNames: names });
@@ -203,21 +211,21 @@ async function bilanSection(profile) {
   const otherId = profile === 'pierre' ? 'manon' : profile === 'manon' ? 'pierre' : null;
   const wrap = section('Bilan hebdomadaire', 'Texte à copier dans ChatGPT pour préparer la semaine suivante. Pour un bilan commun, ajoute le fichier de sauvegarde de l’autre personne (il reste en mémoire et n’écrase rien).', select);
   if (otherId) {
-    const file = el('input'); file.type = 'file'; file.accept = '.json,application/json'; file.setAttribute('aria-label', 'Sauvegarde de ' + PEOPLE[otherId].name);
+    const file = el('input'); file.type = 'file'; file.accept = '.json,application/json'; file.setAttribute('aria-label', 'Sauvegarde de ' + person(otherId).name);
     const line = el('div', 'pm-file-line');
-    const load = btn('Ajouter les données de ' + PEOPLE[otherId].name, 'pm-secondary', async () => {
+    const load = btn('Ajouter les données de ' + person(otherId).name, 'pm-secondary', async () => {
       try {
         const b = parseBackupText(await readFile(file));
-        if (b.profileId !== otherId) throw new Error('Ce fichier est la sauvegarde de ' + PEOPLE[b.profileId].name + ', pas celle de ' + PEOPLE[otherId].name + '.');
+        if (b.profileId !== otherId) throw new Error('Ce fichier est la sauvegarde de ' + person(b.profileId).name + ', pas celle de ' + person(otherId).name + '.');
         S.other = backupToPerson(b); S.bilan = '';
-        info.textContent = 'Données de ' + PEOPLE[otherId].name + ' chargées en mémoire : ' + S.other.sessions.length + ' séance(s).';
+        info.textContent = 'Données de ' + person(otherId).name + ' chargées en mémoire : ' + S.other.sessions.length + ' séance(s).';
         toast('Données chargées (temporaires)'); draw();
       } catch (e) { info.textContent = e.message || String(e); }
     });
     add(line, file, load);
     if (other) add(line, btn('Retirer', 'pm-secondary', () => { S.other = null; S.bilan = ''; info.textContent = 'Données retirées.'; draw(); }));
     wrap.append(line);
-    if (other) info.textContent = 'Données de ' + PEOPLE[other.profileId].name + ' chargées en mémoire : ' + other.sessions.length + ' séance(s).';
+    if (other) info.textContent = 'Données de ' + person(other.profileId).name + ' chargées en mémoire : ' + other.sessions.length + ' séance(s).';
   }
   wrap.append(info, generate, add(el('div', 'pm-row-actions'), copy, share), out);
   return wrap;
@@ -238,9 +246,9 @@ function localDataSection(profile) {
   });
   const kids = [info, persist];
   if (real(profile)) {
-    kids.push(btn('Effacer toutes les données de ' + PEOPLE[profile].name, 'pm-warning pm-block', async () => {
-      if (!(await confirmDialog('Effacer définitivement programmes, séances, poids et réglages de ' + PEOPLE[profile].name + ' sur cet appareil ? Fais d’abord une sauvegarde. L’autre profil n’est pas touché.', { title: 'Effacer les données', ok: 'Continuer', danger: true }))) return;
-      if (!(await confirmDialog('Dernière confirmation : tout effacer pour ' + PEOPLE[profile].name + ' ?', { title: 'Irréversible', ok: 'Tout effacer', danger: true }))) return;
+    kids.push(btn('Effacer toutes les données de ' + person(profile).name, 'pm-warning pm-block', async () => {
+      if (!(await confirmDialog('Effacer définitivement programmes, séances, poids et réglages de ' + person(profile).name + ' sur cet appareil ? Fais d’abord une sauvegarde. L’autre profil n’est pas touché.', { title: 'Effacer les données', ok: 'Continuer', danger: true }))) return;
+      if (!(await confirmDialog('Dernière confirmation : tout effacer pour ' + person(profile).name + ' ?', { title: 'Irréversible', ok: 'Tout effacer', danger: true }))) return;
       try { await clearProfileData(profile); toast('Données effacées'); emitData(profile); } catch (e) { toast(e.message || 'Échec.'); }
     }));
   }
@@ -268,16 +276,18 @@ function demoSection(profile) {
 
 async function render() {
   const profile = root.dataset.pmProfile, mine = ++S.rev;
-  if (!PEOPLE[profile]) return;
+  if (!isKnownProfile(profile)) return;
   const config = await getRestConfig(profile);
   const ui = await getUiSettings(profile);
   const bilan = await bilanSection(profile);
+  const [sport, gym] = await Promise.all([sportSection(profile), gymSection(profile)]); // V2 : profil sportif et salle
   if (mine !== S.rev || root.dataset.pmProfile !== profile) return;
   clear(page);
   const head = section('', '');
-  head.replaceChildren(el('h3', '', PEOPLE[profile].name), el('p', 'pm-muted', profile === 'demo' ? 'Mode démo — données fictives' : PEOPLE[profile].goal.replace(/^./, c => c.toUpperCase())),
+  head.replaceChildren(el('h3', '', person(profile).name), el('p', 'pm-muted', profile === 'demo' ? 'Mode démo — données fictives' : person(profile).goal.replace(/^./, c => c.toUpperCase())),
     btn('Changer de profil', 'pm-secondary', () => document.getElementById('switch-profile')?.click()));
-  add(page, el('div', 'eyebrow', 'Mon espace'), el('h2', '', 'Profil'), head, korvGuide(profile), chronoSection(profile, config), usageSection(profile, ui), effectsSection(profile, ui), backupSection(profile), bilan, localDataSection(profile), demoSection(profile));
+  const identity = identitySection(profile);
+  add(page, el('div', 'eyebrow', 'Mon espace'), el('h2', '', 'Profil'), head, korvGuide(profile), ...(identity ? [identity] : []), sport, gym, coachSection(profile), chronoSection(profile, config), usageSection(profile, ui), effectsSection(profile, ui), backupSection(profile), bilan, localDataSection(profile), demoSection(profile));
   page.append(section('À propos', null, el('p', 'pm-muted', 'PM Musculation · version ' + APP_VERSION + ' · fonctionne hors connexion après installation.')));
   const update = btn('Rechercher une mise à jour', 'pm-secondary', async () => {
     try {
@@ -296,4 +306,5 @@ const refresh = () => render().catch(console.error);
 const reload = () => { if (!page.hidden) refresh(); };
 document.addEventListener('pm:profile-changed', () => { S.other = null; S.bilan = ''; S.notice = ''; reload(); });
 document.addEventListener('pm:data-changed', () => { S.bilan = ''; reload(); });
+document.addEventListener('pm:profiles-changed', e => { if (e.detail?.id === root.dataset.pmProfile && e.detail?.reason === 'updated') reload(); });
 document.addEventListener('click', e => { if (e.target.closest?.('.nav-btn[data-go="profil"]')) refresh(); });
