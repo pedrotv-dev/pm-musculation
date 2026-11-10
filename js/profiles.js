@@ -14,7 +14,7 @@
 import { ENV } from './env.js';
 import {
   LEGACY_PROFILE_IDS, isValidProfileId, knownProfileIds, deletedLegacyIds, loadProfileRegistry, migrateProfileRegistry, countProfileRows,
-  addProfileRecord, updateProfileRecord, deleteProfileAndData, onProfileGone, restoreAsNewProfile
+  addProfileRecord, updateProfileRecord, deleteProfileAndData, onProfileGone, restoreAsNewProfile, purgeDeletedLegacyOrphans
 } from '../storage.js';
 
 export const DEMO_PROFILE_ID = 'demo';
@@ -145,7 +145,10 @@ export function initProfiles() {
       let added = [];
       // Registre déjà écrit : il fait foi (un profil historique absent a été supprimé ou n'a jamais existé ici : jamais
       // réinscrit). Sans registre : installation V1 avec données → fiches des profils historiques qui ont des données.
-      if (reg.meta) migrated = true;
+      if (reg.meta) {
+        migrated = true;
+        if (reg.meta.deletedLegacy?.length) await purgeDeletedLegacyOrphans().catch(() => {}); // orphelins d'anciens onglets
+      }
       else if (await countProfileRows(LEGACY_PROFILE_IDS) > 0) added = (await migrateNow()).added;
       lastError = null;
       return { ok: true, profiles: listProfilesSync(), added, migrated, error: null };

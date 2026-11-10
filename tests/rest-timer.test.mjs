@@ -12,11 +12,14 @@ const fakeDb = {
   createObjectStore(name, { keyPath }) { stores[name] = { keyPath, rows: new Map() }; return { createIndex() {} }; },
   transaction(names) {
     if (broken) throw new Error('IndexedDB indisponible');
+    // Comme IndexedDB : la transaction se termine quand plus aucune requête n'est en attente (requêtes enchaînées comprises).
+    let pending = 0, done = false;
+    const settle = () => setTimeout(() => { if (!pending && !done) { done = true; tx.oncomplete && tx.oncomplete(); } }, 0);
     const tx = {
       objectStore(name) {
         const st = stores[name];
         const key = r => JSON.stringify(st.keyPath.map(k => r[k]));
-        const req = fn => { const r = {}; setTimeout(() => { r.result = fn(); r.onsuccess && r.onsuccess(); }, 0); return r; };
+        const req = fn => { const r = {}; pending++; setTimeout(() => { r.result = fn(); r.onsuccess && r.onsuccess(); pending--; settle(); }, 0); return r; };
         return {
           get: k => req(() => clone(st.rows.get(JSON.stringify(k)))),
           put: v => req(() => { st.rows.set(key(v), clone(v)); }),
@@ -24,7 +27,7 @@ const fakeDb = {
         };
       }
     };
-    setTimeout(() => setTimeout(() => { tx.oncomplete && tx.oncomplete(); }, 0), 0);
+    setTimeout(settle, 0);
     return tx;
   }
 };

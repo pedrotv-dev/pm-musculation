@@ -187,7 +187,7 @@ async function guardedWrite(profileId, storeNames, run) {
   validProfile(profileId);
   const legacy = LEGACY_PROFILE_IDS.includes(profileId);
   const expected = knownProfiles.get(profileId) ?? '';
-  const names = legacy || storeNames.includes('settings') ? storeNames : [...storeNames, 'settings'];
+  const names = storeNames.includes('settings') ? storeNames : [...storeNames, 'settings'];
   const db = await openStorage();
   return new Promise((resolve, reject) => {
     let tx;
@@ -206,10 +206,18 @@ async function guardedWrite(profileId, storeNames, run) {
       try { run(tx, value => { result = value; }, fail); }
       catch (error) { fail(error); }
     };
-    // Pierre / Manon : écriture directe (comportement V1). Supprimés volontairement : déjà refusés par validProfile()
-    // (liste `deletedLegacy` du registre, relue au démarrage et à chaque changement venu d'un autre onglet).
-    if (legacy) { go(); return; }
+    // Pierre / Manon : la liste `deletedLegacy` du registre est relue DANS la transaction d'écriture : un onglet endormi
+    // (message inter-onglets perdu) ne peut plus écrire pour un profil historique supprimé entre-temps.
     try {
+      if (legacy) {
+        const meta = tx.objectStore('settings').get([REGISTRY, META_KEY]);
+        meta.onsuccess = () => {
+          const gone = meta.result?.value?.deletedLegacy;
+          if (Array.isArray(gone) && gone.includes(profileId)) { deletedLegacy.add(profileId); fail(profileGone(profileId)); return; }
+          go();
+        };
+        return;
+      }
       const check = tx.objectStore('settings').get([REGISTRY, profileKey(profileId)]);
       check.onsuccess = () => {
         const row = check.result;
@@ -734,6 +742,30 @@ export async function updateProfileRecord(id, change) {
  * en UNE transaction ciblée sur son identifiant (index byProfile). Jamais les profils historiques ni la démo.
  * @returns {{programs:number, sessions:number, weights:number, settings:number}} lignes supprimées
  */
+/**
+ * Lignes orphelines d'un profil historique supprimé (écrites par un onglet d'une version antérieure, avant que la liste
+ * `deletedLegacy` ne soit relue dans chaque transaction) : supprimées dans UNE transaction qui relit cette liste. Une
+ * restauration volontaire retire l'identifiant de la liste dans sa propre transaction : ses données ne sont jamais touchées.
+ */
+export async function purgeDeletedLegacyOrphans() {
+  const db = await openStorage();
+  const removed = {};
+  await new Promise((resolve, reject) => {
+    let tx;
+    try { tx = db.transaction(STORES, 'readwrite'); } catch (error) { reject(error); return; }
+    tx.oncomplete = () => resolve();
+    tx.onabort = () => reject(tx.error || new Error('Nettoyage annulé.'));
+    const m = tx.objectStore('settings').get([REGISTRY, META_KEY]);
+    m.onsuccess = () => {
+      const ids = (m.result?.value?.deletedLegacy || []).filter(id => LEGACY_PROFILE_IDS.includes(id));
+      for (const id of ids) for (const name of STORES) {
+        const request = tx.objectStore(name).index('byProfile').openCursor(IDBKeyRange.only(id));
+        request.onsuccess = () => { const c = request.result; if (c) { removed[id] = (removed[id] || 0) + 1; c.delete(); c.continue(); } };
+      }
+    };
+  });
+  return removed;
+}
 export async function deleteProfileAndData(id) {
   if (!isValidProfileId(id)) throw new Error('Ce profil ne peut pas être supprimé.');
   const legacy = LEGACY_PROFILE_IDS.includes(id);

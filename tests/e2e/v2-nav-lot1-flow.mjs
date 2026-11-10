@@ -38,6 +38,7 @@ await step('nouvel utilisateur : création du profil → 3 onglets (Accueil, Pro
 await step('premier accueil (aucun programme, aucune séance) : 3 choix ; « Préparer mon programme avec ChatGPT » → Programme', async () => {
   await page.waitForSelector(home + ' .pm-welcome-card h3:has-text("Par quoi veux-tu commencer")');
   assert.equal(await page.locator(home + ' .pm-welcome-opt').count(), 3);
+  assert.equal(await page.locator(home + ' .pm-validate').count(), 1, 'une seule action principale');
   await page.click(home + ' .pm-welcome-card button:has-text("Préparer mon programme avec ChatGPT")');
   assert.equal(await visiblePage(), 'programme');
   await page.waitForSelector(coach + ' .pm-coach-missing');
