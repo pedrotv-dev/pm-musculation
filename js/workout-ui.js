@@ -9,10 +9,10 @@ import {
   startWorkout, getResumableWorkout, getWorkout, listWorkouts, updateSet, addSet, removeSet, completeActivity, skipActivity,
   postponeActivity, returnToPostponed, pauseWorkout, resumeWorkout, finishWorkout, discardWorkout,
   addActivity, removeActivity, moveActivity, setCursor, setLoads, setWorkoutFeedback, getNextActivity, getWorkoutSummary,
-  getWorkoutDuration, getPostponedActivities
+  getWorkoutDuration, getPostponedActivities, setActivityFeel
 } from './workouts.js';
 import { el, btn, clear, add, dialog, confirmDialog, toast, formatClock, formatMinutes, fmtNum, parseNum, localISODate, formatDateFr } from './dom.js';
-import { lastPerformance, planLoads, programLoads, knownLoads } from './last-loads.js';
+import { lastPerformance, planLoads, programLoads, knownLoads, lastFeel, feelAdjustment, FEELS, FEEL_LABEL } from './last-loads.js';
 import { icon, withIcon } from './icons.js';
 import { loadCatalog, machineImage } from './catalog.js';
 import { isKnownProfile, isRealProfile, getProfileInfo } from './profiles.js';
@@ -635,6 +635,13 @@ function lastLoadHint(T, a) {
   else if (pre.reason === 'light') info.push('Charge allégée prévue par le programme : conservée.');
   else if (pre.reason === 'progression') info.push('Progression prévue par le programme : conservée.');
   if (last.skipped && last.skipped.length) info.push('Séance allégée du ' + formatDateFr(last.skipped[0].date) + ' non retenue comme référence.');
+  // LOT 3 · calibrage : dernier ressenti noté sur cette machine → proposition d'UN cran, jamais appliquée sans appui ;
+  // proposée seulement tant qu'aucune série n'est validée et que les charges restent celles de la dernière fois.
+  const lf = lastFeel(S.history, a.machineId, { excludeId: S.session?.id });
+  const pendingKgs = a.sets.filter(x => !x.done).map(x => x.kg).filter(Number.isFinite);
+  const atLast = pendingKgs.length && (last.assisted ? Math.min(...pendingKgs) : Math.max(...pendingKgs)) === last.kg;
+  const adj = lf && !a.sets.some(x => x.done) && atLast ? feelAdjustment(a, lf.feel) : null;
+  if (lf) info.push((lf.sessionId === last.sessionId ? 'Ressenti noté' : 'Ressenti noté le ' + formatDateFr(lf.date)) + ' : « ' + FEEL_LABEL[lf.feel] + ' ».');
   if (info.length) box.append(el('p', 'pm-muted pm-last-load-info', info.join(' ')));
   const apply = (label, compute, done) => btn(label, 'pm-secondary pm-last-apply', async () => {
     await flushAll();
@@ -652,6 +659,13 @@ function lastLoadHint(T, a) {
     if (await guardedCommit(T, (p, id) => setLoads(p, id, a.key, ch, { expectGen: gen }))) setStatus(done(ch.length), 'ok');
   });
   const row = el('div', 'pm-last-actions');
+  if (adj) {
+    const step = fmtNum(Math.abs(adj.delta));
+    const harderLabel = a.machineId && last.assisted ? 'Essayer avec ' + step + ' kg d’assistance en moins' : 'Essayer +' + step + ' kg';
+    row.append(apply(adj.direction === 'up' ? harderLabel : (last.assisted ? 'Alléger : ' + step + ' kg d’assistance en plus' : 'Alléger de ' + step + ' kg'),
+      fresh => { const x = feelAdjustment(fresh, lf.feel); return x ? x.changes : []; },
+      n => (adj.direction === 'up' ? 'Un cran plus lourd' : 'Un cran plus léger') + ' pour ' + n + ' série(s). Rien n’est validé : − / + pour corriger.'));
+  }
   if (toProgram.length) row.append(apply('Revenir à la charge du programme', fresh => programLoads(fresh), n => 'Charge du programme reprise pour ' + n + ' série(s).'));
   if (toLast.length) row.append(apply('Reprendre mes dernières charges', fresh => planLoads(fresh, lastFor, { known, mode: 'last' }).changes, n => 'Dernières charges reprises pour ' + n + ' série(s). Tu peux toujours les modifier.'));
   if (row.childNodes.length) box.append(row);
@@ -863,10 +877,13 @@ function renderMachine(a) {
     if (past.length) {
       const last = past[past.length - 1], best = Math.max(...past.map(x => x.topKg));
       // « Dernière fois » : dans le cadre de la série en cours (lastLoadHint) ; ici, le résumé de l'historique
+      // LOT 3 : la dernière performance n'est plus répétée ici quand le cadre de la série l'affiche déjà
+      const inBox = a.sets.some(x => !x.done) && lastPerformance(S.history, a.machineId, { excludeId: S.session?.id });
       card.append(el('p', 'pm-progress-line', past.length + ' séance' + (past.length > 1 ? 's' : '') + ' enregistrée' + (past.length > 1 ? 's' : '') +
-        ' · dernière : ' + fmtNum(last.topKg) + ' kg · ' + last.reps.join(' / ') + ' reps' + (best > last.topKg ? ' · record ' + fmtNum(best) + ' kg' : '')));
+        (inBox ? '' : ' · dernière : ' + fmtNum(last.topKg) + ' kg · ' + last.reps.join(' / ') + ' reps') + ' · record ' + fmtNum(best) + ' kg'));
     }
     renderSets(card, a);
+    if (a.status === 'done') card.append(feelRow(a));
   } else {
     const dur = inputField('minutes', a.actual?.durationMinutes ?? a.planned?.durationMinutes ?? 10, { kind: 'kg' });
     const grid = el('div', 'pm-cardio-grid');
@@ -943,6 +960,23 @@ function renderMachine(a) {
     card.append(withIcon(btn('Terminer la séance', 'pm-validate', () => showRecap()), 'drapeau'));
   }
   return card;
+}
+
+/**
+ * LOT 3 · ressenti FACULTATIF d'une machine terminée : un appui (Trop facile / Adapté / Trop difficile), un second appui
+ * l'efface. Ne valide rien et ne change aucune charge : il sert aux propositions de la prochaine séance et à ChatGPT.
+ */
+function feelRow(a) {
+  const T = targetNow();
+  const box = el('div', 'pm-feel-row');
+  box.setAttribute('role', 'group'); box.setAttribute('aria-label', 'Ressenti sur cette machine (facultatif)');
+  box.append(el('span', 'pm-feel-label', 'Ressenti (facultatif)'));
+  for (const [v, label] of FEELS) {
+    const b = btn(label, 'pm-feel-btn' + (a.feel === v ? ' pm-feel-on' : ''), () => commitTo(T, (p, id) => setActivityFeel(p, id, a.key, a.feel === v ? null : v)));
+    b.setAttribute('aria-pressed', a.feel === v ? 'true' : 'false');
+    box.append(b);
+  }
+  return box;
 }
 
 // ---------------------------------------------------------------- liste des machines (ordre, ajout, retrait)

@@ -152,3 +152,39 @@ export function programLoads(activity) {
   });
   return out;
 }
+
+// ---------------------------------------------------------------- V2-UX LOT 3 : ressenti par machine et calibrage
+/** Ressentis possibles d'une machine (facultatif, après ses séries) : trop facile, adapté, trop difficile. */
+export const FEELS = Object.freeze([['easy', 'Trop facile'], ['ok', 'Adapté'], ['hard', 'Trop difficile']]);
+export const FEEL_LABEL = Object.freeze(Object.fromEntries(FEELS));
+/** Pas de charge proposé (kg) : jamais plus qu'un cran, toujours sur décision de l'utilisateur. */
+export const LOAD_STEP = 2.5;
+/**
+ * Dernier ressenti noté pour une machine (séances terminées ou partielles, la plus récente d'abord), ou null.
+ * @returns {null | {feel:'easy'|'ok'|'hard', date:string, sessionId:string}}
+ */
+export function lastFeel(sessions, machineId, { excludeId = null } = {}) {
+  const rows = (sessions || []).filter(s => s && s.id !== excludeId && (s.status === 'completed' || s.status === 'partial') && Array.isArray(s.activities))
+    .sort((a, b) => stamp(b).localeCompare(stamp(a)));
+  for (const s of rows) {
+    const a = machineActs(s, machineId).find(x => x.feel && FEEL_LABEL[x.feel] && (x.sets || []).some(y => y.done));
+    if (a) return { feel: a.feel, date: s.date, sessionId: s.id };
+    if (machineActs(s, machineId).some(x => (x.sets || []).some(y => y.done))) return null; // séance plus récente sans ressenti : rien à proposer
+  }
+  return null;
+}
+/**
+ * Proposition d'ajustement d'un cran (séries NON validées seulement), d'après le dernier ressenti :
+ * trop facile → un cran plus dur ; trop difficile → un cran plus léger ; adapté → rien. Machines assistées : plus dur =
+ * MOINS d'assistance. Jamais appliquée sans appui de l'utilisateur. @returns {null | {direction:'up'|'down', delta, changes}}
+ */
+export function feelAdjustment(activity, feel, step = LOAD_STEP) {
+  if (!activity || activity.type !== 'strength' || (feel !== 'easy' && feel !== 'hard')) return null;
+  const assisted = isAssisted(activity.machineId);
+  const harder = feel === 'easy';
+  const delta = (harder ? 1 : -1) * (assisted ? -1 : 1) * step;
+  const changes = (activity.sets || []).filter(x => !x.done && Number.isFinite(x.kg))
+    .map(x => ({ setId: x.id, from: x.kg, kg: round(Math.min(1000, Math.max(0, x.kg + delta))) }))
+    .filter(c => c.kg !== c.from);
+  return changes.length ? { direction: harder ? 'up' : 'down', delta, changes } : null;
+}

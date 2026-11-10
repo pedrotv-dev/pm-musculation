@@ -36,6 +36,7 @@ await step('démo : carte de niveau et mascotte sur l’accueil', async () => {
 });
 await step('démo : Progrès = succès, classements personnels, « comment gagner de l’XP »', async () => {
   await demo.click('.nav-btn[data-go="progres"]');
+  await demo.click('.pm-game-fold summary'); // LOT 4 : succès et classements repliés en bas de Progression
   await demo.waitForSelector('.pm-badges');
   assert.match(await dtext('.pm-badges-panel h3'), /Succès · \d+ \/ 18/);
   assert.ok(await demo.locator('.pm-badge-tile.pm-unlocked').count() >= 3);
@@ -91,6 +92,8 @@ await step('retour à l’accueil : niveau mis à jour (80 XP), puis succès dan
   await page.click(screen + ' button:has-text("Continuer")');
   await page.waitForFunction(() => /80 \/ 200 XP/.test(document.querySelector('.pm-level-card')?.innerText || ''), null, { timeout: 8000 }).catch(async e => { throw new Error('carte : ' + JSON.stringify(await page.evaluate(() => [...document.querySelectorAll('.pm-level-card')].map(c => c.innerText)))); });
   await page.click('.nav-btn[data-go="progres"]');
+  await page.waitForSelector('.pm-game-fold summary:has-text("Succès et classements · 2 / 18")'); // LOT 4 : replié, compteur visible
+  await page.click('.pm-game-fold summary');
   await page.waitForFunction(() => /Succès · 2 \/ 18/.test(document.querySelector('.pm-badges-panel h3')?.innerText || ''));
   assert.equal(await page.locator('.pm-badge-tile .pm-medal').count(), 18);
   assert.equal(await page.locator('.pm-badge-tile .pm-medal-locked').count(), 16);

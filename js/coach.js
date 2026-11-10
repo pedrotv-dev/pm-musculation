@@ -226,6 +226,7 @@ function weeksBlock(sessions, programs, targetWeek) {
   return L;
 }
 
+const FEEL_TEXT = { easy: 'TROP FACILE (augmenter prudemment)', ok: 'adapté', hard: 'TROP DIFFICILE (alléger ou garder)' };
 function loadsBlock(sessions, catalogById, today) {
   const closed = sessions.filter(isClosed);
   const recent = new Set();
@@ -238,10 +239,12 @@ function loadsBlock(sessions, catalogById, today) {
     const sess = closed.find(s => s.id === last.sessionId);
     const done = sess ? sess.activities.filter(a => a.type === 'strength' && a.machineId === id).flatMap(a => a.sets.filter(x => x.done)) : [];
     const assisted = isAssisted(id);
+    const feel = sess ? (sess.activities.find(a => a.type === 'strength' && a.machineId === id && a.feel) || {}).feel : null; // LOT 3
     L.push('- ' + (catalogById.get(id)?.name || id) + ' (' + id + ') : dernière fois ' + date(last.date) + ' — ' + num(last.topKg) + ' kg' +
       (last.repsAtTop ? ' × ' + last.repsAtTop : '') + ' ; meilleure charge ' + num(best) + ' kg ; ' + h.length + ' séance(s)' +
       (done.length ? ' ; séries validées la dernière fois : ' + done.map(x => (x.side ? (x.side === 'left' ? 'G ' : 'D ') : '') + num(x.kg) + ' × ' + x.reps).join(' / ') : '') +
-      (assisted ? ' (kg = ASSISTANCE : moins = plus difficile)' : '') + (sess && sess.importedFrom ? ' (historique importé)' : ''));
+      (assisted ? ' (kg = ASSISTANCE : moins = plus difficile)' : '') + (sess && sess.importedFrom ? ' (historique importé)' : '') +
+      (feel ? ' ; ressenti noté : ' + FEEL_TEXT[feel] : ''));
   }
   return L.length ? L : ['- aucune séance de musculation enregistrée ces 8 dernières semaines'];
 }
