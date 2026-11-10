@@ -3,7 +3,8 @@
  * Premier module chargé : il fixe `data-pm-profile` sur <html> avant les autres modules.
  * Événements émis : pm:profile-changed { profile | null }.
  */
-import { PROFILE_STORAGE_KEY, PROFILE_COLORS, NAME_MAX, isKnownProfile, isLegacyProfile, getProfileInfo, initProfiles, listProfiles, createProfile } from './profiles.js';
+import { PROFILE_STORAGE_KEY, PROFILE_COLORS, NAME_MAX, isKnownProfile, isListedProfile, isLegacyProfile, getProfileInfo, initProfiles, listProfiles, createProfile } from './profiles.js';
+import { needsOnboarding, showOnboarding } from './onboarding.js';
 
 const root = document.documentElement;
 const $ = selector => document.querySelector(selector);
@@ -42,16 +43,21 @@ function applyIdentity(data) {
 }
 
 function chooseProfile(profile, persist = true) {
-  if (!isKnownProfile(profile)) return;
+  // V2-UX-FINALISATION : seulement un profil inscrit sur cet appareil (Pierre / Manon : seulement s'ils y figurent)
+  if (!isListedProfile(profile)) return;
   currentProfile = profile;
   root.dataset.pmProfile = profile;
   const data = getProfileInfo(profile); // registre des profils (V2-PROF1) ; Pierre, Manon et Démo : identité inchangée
   applyIdentity(data);
   $('#screen-select').hidden = true;
-  $('#app-pages').hidden = false;
-  $('#bottom-nav').hidden = false;
+  // inscription commencée et non terminée : elle reprend à son étape, AVANT l'Accueil (jamais pour un profil existant)
+  const onboarding = needsOnboarding(profile);
+  $('#screen-onboarding').hidden = !onboarding;
+  $('#app-pages').hidden = onboarding;
+  $('#bottom-nav').hidden = onboarding;
   $('#switch-profile').hidden = false;
-  $('#open-settings').hidden = false;
+  $('#open-settings').hidden = onboarding;
+  if (onboarding) showOnboarding($('#screen-onboarding'), profile, { onDone: () => finishOnboarding(profile) }).catch(console.error);
   if (persist) {
     try { localStorage.setItem(PROFILE_STORAGE_KEY, profile); }
     catch (error) { console.warn('Impossible de mémoriser le profil sur cet appareil.', error); }
@@ -60,8 +66,19 @@ function chooseProfile(profile, persist = true) {
   document.dispatchEvent(new CustomEvent('pm:profile-changed', { detail: { profile } }));
 }
 
+/** Inscription terminée : Accueil normal (écrans relus : profil sportif, accueil de bienvenue). */
+function finishOnboarding(profile) {
+  if (currentProfile !== profile) return;
+  $('#screen-onboarding').hidden = true; $('#screen-onboarding').replaceChildren();
+  $('#app-pages').hidden = false; $('#bottom-nav').hidden = false; $('#open-settings').hidden = false;
+  navigate('accueil');
+  document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile } }));
+  document.dispatchEvent(new CustomEvent('pm:coach-changed', { detail: { profile } }));
+}
+
 function changeProfile() {
   currentProfile = null;
+  $('#screen-onboarding').hidden = true; $('#screen-onboarding').replaceChildren();
   delete root.dataset.pmProfile;
   document.dispatchEvent(new CustomEvent('pm:profile-changed', { detail: { profile: null } }));
   $('#app-pages').hidden = true;
@@ -78,16 +95,23 @@ document.querySelectorAll('[data-select-profile]').forEach(button => button.addE
 document.querySelectorAll('[data-go]').forEach(button => button.addEventListener('click', () => navigate(button.dataset.go)));
 $('#switch-profile').addEventListener('click', changeProfile);
 
-// Registre des profils (V2-PROF1) : migration automatique de Pierre et Manon (ajout de leurs fiches, aucune donnée
-// touchée), puis lecture. Les profils historiques et la démo sont connus tout de suite : aucun délai au démarrage.
+// Registre des profils (V2-PROF1) : lecture, et migration des profils historiques SEULEMENT s'ils ont des données
+// (ancienne installation). V2-UX-FINALISATION : installation neuve → aucun profil précréé ; profil supprimé → jamais
+// réinscrit. Le dernier profil utilisé n'est rouvert qu'une fois le registre lu (jamais un profil supprimé).
 const profilesStarted = initProfiles();
-profilesStarted.then(r => { if (!r.ok) console.warn('Registre des profils indisponible : profils historiques seulement.', r.error); });
+profilesStarted.then(r => { if (!r.ok) console.warn('Registre des profils indisponible.', r.error); });
 
 let saved = null;
 try { saved = localStorage.getItem(PROFILE_STORAGE_KEY); }
 catch (error) { console.warn('Stockage de profil indisponible.', error); }
-if (saved && (isLegacyProfile(saved) || saved === 'demo')) chooseProfile(saved, false);
-else if (saved) profilesStarted.then(() => { if (!currentProfile && isKnownProfile(saved)) chooseProfile(saved, false); }); // profil du registre
+if (saved === 'demo') chooseProfile(saved, false);
+else if (saved) {
+  $('#screen-select').hidden = true; // pas d'écran de choix fugitif pendant la lecture du registre (quelques ms)
+  profilesStarted.then(() => {
+    if (!currentProfile && isListedProfile(saved)) chooseProfile(saved, false);
+    else if (!currentProfile) { $('#screen-select').hidden = false; try { localStorage.removeItem(PROFILE_STORAGE_KEY); } catch (_) { /* bloqué */ } }
+  });
+}
 
 // ---------------------------------------------------------------- profils créés sur cet appareil
 // Tout reste dans IndexedDB (registre des profils) : aucun compte, aucun serveur, aucune synchronisation.
@@ -99,8 +123,17 @@ async function renderUserProfiles() {
   try { all = await listProfiles(); } catch (_) { all = []; }
   // V2-EVOLUTION-1 : profil masqué (« Gérer mes profils ») : absent de l'écran de choix, données intactes, réaffichable
   const hidden = p => !!(p.extra && p.extra.hidden);
-  for (const p of all.filter(x => x.legacy)) { const b = document.querySelector('[data-select-profile="' + p.id + '"]'); if (b) b.hidden = hidden(p); }
+  let legacyShown = 0;
+  for (const id of ['pierre', 'manon']) {
+    const p = all.find(x => x.id === id), b = document.querySelector('[data-select-profile="' + id + '"]');
+    if (b) { b.hidden = !p || hidden(p); if (!b.hidden) legacyShown++; }
+  }
+  $('#legacy-profiles').hidden = !legacyShown;
   list = all.filter(p => !p.legacy && !hidden(p));
+  const any = legacyShown + list.length > 0;
+  $('#select-title').textContent = any ? 'Choisis ton profil' : 'Bienvenue sur PM Musculation';
+  $('#select-intro').textContent = any ? 'Ton choix sera mémorisé sur cet appareil. Tu pourras changer de profil plus tard.'
+    : 'Crée ton profil en quelques étapes, ou essaie le mode Démo avec des données fictives. Tout reste sur ce téléphone : aucun compte.';
   box.replaceChildren(...list.map(p => {
     const info = getProfileInfo(p.id) || {};
     const b = document.createElement('button');
@@ -138,7 +171,8 @@ form.addEventListener('submit', async event => {
   if (!name) { showError('Indique un prénom ou un pseudo.'); nameInput.focus(); return; }
   creating = true; submitBtn.disabled = true; cancelBtn.disabled = true; submitBtn.textContent = 'Création…';
   try {
-    const profile = await createProfile({ name, color: await nextColor() }); // résolu APRÈS la validation de l'écriture IndexedDB
+    // étape 1 de l'inscription guidée (prénom) : la suite (étapes 2 à 7) s'ouvre aussitôt et reprend si elle est interrompue
+    const profile = await createProfile({ name, color: await nextColor(), extra: { onboarding: { step: 2, done: false } } });
     creating = false;
     closeForm();
     await renderUserProfiles();
@@ -171,7 +205,7 @@ importFile.addEventListener('change', async () => {
     const name = (backup.profile && backup.profile.name) || (getProfileInfo(backup.profileId) || {}).name || backup.profileId;
     const summary = d.sessions + ' séance(s), ' + d.programs + ' programme(s), ' + d.weights + ' mesure(s) de poids';
     if (backup.profileId === 'demo') throw new Error('La démo ne se restaure pas.');
-    if (isKnownProfile(backup.profileId)) {
+    if (isListedProfile(backup.profileId) && backup.profileId !== 'demo') {
       const pick = await dialog({ title: 'Ce profil existe déjà', message: 'Le profil « ' + name + ' » existe déjà sur ce téléphone. Sauvegarde : ' + summary + '. Que faire ?',
         choices: [{ label: 'Annuler', value: null }, { label: 'Fusionner (garder l’existant)', value: 'merge', kind: 'primary' }, { label: 'Remplacer ses données', value: 'replace', kind: 'danger' }] });
       if (!pick) { importSay('Import annulé : rien n’a été modifié.'); return; }
@@ -192,7 +226,9 @@ importFile.addEventListener('change', async () => {
 document.addEventListener('pm:profiles-changed', () => { renderUserProfiles(); });
 
 // Interface future (écrans ASCENT/KORV) : sélection d'un profil par événement, même chemin que les boutons actuels.
-document.addEventListener('pm:select-profile', e => { const p = e.detail && e.detail.profile; if (isKnownProfile(p)) chooseProfile(p); });
+document.addEventListener('pm:select-profile', e => { const p = e.detail && e.detail.profile; if (isListedProfile(p)) chooseProfile(p); });
+// Écrans sans bouton de navigation (ex. « Mes charges ») : ouverture par événement
+document.addEventListener('pm:navigate', e => { const p = e.detail && e.detail.page; if (p) navigate(p); });
 // Registre modifié (ici ou dans un autre onglet) : profil actif renommé / recoloré → identité à jour ; profil actif
 // supprimé → retour au choix.
 document.addEventListener('pm:profiles-changed', e => {

@@ -147,12 +147,12 @@ test('validation d’import : 1 séance au lieu de 5 signalée ; jours manquants
   assert.deepEqual(SP.frequencyIssues(['mardi'], SP.sanitizeSport({}), {}), [], 'profil sans fréquence : pas de contrôle');
 });
 
-test('gestion des profils : profil créé supprimé ; Pierre et Manon protégés mais masquables ; profils inconnus intacts', async () => {
+test('gestion des profils : profil créé supprimé ; Pierre masquable (et supprimable sur confirmation) ; profils inconnus intacts', async () => {
   const tmp = await P.createProfile({ name: 'Temporaire fictif', color: 'bleu' });
   await assert.rejects(P.deleteProfile(tmp.id), /Confirmation/);
   await P.deleteProfile(tmp.id, { confirm: tmp.id });
   assert.equal((await P.listProfiles()).some(p => p.id === tmp.id), false);
-  await assert.rejects(P.deleteProfile('pierre', { confirm: 'pierre' }), /ne peut pas être supprimé/);
+  await assert.rejects(P.deleteProfile('pierre'), /Confirmation/);
   await P.updateProfile('pierre', { extra: { hidden: true } });
   assert.equal((await P.listProfiles()).find(p => p.id === 'pierre').extra.hidden, true);
   assert.ok((await W.listWorkouts('pierre')).length >= 2, 'masquer ne touche aucune donnée');

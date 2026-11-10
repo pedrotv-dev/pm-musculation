@@ -262,7 +262,7 @@ async function displayProgram() {
   if (!week) {
     const blank = node('div', 'pm-empty');
     add(blank, node('strong', '', 'Aucun programme importé'),
-      node('p', '', 'Ouvre « Importer un programme hebdomadaire » ci-dessous pour commencer.'));
+      node('p', '', 'Prépare-le juste en dessous avec « Préparer ma semaine » (3 étapes), ou importe un fichier.'));
     historyView.append(blank);
     return;
   }
@@ -537,6 +537,18 @@ document.addEventListener('pm:profile-changed', event => {
   const profile = event.detail.profile;
   const started = state.profileVersion + 1;
   setProfile(profile).catch(error => handleProfileError(error, profile, started));
+});
+// LOT 2 : assistant « Préparer ma semaine » → « Coller la réponse de ChatGPT » : texte du presse-papiers (ou rien : cadre
+// ouvert pour coller à la main) ; vérification lancée tout de suite, aperçu et bouton « Importer ce programme » visibles.
+document.addEventListener('pm:import-text', event => {
+  if (!isRealProfile(state.profile) && state.profile !== 'demo') return;
+  if (importCard.hidden) return;
+  const text = String(event.detail?.text || '');
+  importCard.open = true;
+  if (!text) { paste.focus(); paste.scrollIntoView({ block: 'center' }); return; }
+  paste.value = text; state.source = null; fileInput.value = ''; fileName.textContent = 'Aucun fichier sélectionné';
+  resetPreview();
+  previewImport().then(() => (previewView.hidden ? actionArea : previewView).scrollIntoView({ block: 'start' })).catch(showError);
 });
 // Accueil → « Voir mon programme » : affiche la semaine demandée (programme futur déjà enregistré)
 document.addEventListener('pm:show-program-week', event => {

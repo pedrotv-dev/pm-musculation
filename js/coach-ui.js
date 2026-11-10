@@ -4,7 +4,7 @@
  */
 import { el, btn, add, dialog, confirmDialog, toast, formatDateFr, fmtNum, localISODate } from './dom.js';
 import { getProfileInfo, isRealProfile, isLegacyProfile, updateProfile, deleteProfile, PROFILE_COLORS, NAME_MAX, GOAL_MAX } from './profiles.js';
-import { GOALS, LEVELS, DAYS, DURATIONS, INTENSITIES, FATIGUE, SLEEP, MEASURES, TEXT_MAX, getSportProfile, saveSportProfile, getGym, saveGym, missingEssentials, weightOrNull } from './sport-profile.js';
+import { GOALS, LEVELS, SENIORITY, LEVEL_OF_SENIORITY, DAYS, DURATIONS, INTENSITIES, FATIGUE, SLEEP, MEASURES, TEXT_MAX, getSportProfile, saveSportProfile, getGym, saveGym, missingEssentials, weightOrNull } from './sport-profile.js';
 import { buildCoachPrompt } from './coach.js';
 import { loadCatalog } from './catalog.js';
 import { listWorkouts, getDemoProgram } from './workouts.js';
@@ -13,6 +13,7 @@ import { listPrograms } from '../storage.js';
 import { mondayOf } from './programs.js';
 import { addDays } from './stats.js';
 import { runBackup, saveTextFile } from './backup.js';
+import { getDeclaredLoads } from './declared-loads.js';
 
 const panel = (title, intro) => { const box = el('article', 'panel pm-profile-section'); box.append(el('h3', '', title)); if (intro) box.append(el('p', 'pm-muted', intro)); return box; };
 /** Section repliable (un seul niveau) : titre toujours visible, contenu à l'ouverture. */
@@ -62,7 +63,7 @@ const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 export function identitySection(profile) {
   if (!isRealProfile(profile)) return null;
   const info = getProfileInfo(profile) || {};
-  const box = fold('Mon profil', isLegacyProfile(profile) ? 'Nom et objectif affichés. Ce profil historique ne peut pas être supprimé.' : 'Nom, objectif affiché et couleur. Les données du profil ne changent pas.');
+  const box = fold('Mon profil', 'Nom, objectif affiché et couleur. Les données du profil ne changent pas.');
   const name = input(info.name, { max: NAME_MAX });
   const goal = input(info.goal || '', { max: GOAL_MAX });
   const color = select(Object.entries(PROFILE_COLORS).map(([k, c]) => [k, c.theme]), info.color, 'Couleur');
@@ -75,17 +76,11 @@ export function identitySection(profile) {
     finally { save.disabled = false; }
   });
   add(box, field('Prénom ou pseudo', name), field('Objectif affiché (facultatif)', goal), field('Couleur', color), save, st);
-  if (!isLegacyProfile(profile)) {
-    box.append(btn('Supprimer ce profil', 'pm-warning pm-block', async () => {
-      const pick = await dialog({ title: 'Supprimer le profil', message: 'Supprimer « ' + info.name + ' » et TOUTES ses données (programmes, séances, poids, réglages) de ce téléphone ? Les autres profils ne sont pas touchés. Fais d’abord une sauvegarde si tu veux pouvoir le restaurer.',
-        choices: [{ label: 'Annuler', value: null }, { label: 'Sauvegarder d’abord', value: 'backup', kind: 'primary' }, { label: 'Supprimer', value: 'delete', kind: 'danger' }] });
-      if (pick === 'backup') { try { const r = await runBackup(profile); say(st, r.how === 'cancelled' ? 'Sauvegarde annulée : rien n’a été supprimé.' : 'Sauvegarde faite. Appuie de nouveau sur « Supprimer ce profil » pour continuer.', r.how === 'cancelled' ? '' : 'ok'); } catch (e) { say(st, 'Sauvegarde impossible : ' + (e.message || e) + ' Rien n’a été supprimé.', 'error'); } return; }
-      if (pick !== 'delete') return;
-      if (!(await confirmDialog('Dernière confirmation : supprimer définitivement « ' + info.name + ' » et ses données ?', { title: 'Irréversible', ok: 'Supprimer définitivement', danger: true }))) return;
-      try { await deleteProfile(profile, { confirm: profile }); toast('Profil supprimé'); }
-      catch (e) { say(st, 'Suppression impossible : ' + (e.message || e) + ' Les données sont conservées.', 'error'); }
-    }));
-  }
+  // V2-UX-FINALISATION : tout profil (Pierre et Manon compris) est supprimable, avec les mêmes protections
+  box.append(btn('Supprimer ce profil', 'pm-warning pm-block', async () => {
+    const { remove } = await import('./profiles-ui.js');
+    await remove({ id: profile, name: (getProfileInfo(profile) || info).name }, st);
+  }));
   return box;
 }
 
@@ -96,7 +91,7 @@ const ESSENTIAL_IDS = { mainGoal: 'pm-sport-mainGoal', level: 'pm-sport-level', 
 /** LOT 1 : retour direct vers « Préparer mon programme avec ChatGPT » (onglet Programme) depuis Réglages. */
 export function openCoach() {
   document.querySelector('.nav-btn[data-go="programme"]')?.click();
-  setTimeout(() => document.querySelector('[data-page="programme"] .pm-coach-section')?.scrollIntoView({ block: 'start' }), 0);
+  setTimeout(() => document.querySelector('[data-page="programme"] .pm-coach-section')?.scrollIntoView({ block: 'start' }), 50);
 }
 export async function sportSection(profile) {
   const [s, weights] = await Promise.all([getSportProfile(profile), listBodyWeights(profile).catch(() => [])]);
@@ -108,6 +103,7 @@ export async function sportSection(profile) {
   const goals = checks(GOALS, s.goals);
   const goalNote = area(s.goalNote, 'Ex. : préparer un trail en mars, reprendre après une pause…');
   const level = select(LEVELS, s.level); level.id = ESSENTIAL_IDS.level;
+  const seniority = select(SENIORITY, s.seniority); seniority.id = 'pm-sport-seniority'; // V2-UX-FINALISATION
   const freq = select([1, 2, 3, 4, 5, 6, 7].map(n => [n, n + ' séance' + (n > 1 ? 's' : '')]), s.frequency); freq.id = ESSENTIAL_IDS.frequency;
   const days = checks(DAYS, s.days, cap); days.box.id = ESSENTIAL_IDS.days;
   const dur = select(DURATIONS.map(d => [d, d + ' min']), s.durationMin); dur.id = ESSENTIAL_IDS.durationMin;
@@ -133,7 +129,7 @@ export async function sportSection(profile) {
       // poids actuel : vérifié AVANT tout enregistrement (rien n'est écrit si la valeur est invalide)
       const typed = weightOrNull(weightNow.value.trim(), 'Poids actuel');
       const newWeight = typed !== null && (!lastW || typed !== lastW.kg) ? typed : null; // Progression se relit à l'ouverture
-      await saveSportProfile(profile, { mainGoal: mainGoal.value, goals: goals.values(), goalNote: goalNote.value, level: level.value, frequency: freq.value, days: days.values(), durationMin: dur.value,
+      await saveSportProfile(profile, { mainGoal: mainGoal.value, goals: goals.values(), goalNote: goalNote.value, level: level.value, seniority: seniority.value, frequency: freq.value, days: days.values(), durationMin: dur.value,
         targetWeightKg: target.value.trim(), intensity: intensity.value, fatigue: fatigue.value, sleep: sleep.value, recoveryNote: recovery.value, measures: m, initialPerf: perf.value,
         avoid: avoid.value, constraints: constraints.value, preferences: prefs.value, health: health.value, healthInBilan: hs.checked });
       let extra = '';
@@ -150,7 +146,7 @@ export async function sportSection(profile) {
   });
   const mgrid = el('div', 'pm-coach-grid'); measures.forEach(([, i, label]) => mgrid.append(field(label, i)));
   add(box,
-    el('h4', 'pm-coach-sub', 'Objectifs'), field('Objectif principal *', mainGoal), el('p', 'pm-coach-label', 'Objectifs secondaires (facultatif)'), goals.box, field('Précision (facultatif)', goalNote), field('Niveau d’expérience *', level),
+    el('h4', 'pm-coach-sub', 'Objectifs'), field('Objectif principal *', mainGoal), el('p', 'pm-coach-label', 'Objectifs secondaires (facultatif)'), goals.box, field('Précision (facultatif)', goalNote), field('Niveau d’expérience *', level), field('Ancienneté en musculation', seniority, 'Elle règle la technique et la prudence, pas l’intensité.'),
     el('h4', 'pm-coach-sub', 'Disponibilités'), field('Séances par semaine *', freq), el('p', 'pm-coach-label', 'Jours disponibles *'), days.box,
     field('Durée maximale par séance *', dur, 'Le temps dont tu disposes au maximum, pas une durée à remplir : une séance plus courte est normale.'),
     el('h4', 'pm-coach-sub', 'Intensité, fatigue et récupération'), field('Difficulté souhaitée (RPE)', intensity, 'RPE : effort ressenti de 1 à 10 ; 8 = il reste environ 2 répétitions possibles.'),
@@ -162,7 +158,7 @@ export async function sportSection(profile) {
     el('h4', 'pm-coach-sub', 'Restrictions et préférences'), field('Mouvements ou exercices à éviter', avoid), field('Contraintes', constraints), field('Préférences', prefs),
     el('h4', 'pm-coach-sub', 'Santé (facultatif)'), el('p', 'pm-muted pm-coach-warning', 'Facultatif. N’indique que ce que tu acceptes de partager. Ces informations restent sur ce téléphone et ne remplacent pas un avis médical : en cas de douleur, de blessure ou de traitement, demande l’avis d’un professionnel de santé.'),
     field('Informations de santé', health), healthShare,
-    save, st, btn('Préparer mon programme avec ChatGPT →', 'pm-link pm-to-coach', openCoach));
+    save, st, btn('Préparer ma semaine →', 'pm-link pm-to-coach', openCoach));
   if (s.updatedAt) box.append(el('p', 'pm-muted', 'Dernière mise à jour : ' + formatDateFr(s.updatedAt.slice(0, 10)) + (s.history.length ? ' · ' + s.history.length + ' changement(s) mémorisé(s)' : '')));
   return box;
 }
@@ -214,13 +210,13 @@ async function copy(text, areaEl) {
 }
 /** Données du profil pour le bilan (programmes : démo en mémoire, sinon IndexedDB). */
 export async function coachInput(profile, targetWeek, today = new Date()) {
-  const [sport, gym, cat, sessions, weights] = await Promise.all([getSportProfile(profile), getGym(profile), loadCatalog(), listWorkouts(profile), listBodyWeights(profile)]);
+  const [sport, gym, cat, sessions, weights, declared] = await Promise.all([getSportProfile(profile), getGym(profile), loadCatalog(), listWorkouts(profile), listBodyWeights(profile), getDeclaredLoads(profile)]);
   let programs = [];
   if (profile === 'demo') { const p = await getDemoProgram().catch(() => null); if (p) programs = [p]; }
   else programs = (await listPrograms(profile).catch(() => [])).map(r => r.data || r).filter(Boolean);
   const pad = n => String(n).padStart(2, '0');
   const todayIso = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
-  return { profileId: profile, name: getProfileInfo(profile)?.name || profile, sport, gym, catalog: cat.list, sessions, weights, programs, targetWeek, today: todayIso };
+  return { profileId: profile, name: getProfileInfo(profile)?.name || profile, sport, gym, catalog: cat.list, sessions, weights, programs, declared, targetWeek, today: todayIso };
 }
 /** Ouvre « Mon profil sportif » (page Réglages) sur un champ essentiel manquant. */
 async function goToField(key) {
@@ -253,21 +249,24 @@ function missingBlock(missing) {
 const gate = { refresh: null };
 if (typeof document !== 'undefined') document.addEventListener('pm:coach-changed', e => { if (gate.refresh && e.detail?.profile === C.profile) gate.refresh(); });
 /**
- * « Préparer mon programme avec ChatGPT » (V2, parcours) : la génération n'apparaît qu'une fois les informations
- * essentielles du profil sportif renseignées (missingEssentials) ; sinon, la liste de ce qui manque, avec un lien
- * direct vers chaque champ. Mise à jour dès l'enregistrement du profil sportif.
+ * LOT 2 — assistant « Préparer ma semaine » (onglet Programme) : ① copier la demande (rédigée par l'application) et ouvrir
+ * ChatGPT, ② coller sa réponse (presse-papiers, sinon le cadre d'import), ③ vérifier et importer (aperçu juste en dessous).
+ * Tant que le profil sportif est incomplet : la liste de ce qui manque, avec un lien direct vers chaque champ.
+ * Aucune donnée n'est envoyée par l'application : c'est l'utilisateur qui colle sa demande dans ChatGPT.
  */
 export function coachSection(profile) {
   if (C.profile !== profile) { C.text = ''; C.week = null; C.profile = profile; }
-  const box = panel('Préparer mon programme avec ChatGPT', 'L’application rédige ta demande : profil sportif, machines, disponibilités, historique et format attendu. Copie-la dans ChatGPT, puis importe le JSON qu’il te renvoie juste en dessous (« Importer un programme hebdomadaire »). Profil sportif et machines : Réglages ⚙︎.');
+  const box = panel('Préparer ma semaine', 'Trois étapes, sans rien écrire : ① copie ta demande et ouvre ChatGPT, ② colle sa réponse, ③ vérifie et importe. La demande reprend ton profil sportif, tes machines, tes jours et tes dernières séances.');
   box.classList.add('pm-coach-section');
   const body = el('div', 'pm-coach-body');
   box.append(body);
   let seq = 0;
   const refresh = async () => {
     const mine = ++seq;
-    const sport = await getSportProfile(profile).catch(() => null);
+    const [sport, weeks] = await Promise.all([getSportProfile(profile).catch(() => null), profile === 'demo' ? [] : listPrograms(profile).then(l => l.map(r => r.weekStart || r.data?.weekStart)).catch(() => [])]);
     if (mine !== seq) return;
+    // semaine proposée : la semaine en cours si elle n'a pas encore de programme, sinon la suivante
+    if (!C.week) C.week = profile !== 'demo' && !weeks.includes(mondayOf()) ? mondayOf() : addDays(mondayOf(), 7);
     const missing = sport ? missingEssentials(sport) : [];
     body.replaceChildren(...(missing.length ? [missingBlock(missing)] : generator(profile)));
   };
@@ -275,32 +274,47 @@ export function coachSection(profile) {
   refresh();
   return box;
 }
+/** Accueil → « Préparer ma semaine » : onglet Programme, assistant sur la semaine choisie. */
+export function prepareWeek(week) {
+  const profile = document.documentElement.dataset.pmProfile;
+  C.profile = profile; C.week = week; C.text = '';
+  openCoach();
+}
+const CHATGPT_URL = 'https://chatgpt.com/';
+const step = (n, label) => add(el('p', 'pm-coach-step'), el('span', 'pm-coach-step-n', n), document.createTextNode(label));
 function generator(profile) {
   const thisWeek = mondayOf();
-  const weeks = [[addDays(thisWeek, 7), 'Semaine prochaine'], [thisWeek, 'Semaine en cours'], [addDays(thisWeek, 14), 'Dans deux semaines']];
-  if (!C.week) C.week = weeks[0][0];
+  const weeks = [[thisWeek, 'Semaine en cours'], [addDays(thisWeek, 7), 'Semaine prochaine'], [addDays(thisWeek, 14), 'Dans deux semaines']];
+  if (!weeks.some(([w]) => w === C.week)) C.week = weeks[1][0];
   const week = select(weeks.map(([w, l]) => [w, l + ' (lundi ' + formatDateFr(w) + ')']), C.week, 'Semaine');
   week.querySelector('option[value=""]').disabled = true;
   week.addEventListener('change', () => { C.week = week.value; C.text = ''; out.value = ''; out.hidden = true; });
   const out = el('textarea', 'pm-coach-out'); out.readOnly = true; out.setAttribute('aria-label', 'Demande à copier dans ChatGPT'); out.value = C.text; out.hidden = !C.text;
   const st = status();
-  const gen = btn('Générer ma demande', 'pm-validate', async () => {
+  const make = async () => { C.text = buildCoachPrompt(await coachInput(profile, C.week)); out.value = C.text; out.hidden = false; return C.text; };
+  // ① une seule action : rédiger la demande ET la copier
+  const gen = btn('Copier ma demande', 'pm-validate pm-coach-copy', async () => {
     gen.disabled = true;
-    try { C.text = buildCoachPrompt(await coachInput(profile, C.week)); out.value = C.text; out.hidden = false; say(st, 'Demande prête : copie-la dans ChatGPT.', 'ok'); }
-    catch (e) { say(st, 'Génération impossible : ' + (e.message || e), 'error'); }
+    try { await make(); say(st, (await copy(C.text, out)) ? 'Demande copiée ✓ Ouvre ChatGPT, colle-la et envoie. Copie ensuite toute sa réponse.' : 'Demande prête : sélectionne le texte ci-dessous et copie-le.', 'ok'); }
+    catch (e) { say(st, 'Préparation impossible : ' + (e.message || e), 'error'); }
     finally { gen.disabled = false; }
   });
-  const cp = btn('Copier', 'pm-secondary', async () => {
-    if (!C.text) { say(st, 'Génère d’abord la demande.', 'error'); return; }
-    say(st, (await copy(C.text, out)) ? 'Copié : colle-le dans ChatGPT.' : 'Copie impossible : sélectionne le texte à la main.', 'ok');
+  const open = el('a', 'pm-secondary pm-coach-open', 'Ouvrir ChatGPT ↗'); open.href = CHATGPT_URL; open.target = '_blank'; open.rel = 'noopener noreferrer';
+  const share = btn('Enregistrer la demande en fichier', 'pm-link', async () => {
+    try { if (!C.text) await make(); const how = await saveTextFile('demande-programme-' + C.week + '.txt', C.text, 'text/plain'); say(st, how === 'cancelled' ? 'Annulé.' : 'Fichier prêt.', ''); } catch (e) { say(st, e.message || 'Impossible.', 'error'); }
   });
-  const share = btn('Enregistrer en fichier', 'pm-secondary', async () => {
-    if (!C.text) { say(st, 'Génère d’abord la demande.', 'error'); return; }
-    try { const how = await saveTextFile('demande-programme-' + C.week + '.txt', C.text, 'text/plain'); say(st, how === 'cancelled' ? 'Annulé.' : 'Fichier prêt.', ''); } catch (e) { say(st, e.message || 'Impossible.', 'error'); }
+  // ② coller la réponse : lue dans le presse-papiers (avec l'accord du navigateur), sinon cadre d'import ouvert
+  const toImport = btn('Coller la réponse de ChatGPT', 'pm-validate pm-coach-paste', async () => {
+    let text = '';
+    try { text = (navigator.clipboard && navigator.clipboard.readText) ? String(await navigator.clipboard.readText() || '') : ''; } catch (_) { text = ''; }
+    if (text.trim() && C.text && text.trim() === C.text.trim()) { // encore la demande : rien n'est collé, cadre ouvert
+      document.dispatchEvent(new CustomEvent('pm:import-text', { detail: { text: '' } }));
+      say(st, 'Le presse-papiers contient encore ta demande : dans ChatGPT, copie d’abord sa réponse (bouton « Copier » sous le message), ou colle-la dans le cadre ci-dessous.', 'error'); return;
+    }
+    document.dispatchEvent(new CustomEvent('pm:import-text', { detail: { text: text.trim() } }));
+    say(st, text.trim() ? 'Réponse collée : vérification ci-dessous.' : 'Colle la réponse de ChatGPT dans le cadre ci-dessous, puis « Vérifier ».', 'ok');
   });
-  const toImport = btn('Importer la réponse de ChatGPT', 'pm-secondary pm-block', () => {
-    document.querySelector('.nav-btn[data-go="programme"]')?.click();
-    setTimeout(() => { const d = document.querySelector('.pm-import'); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); } }, 0);
-  });
-  return [field('Semaine à préparer', week), gen, add(el('div', 'pm-row-actions'), cp, share), st, out, toImport];
+  return [field('Semaine à préparer', week), step('1', 'Copie ta demande, puis colle-la dans ChatGPT.'), add(el('div', 'pm-row-actions'), gen, open), out,
+    step('2', 'Copie la réponse complète de ChatGPT, puis :'), toImport,
+    step('3', 'Vérifie l’aperçu et appuie sur « Importer ce programme ».'), st, share];
 }

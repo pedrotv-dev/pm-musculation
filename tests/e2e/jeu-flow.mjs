@@ -1,6 +1,6 @@
 // Niveaux, succès, classements personnels, mascotte et événements d'effets : node tests/e2e/jeu-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, watch, step, summary, mondayISO } from './lib.mjs';
+import { serve, launch, watch, step, summary, mondayISO, legacyInstall } from './lib.mjs';
 
 const srv = await serve();
 const { browser, context } = await launch();
@@ -36,6 +36,7 @@ await step('démo : carte de niveau et mascotte sur l’accueil', async () => {
 });
 await step('démo : Progrès = succès, classements personnels, « comment gagner de l’XP »', async () => {
   await demo.click('.nav-btn[data-go="progres"]');
+  await demo.click('.pm-game-fold summary'); // LOT 4 : succès et classements repliés en bas de Progression
   await demo.waitForSelector('.pm-badges');
   assert.match(await dtext('.pm-badges-panel h3'), /Succès · \d+ \/ 18/);
   assert.ok(await demo.locator('.pm-badge-tile.pm-unlocked').count() >= 3);
@@ -55,6 +56,7 @@ await step('Profil : section Ambiance (animations, bruitages, jingles) activable
 });
 await step('Pierre (vide) : niveau 1, « Recrue », aucun succès', async () => {
   await page.goto(srv.url);
+  await legacyInstall(page); // V2-UX-FINALISATION : Pierre et Manon n'existent que sur une ancienne installation
   await page.click('[data-select-profile="pierre"]');
   await page.waitForSelector('.pm-level-card');
   const t = await text('.pm-level-card');
@@ -91,6 +93,8 @@ await step('retour à l’accueil : niveau mis à jour (80 XP), puis succès dan
   await page.click(screen + ' button:has-text("Continuer")');
   await page.waitForFunction(() => /80 \/ 200 XP/.test(document.querySelector('.pm-level-card')?.innerText || ''), null, { timeout: 8000 }).catch(async e => { throw new Error('carte : ' + JSON.stringify(await page.evaluate(() => [...document.querySelectorAll('.pm-level-card')].map(c => c.innerText)))); });
   await page.click('.nav-btn[data-go="progres"]');
+  await page.waitForSelector('.pm-game-fold summary:has-text("Succès et classements · 2 / 18")'); // LOT 4 : replié, compteur visible
+  await page.click('.pm-game-fold summary');
   await page.waitForFunction(() => /Succès · 2 \/ 18/.test(document.querySelector('.pm-badges-panel h3')?.innerText || ''));
   assert.equal(await page.locator('.pm-badge-tile .pm-medal').count(), 18);
   assert.equal(await page.locator('.pm-badge-tile .pm-medal-locked').count(), 16);
@@ -102,7 +106,7 @@ await step('passage de niveau : plein écran « Niveau supérieur » avec Korv, 
   const p = await c.newPage(); watch(p, errors);
   const prog = { schemaVersion: 1, weekStart: mondayISO(new Date(2026, 10, 10)), programs: { manon: { days: ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'].map(id => ({
     id, name: 'Jambes', activities: [{ type: 'strength', machineId: 'leg-press', shared: true, restSeconds: 30, sets: Array.from({ length: 15 }, () => ({ kg: 40, reps: 12 })) }] })) } } };
-  await p.goto(srv.url); await p.click('[data-select-profile="manon"]');
+  await p.goto(srv.url); await legacyInstall(p, ['manon']); await p.click('[data-select-profile="manon"]'); // ancienne installation fictive (Manon)
   await p.click('.nav-btn[data-go="programme"]'); await p.click('.pm-import summary');
   await p.fill('.pm-textarea', JSON.stringify(prog)); await p.click('.pm-action-verify');
   await p.waitForSelector('.pm-action-save:not([disabled])'); await p.click('.pm-action-save');
@@ -124,7 +128,7 @@ await step('avant le 9 novembre : niveau 1, 0 XP, et l\'annonce du début de la 
   const before = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await before.clock.install({ time: new Date(2026, 10, 7, 10, 0, 0) });
   const p = await before.newPage(); watch(p, errors);
-  await p.goto(srv.url); await p.click('[data-select-profile="manon"]');
+  await p.goto(srv.url); await legacyInstall(p, ['manon']); await p.click('[data-select-profile="manon"]'); // ancienne installation fictive (Manon)
   await p.waitForSelector('.pm-level-card');
   const t = await p.locator('.pm-level-card').innerText();
   assert.match(t, /Niveau 1/); assert.match(t, /0 \/ 200 XP/); assert.match(t, /démarre le lundi 9 novembre/);

@@ -13,8 +13,8 @@
  */
 import { ENV } from './env.js';
 import {
-  LEGACY_PROFILE_IDS, isValidProfileId, knownProfileIds, loadProfileRegistry, migrateProfileRegistry, countProfileRows,
-  addProfileRecord, updateProfileRecord, deleteProfileAndData, onProfileGone, restoreAsNewProfile
+  LEGACY_PROFILE_IDS, isValidProfileId, knownProfileIds, deletedLegacyIds, loadProfileRegistry, migrateProfileRegistry, countProfileRows,
+  addProfileRecord, updateProfileRecord, deleteProfileAndData, onProfileGone, restoreAsNewProfile, purgeDeletedLegacyOrphans
 } from '../storage.js';
 
 export const DEMO_PROFILE_ID = 'demo';
@@ -112,10 +112,17 @@ let lastError = null;
 let migrated = false;
 const fill = profiles => { cache.clear(); for (const p of profiles) cache.set(p.id, p); };
 
-/** Écrit le registre (fiches historiques manquantes + meta), une seule transaction, idempotente, sans écrasement. */
+/**
+ * Écrit le registre (meta + fiches historiques), une seule transaction, idempotente, sans écrasement.
+ * V2-UX-FINALISATION : seuls les profils historiques qui ont DES DONNÉES sur cet appareil (installation V1) reçoivent
+ * une fiche ; jamais un profil historique supprimé volontairement. Installation neuve : aucun profil précréé.
+ */
 async function migrateNow() {
   const now = new Date().toISOString();
-  const res = await migrateProfileRegistry(LEGACY_PROFILE_IDS.map(id => legacyRecord(id, now)), { now });
+  const gone = new Set(deletedLegacyIds());
+  const withData = [];
+  for (const id of LEGACY_PROFILE_IDS) if (!gone.has(id) && !cache.has(id) && await countProfileRows([id]) > 0) withData.push(id);
+  const res = await migrateProfileRegistry(withData.map(id => legacyRecord(id, now)), { now });
   fill(res.profiles);
   migrated = true;
   if (res.added.length) announce('migrated', null);
@@ -136,10 +143,13 @@ export function initProfiles() {
       const reg = await loadProfileRegistry();
       fill(reg.profiles);
       let added = [];
-      const missingLegacy = LEGACY_PROFILE_IDS.some(id => !cache.has(id));
-      if (reg.meta || (missingLegacy && await countProfileRows(LEGACY_PROFILE_IDS) > 0)) {
-        if (!reg.meta || missingLegacy) added = (await migrateNow()).added; else migrated = true;
+      // Registre déjà écrit : il fait foi (un profil historique absent a été supprimé ou n'a jamais existé ici : jamais
+      // réinscrit). Sans registre : installation V1 avec données → fiches des profils historiques qui ont des données.
+      if (reg.meta) {
+        migrated = true;
+        if (reg.meta.deletedLegacy?.length) await purgeDeletedLegacyOrphans().catch(() => {}); // orphelins d'anciens onglets
       }
+      else if (await countProfileRows(LEGACY_PROFILE_IDS) > 0) added = (await migrateNow()).added;
       lastError = null;
       return { ok: true, profiles: listProfilesSync(), added, migrated, error: null };
     } catch (error) {
@@ -170,22 +180,28 @@ export async function refreshProfiles() {
   const { profiles } = await loadProfileRegistry();
   cache.clear();
   for (const p of profiles) cache.set(p.id, p);
-  for (const id of before.keys()) if (!cache.has(id) && !isLegacyProfile(id)) emit('deleted', id);
+  for (const id of before.keys()) if (!cache.has(id)) emit('deleted', id);
   emit('refreshed', null);
   return listProfilesSync();
 }
 
 function listProfilesSync() {
   const order = id => (isLegacyProfile(id) ? LEGACY_PROFILE_IDS.indexOf(id) : 10);
-  const ids = new Set([...LEGACY_PROFILE_IDS, ...cache.keys()]);
+  // V2-UX-FINALISATION : uniquement les profils inscrits au registre (Pierre et Manon seulement s'ils y figurent)
+  const ids = new Set([...cache.keys()].filter(id => isRealProfile(id)));
   return [...ids].map(id => {
-    const rec = cache.get(id) || legacyRecord(id, null);
+    const rec = cache.get(id);
     return { ...rec, legacy: isLegacyProfile(id), ...pick(getProfileInfo(id)) };
   }).sort((a, b) => order(a.id) - order(b.id) || String(a.createdAt).localeCompare(String(b.createdAt)));
 }
 const pick = info => ({ accent: info.accent, rgb: info.rgb, theme: info.theme });
 
-/** Tous les vrais profils (historiques d'abord, puis par date de création). La démo n'y figure jamais. */
+/**
+ * Profil proposé à l'utilisateur (écran de choix, ouverture automatique) : inscrit au registre, ou la démo. Pierre et
+ * Manon n'en font partie que s'ils sont inscrits (installation V1 migrée) ; jamais sur une installation neuve.
+ */
+export const isListedProfile = id => id === DEMO_PROFILE_ID || (cache.has(id) && isRealProfile(id));
+/** Tous les vrais profils inscrits (historiques d'abord, puis par date de création). La démo n'y figure jamais. */
 export async function listProfiles() { await initProfiles(); return listProfilesSync(); }
 /** Fiche d'un profil, ou null. */
 export async function getProfile(id) { await initProfiles(); return listProfilesSync().find(p => p.id === id) || null; }
@@ -260,7 +276,7 @@ export async function updateProfile(id, patch = {}) {
  */
 export async function deleteProfile(id, { confirm } = {}) {
   await initProfiles();
-  if (id === DEMO_PROFILE_ID || isLegacyProfile(id)) throw new Error('Ce profil ne peut pas être supprimé.');
+  if (id === DEMO_PROFILE_ID) throw new Error('Ce profil ne peut pas être supprimé.');
   if (!isRealProfile(id)) throw new Error('Profil inconnu.');
   if (confirm !== id) throw new Error('Confirmation de suppression manquante.');
   const counts = await deleteProfileAndData(id);
@@ -284,7 +300,8 @@ export async function adoptRestoredProfile(meta = {}, backup) {
   await ensureRegistry();
   const id = meta.id;
   const refused = () => new Error('Ce profil existe déjà sur cet appareil ou son identifiant est invalide.');
-  if (!isValidProfileId(id) || isLegacyProfile(id) || isKnownProfile(id)) throw refused();
+  // Profil historique supprimé ici : restauration possible depuis sa sauvegarde (jamais s'il est encore inscrit)
+  if (!isValidProfileId(id) || cache.has(id) || (isKnownProfile(id) && !isLegacyProfile(id))) throw refused();
   const color = Object.prototype.hasOwnProperty.call(PROFILE_COLORS, meta.color) ? meta.color : 'turquoise';
   const fields = checkFields({ name: meta.name || id, goal: meta.goal ?? '', color });
   const now = new Date().toISOString();

@@ -7,6 +7,7 @@ import { listProfiles, getProfileInfo, isRealProfile, isLegacyProfile, updatePro
 import { getResumableWorkout } from './workouts.js';
 import { parseBackupText, planHistoryTransfer, applyHistoryTransfer, runBackup } from './backup.js';
 import { GAME_START } from './gamification.js';
+import { exportProfileData } from '../storage.js';
 
 const root = document.documentElement;
 const status = () => { const p = el('p', 'pm-coach-status'); p.setAttribute('role', 'status'); return p; };
@@ -30,11 +31,20 @@ async function rename(p, st) {
   try { await updateProfile(p.id, { name: input.value }); say(st, 'Profil renommé ✓', 'ok'); return true; }
   catch (e) { say(st, (e.message || 'Renommage impossible.') + ' Rien n’a été modifié.', 'error'); return false; }
 }
-/** Supprimer un profil créé : jamais pendant une séance ouverte ; sauvegarde proposée ; double confirmation. */
-async function remove(p, st) {
+/**
+ * Supprimer un profil (créé OU historique Pierre / Manon, V2-UX-FINALISATION) : jamais pendant une séance ouverte ;
+ * données concernées indiquées ; sauvegarde proposée ; double confirmation. Seules SES données sont supprimées, et un
+ * profil historique supprimé n'est jamais réinscrit automatiquement (restauration possible depuis sa sauvegarde).
+ */
+export async function remove(p, st) {
   const open = await getResumableWorkout(p.id).catch(() => null);
   if (open) { say(st, '« ' + p.name + ' » a une séance en cours : termine-la ou arrête-la avant de supprimer ce profil.', 'error'); return false; }
-  const pick = await dialog({ title: 'Supprimer « ' + p.name + ' »', message: 'Supprimer ce profil et TOUTES ses données (programmes, séances, poids, réglages) de ce téléphone ? Les autres profils ne sont pas touchés.',
+  let what = '';
+  try {
+    const d = (await exportProfileData(p.id)).data;
+    what = ' Données concernées : ' + d.sessions.length + ' séance(s), ' + d.programs.length + ' programme(s), ' + d.weights.length + ' pesée(s), ' + d.settings.length + ' réglage(s).';
+  } catch (_) { /* décompte indisponible : la suppression reste ciblée sur ce profil */ }
+  const pick = await dialog({ title: 'Supprimer « ' + p.name + ' »', message: 'Supprimer ce profil et TOUTES ses données (programmes, séances, poids, réglages, charges) de ce téléphone ?' + what + ' Les autres profils ne sont pas touchés. Ce profil ne réapparaîtra pas.',
     choices: [{ label: 'Annuler', value: null }, { label: 'Sauvegarder d’abord', value: 'backup', kind: 'primary' }, { label: 'Supprimer', value: 'delete', kind: 'danger' }] });
   if (pick === 'backup') {
     try { const r = await runBackup(p.id); say(st, r.how === 'cancelled' ? 'Sauvegarde annulée : rien n’a été supprimé.' : 'Sauvegarde faite. Appuie de nouveau sur « Supprimer » pour continuer.', r.how === 'cancelled' ? '' : 'ok'); }
@@ -54,7 +64,7 @@ async function toggleHidden(p, st) {
 }
 
 export async function manageProfilesSection(current) {
-  const box = fold('Gérer mes profils', 'Profils enregistrés sur ce téléphone. Renomme ou supprime les profils que tu as créés ; les profils historiques Pierre et Manon sont protégés : tu peux seulement les masquer de l’écran de choix (leurs données restent).');
+  const box = fold('Gérer mes profils', 'Profils enregistrés sur ce téléphone : renomme, masque de l’écran de choix ou supprime (sauvegarde proposée, confirmation demandée, jamais pendant une séance). Un historique peut aussi être transféré vers un autre profil avant suppression.');
   box.classList.add('pm-manage-profiles');
   const list = el('ul', 'pm-manage-list');
   const st = status();
@@ -62,17 +72,15 @@ export async function manageProfilesSection(current) {
     const profiles = (await listProfiles().catch(() => [])).filter(p => isRealProfile(p.id));
     list.replaceChildren(...profiles.map(p => {
       const li = el('li', 'pm-manage-row');
-      const tags = [p.id === root.dataset.pmProfile ? 'profil ouvert' : '', isLegacyProfile(p.id) ? 'historique protégé' : '', p.extra && p.extra.hidden ? 'masqué' : ''].filter(Boolean);
+      const tags = [p.id === root.dataset.pmProfile ? 'profil ouvert' : '', isLegacyProfile(p.id) ? 'profil historique' : '', p.extra && p.extra.hidden ? 'masqué' : ''].filter(Boolean);
       const head = el('div', 'pm-manage-head');
       add(head, el('strong', '', p.name), el('span', 'pm-muted pm-manage-tags', tags.join(' · ')));
       const actions = el('div', 'pm-row-actions');
       const after = async ok => { if (ok) await draw(); };
-      if (!isLegacyProfile(p.id)) {
-        actions.append(btn('Renommer', 'pm-secondary', async () => after(await rename(p, st))));
-        const del = btn('Supprimer', 'pm-warning', async () => after(await remove(p, st)));
-        del.setAttribute('aria-label', 'Supprimer le profil ' + p.name);
-        actions.append(del);
-      }
+      actions.append(btn('Renommer', 'pm-secondary', async () => after(await rename(p, st))));
+      const del = btn('Supprimer', 'pm-warning', async () => after(await remove(p, st)));
+      del.setAttribute('aria-label', 'Supprimer le profil ' + p.name);
+      actions.append(del);
       actions.append(btn(p.extra && p.extra.hidden ? 'Afficher sur l’écran de choix' : 'Masquer de l’écran de choix', 'pm-link', async () => after(await toggleHidden(p, st))));
       li.append(head, actions);
       li.dataset.profile = p.id;

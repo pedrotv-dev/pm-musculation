@@ -1,7 +1,7 @@
 // V1-DEV1 — « Outils de test » du profil Démo : aperçus (Mode A), simulation réelle (Mode B), isolation des profils,
 // à 320×568, 375×667 et 390×844.  node tests/e2e/demo-tools-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, watch, step, summary } from './lib.mjs';
+import { serve, launch, watch, step, summary, legacyInstall } from './lib.mjs';
 import { fixedClock } from '../helpers/fixed-clock.mjs';
 
 // La séance en cours de la Démo suit le programme du JOUR (capacité d'une montée de niveau) : jour de référence fixe
@@ -50,6 +50,7 @@ for (const [w, h] of SIZES) {
   const closePreview = async () => { await page.click(preview + ' button:has-text("Fermer l’aperçu")'); await page.waitForSelector(preview, { state: 'detached' }); };
 
   await page.goto(srv.url);
+  await legacyInstall(page); // V2-UX-FINALISATION : Pierre et Manon n'existent que sur une ancienne installation
   const exportOf = p => page.evaluate(async p => { const d = await (await import('./storage.js')).exportProfileData(p); delete d.exportedAt; return JSON.stringify(d); }, p);
   let realBefore;
 

@@ -305,3 +305,10 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-last-load-info { margin:0; font-size:13px; }
 .pm-last-actions { display:flex; flex-wrap:wrap; gap:8px; }
 .pm-last-apply { min-height:44px; flex:1 1 180px; }
+
+/* V2-UX LOT 3 · ressenti facultatif d'une machine terminée */
+.pm-feel-row { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:12px 0 4px; }
+.pm-feel-label { width:100%; font-size:13px; color:var(--muted); font-weight:700; }
+.pm-feel-btn { min-height:44px; padding:0 12px; border-radius:999px; border:1px solid var(--ascent-rim, var(--stroke)); background:var(--surface); color:var(--text); font:inherit; font-size:14px; font-weight:720; cursor:pointer; }
+.pm-feel-btn.pm-feel-on { border-color:rgba(20,230,199,.75); background:rgba(20,230,199,.14); color:var(--turq); }
+.pm-feel-btn:focus-visible { outline:3px solid var(--turq); outline-offset:2px; }

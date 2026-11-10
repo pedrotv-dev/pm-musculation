@@ -597,6 +597,19 @@ export function completeActivity(profileId, sessionId, activityKey, { done = tru
   }, options);
 }
 
+/**
+ * V2-UX LOT 3 : ressenti facultatif d'une machine ('easy' trop facile, 'ok' adapté, 'hard' trop difficile, null = effacé).
+ * Aucun effet sur les séries ni le statut ; sert aux propositions de charge suivantes et à la demande ChatGPT.
+ */
+export function setActivityFeel(profileId, sessionId, activityKey, feel, options) {
+  return mutate(profileId, sessionId, s => {
+    const a = findActivity(s, activityKey);
+    requireStrength(a);
+    if (feel !== null && !['easy', 'ok', 'hard'].includes(feel)) throw new WorkoutError('Ressenti non reconnu.', 'INVALID_ARGUMENT');
+    if (feel === null) delete a.feel; else a.feel = feel;
+  }, { ...(options || {}), allowPaused: true });
+}
+
 /** Passe une activite (skip=true) ou annule le saut (skip=false). Une seance avec saut ne peut etre que partielle. */
 export function skipActivity(profileId, sessionId, activityKey, skip = true, options) {
   return mutate(profileId, sessionId, s => {

@@ -8,21 +8,21 @@ const idb = installFakeIndexedDB();
 const P = await import('../js/profiles.js');
 const allRows = () => Object.values(idb.stores).reduce((n, st) => n + st.rows.size, 0);
 
-test('installation neuve : démarrage en lecture seule, Pierre et Manon disponibles, aucune ligne écrite', async () => {
+test('installation neuve : démarrage en lecture seule, AUCUN profil précréé (ni Pierre ni Manon), aucune ligne écrite', async () => {
   const r = await P.initProfiles();
   assert.equal(r.ok, true, String(r.error));
   assert.deepEqual(r.added, []);
   assert.equal(r.migrated, false);
-  assert.deepEqual((await P.listProfiles()).map(p => p.id), ['pierre', 'manon']);
-  assert.equal(P.isRealProfile('pierre') && P.isRealProfile('manon'), true);
+  assert.deepEqual((await P.listProfiles()).map(p => p.id), [], 'V2-UX-FINALISATION : aucun profil précréé');
+  assert.equal(P.isListedProfile('pierre') || P.isListedProfile('manon'), false);
   assert.equal(allRows(), 0, 'aucune écriture au démarrage');
 });
 
-test('première création : migration (fiches Pierre / Manon + meta) puis nouveau profil, une seule fois', async () => {
+test('première création : registre (meta) puis nouveau profil, une seule fois ; jamais de fiche Pierre / Manon', async () => {
   const p = await P.createProfile({ name: 'Profil fictif', color: 'sauge' });
   const reg = [...idb.stores.settings.rows.values()].filter(v => v.profileId === '~registry').map(v => v.key).sort();
-  assert.deepEqual(reg, ['meta', 'profile:manon', 'profile:pierre', 'profile:' + p.id].sort());
+  assert.deepEqual(reg, ['meta', 'profile:' + p.id].sort());
   await P.createProfile({ name: 'Second fictif', color: 'ambre' });
   assert.equal([...idb.stores.settings.rows.values()].filter(v => v.key === 'meta').length, 1);
-  assert.deepEqual((await P.listProfiles()).map(x => x.name), ['Pierre', 'Manon', 'Profil fictif', 'Second fictif']);
+  assert.deepEqual((await P.listProfiles()).map(x => x.name), ['Profil fictif', 'Second fictif']);
 });

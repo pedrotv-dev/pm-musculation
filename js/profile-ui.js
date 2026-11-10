@@ -293,7 +293,8 @@ async function render() {
   const group = (title, ...children) => { const g = el('section', 'pm-settings-group'); g.append(el('h3', 'pm-settings-group-title', title), ...children.filter(Boolean)); return g; };
   const about = section('À propos', null, el('p', 'pm-muted', 'PM Musculation · version ' + APP_VERSION + ' · fonctionne hors connexion après installation.'));
   add(page, el('div', 'eyebrow', 'Mon espace'), el('h2', '', 'Réglages'),
-    group('Mon profil', head, identity, sport, gym),
+    group('Mon profil', head, identity, sport, gym, section('Mes charges', 'Charges et répétitions que tu connais déjà, par groupe musculaire. Elles servent de point de départ (jamais comptées comme une séance).',
+      btn('Modifier mes charges', 'pm-secondary', () => document.dispatchEvent(new CustomEvent('pm:open-declared-loads', { detail: { from: 'profil' } }))))),
     group('Séance et chrono', chronoSection(profile, config), usageSection(profile, ui), effectsSection(profile, ui)),
     ...(manage || transfer ? [group('Profils', manage, transfer)] : []),
     group('Données', backupSection(profile), bilan, localDataSection(profile), demoSection(profile)),

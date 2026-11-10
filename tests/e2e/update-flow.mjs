@@ -1,6 +1,6 @@
 // Mise à jour de l'application : proposée (jamais en séance), appliquée sur demande, sans perte de données. node tests/e2e/update-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, watch, step, summary } from './lib.mjs';
+import { serve, launch, watch, step, summary, legacyInstall } from './lib.mjs';
 
 const srv = await serve();
 const { browser, context } = await launch();
@@ -12,6 +12,7 @@ const triggerUpdate = () => page.evaluate(async () => { const r = await navigato
 
 console.log('Parcours mise à jour');
 await page.goto(srv.url);
+  await legacyInstall(page); // V2-UX-FINALISATION : Pierre et Manon n'existent que sur une ancienne installation
 await step('installation : un seul cache, nommé d’après la version', async () => {
   await page.evaluate(() => navigator.serviceWorker.ready); await page.reload();
   await page.waitForFunction(() => navigator.serviceWorker.controller);

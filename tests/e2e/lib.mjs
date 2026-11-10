@@ -62,3 +62,49 @@ export async function step(name, fn) {
   }
 }
 export function summary() { console.log(`\n${passed} réussi(s), ${failed} échec(s)`); return failed; }
+
+// ---------------------------------------------------------------- V2-UX-FINALISATION : profils (données FICTIVES)
+/**
+ * Ancienne installation FICTIVE (V1) : des données existent pour Pierre et/ou Manon AVANT le registre ; au
+ * rechargement, la migration leur ajoute une fiche (seulement à eux) et leurs boutons apparaissent. Une installation
+ * neuve, elle, n'a AUCUN profil précréé.
+ */
+export async function legacyInstall(page, ids = ['pierre', 'manon']) {
+  await page.waitForFunction(() => !!document.querySelector('#create-profile'));
+  await page.evaluate(async ids => { const S = await import('./storage.js'); for (const id of ids) await S.saveSetting(id, 'v1.install', true); }, ids);
+  await page.reload();
+  await page.waitForFunction(ids => ids.every(id => { const b = document.querySelector('[data-select-profile="' + id + '"]'); return b && !b.hidden; }), ids);
+}
+/** Profil existant FICTIF créé comme avant l'inscription guidée (fiche seule, profil sportif vide), puis ouvert. */
+export async function createProfileApi(page, name, color = 'sauge') {
+  await page.waitForFunction(() => !!document.querySelector('#create-profile'));
+  return page.evaluate(async ([name, color]) => {
+    const P = await import('./js/profiles.js');
+    const p = await P.createProfile({ name, color });
+    document.dispatchEvent(new CustomEvent('pm:select-profile', { detail: { profile: p.id } }));
+    return p.id;
+  }, [name, color]);
+}
+/** Inscription guidée complète par l'interface (choix fictifs), étape facultative passée → premier Accueil. */
+export async function createProfileUI(page, name, { goal = 'Remise en forme', seniority = 'De 3 à 12 mois', intensity = 'Soutenue', days = ['Lun', 'Mer', 'Ven'], duration = '60 min', optional = 'skip' } = {}) {
+  if (await page.locator('#screen-select').isHidden()) { await page.click('#switch-profile'); }
+  await page.click('#create-profile'); await page.fill('#new-profile-name', name); await page.click('#create-profile-submit');
+  return finishOnboardingUI(page, { goal, seniority, intensity, days, duration, optional });
+}
+/** Étapes 2 à 7 de l'inscription guidée (profil déjà créé à l'étape 1), choix fictifs. */
+export async function finishOnboardingUI(page, { goal = 'Remise en forme', seniority = 'De 3 à 12 mois', intensity = 'Soutenue', days = ['Lun', 'Mer', 'Ven'], duration = '60 min', optional = 'skip' } = {}) {
+  const ob = '#screen-onboarding:not([hidden]) .pm-onboarding';
+  const chip = label => page.click(ob + ' label.pm-qs-chip:has(span:text-is("' + label + '"))');
+  const next = () => page.click(ob + ' button:has-text("Suivant")');
+  await page.waitForSelector(ob + ' #pm-ob-title:has-text("objectif")'); await chip(goal); await next();
+  await page.waitForSelector(ob + ' #pm-ob-title:has-text("ancienneté")'); await chip(seniority); await next();
+  await page.waitForSelector(ob + ' #pm-ob-title:has-text("intensité")'); await chip(intensity.startsWith('Hard') ? 'Hard / élevée — RPE 8-9 (1 à 2 en réserve)' : intensity === 'Modérée' ? 'Modérée — RPE 6-7 (3 à 4 répétitions en réserve)' : 'Soutenue — RPE 7-8 (2 à 3 en réserve)'); await next();
+  await page.waitForSelector(ob + ' #pm-ob-title:has-text("jours")'); for (const d of days) await chip(d); await next();
+  await page.waitForSelector(ob + ' #pm-ob-title:has-text("Durée")'); await chip(duration); await next();
+  await page.waitForSelector(ob + ' #pm-ob-title:has-text("facultatif")');
+  if (optional === 'skip') await page.click(ob + ' button:has-text("Passer cette étape")');
+  else return page.evaluate(() => document.documentElement.dataset.pmProfile);
+  await page.waitForSelector('[data-page="accueil"]:not([hidden])');
+  await page.waitForFunction(() => document.getElementById('screen-onboarding').hidden);
+  return page.evaluate(() => document.documentElement.dataset.pmProfile);
+}

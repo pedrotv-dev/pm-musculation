@@ -3,7 +3,7 @@
 // écraser plus tard une valeur saisie après un nouveau rendu. Données FICTIVES, base de test vierge.
 // node tests/e2e/v2-workout-target-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, exampleProgram, mondayISO, watch, step, summary } from './lib.mjs';
+import { serve, launch, exampleProgram, mondayISO, watch, step, summary, legacyInstall } from './lib.mjs';
 
 const srv = await serve();
 const { browser, context } = await launch();
@@ -41,6 +41,7 @@ const has = (rows, kg) => rows.some(r => r.kg.includes(kg));
 console.log('V2-QA1 · cible des écritures de séance');
 await step('préparation : Manon (Y) a une séance ouverte sur le même programme que Pierre (X)', async () => {
   await page.goto(srv.url);
+  await legacyInstall(page); // V2-UX-FINALISATION : Pierre et Manon n'existent que sur une ancienne installation
   await page.click('[data-select-profile="manon"]');
   await importViaUi('manon');
   await startToFirstSet();
