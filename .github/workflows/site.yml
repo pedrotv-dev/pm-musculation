@@ -6,10 +6,14 @@ name: Site (production + aperçu)
 # - PR fermée                -> /preview/ est retiré si c'était cette PR
 # - lancement manuel         -> avec une branche : aperçu de cette branche ; sans : resynchronise la production
 # Règles de sécurité : voir docs/apercu.md. Les scripts (tools/*.mjs) sont toujours ceux de main une fois ce fichier fusionné.
-# DÉSACTIVÉ PAR DÉFAUT (l'aperçu avant fusion n'est pas utilisé) : seul le lancement manuel reste possible.
-# Pour le réactiver : remettre les déclencheurs `push` (main) et `pull_request` (opened, synchronize, reopened, ready_for_review, closed)
-# sous `on:`, puis régler Settings > Pages sur la branche gh-pages (voir docs/apercu.md).
+# Déclencheurs actifs (V2, décision MASTER du 10 novembre 2026) : `push` sur main → la PRODUCTION (racine) est republiée
+# automatiquement ; lancement manuel → aperçu d'une branche (ref) ou resynchronisation de la production (ref vide).
+# Les PR ne publient PAS l'aperçu automatiquement (`pull_request` reste désactivé). GitHub Pages sert gh-pages / (root).
+# Exception : un commit fait par « Publication de la VERSION » (jeton GITHUB_TOKEN) ne déclenche pas ce workflow ; dans ce
+# cas rare (PR fusionnée sans nouvelle VERSION), lancer ce workflow à la main avec ref vide (voir docs/apercu.md).
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       ref:

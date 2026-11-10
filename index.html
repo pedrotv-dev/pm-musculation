@@ -47,6 +47,22 @@
           <button type="button" class="choice pierre" data-select-profile="pierre"><span class="initial">P</span><strong>Pierre</strong><span>Prise de muscle</span></button>
           <button type="button" class="choice manon" data-select-profile="manon"><span class="initial">M</span><strong>Manon</strong><span>Renforcement</span></button>
         </div>
+        <!-- Profils créés sur cet appareil (registre IndexedDB) et création d'un profil local : rempli par js/app.js -->
+        <div class="choice-grid" id="user-profiles" hidden></div>
+        <button type="button" class="secondary pm-create-profile" id="create-profile">+ Créer un profil</button>
+        <form class="pm-create-form" id="create-profile-form" hidden novalidate>
+          <label class="pm-create-label" for="new-profile-name">Prénom ou pseudo</label>
+          <input class="pm-input" id="new-profile-name" name="name" type="text" maxlength="40" autocomplete="off" autocapitalize="words" enterkeyhint="done">
+          <p class="pm-create-error" id="create-profile-error" role="alert" hidden></p>
+          <div class="pm-create-actions">
+            <button type="button" class="secondary" id="create-profile-cancel">Annuler</button>
+            <button type="submit" class="primary" id="create-profile-submit">Créer</button>
+          </div>
+          <p class="pm-create-note">Le profil reste sur ce téléphone : aucun compte, aucun e-mail.</p>
+        </form>
+        <button type="button" class="secondary pm-create-profile" id="import-profile">Importer un profil (fichier de sauvegarde)</button>
+        <input type="file" id="import-profile-file" accept=".json,application/json" hidden aria-label="Fichier de sauvegarde d’un profil">
+        <p class="pm-create-error" id="import-profile-status" role="status" hidden></p>
         <button type="button" class="choice demo" data-select-profile="demo"><span class="initial" aria-hidden="true">▶</span><span class="demo-copy"><strong>Explorer la démo</strong><span>Exemples de programmes, séances et progrès · données fictives</span></span></button>
         <p class="footnote">Aucun compte à créer. La démo ne modifie pas vos historiques.</p>
       </section>

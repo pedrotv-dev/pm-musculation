@@ -5,13 +5,14 @@
  */
 import { exportProfileData, restoreProfileData, saveSetting, getSetting } from '../storage.js';
 import { plannedIndex, SIDE_LABEL } from './machine-rules.js';
+import { isRealProfile, isKnownProfile, profileRecord, adoptRestoredProfile } from './profiles.js';
+import { isValidProfileId } from '../storage.js';
 
 export const BACKUP_FORMAT = 'pm-musculation-backup';
-const PROFILES = ['pierre', 'manon'];
 const stamp = (d = new Date()) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 
 function realProfile(profileId) {
-  if (PROFILES.indexOf(profileId) === -1) throw new Error('Les sauvegardes ne concernent que Pierre et Manon.');
+  if (!isRealProfile(profileId)) throw new Error('Les sauvegardes ne concernent que les vrais profils (Pierre et Manon, ou un profil créé), pas la démo.');
   return profileId;
 }
 /** Resume affichable d'une sauvegarde. */
@@ -29,7 +30,7 @@ export function parseBackupText(text) {
   try { backup = JSON.parse(String(text).replace(/^﻿/, '')); }
   catch (_) { throw new Error('Ce fichier n’est pas un JSON valide.'); }
   if (!backup || typeof backup !== 'object' || backup.format !== BACKUP_FORMAT) throw new Error('Ce fichier n’est pas une sauvegarde PM Musculation.');
-  if (PROFILES.indexOf(backup.profileId) === -1) throw new Error('Profil de la sauvegarde inconnu.');
+  if (!isValidProfileId(backup.profileId)) throw new Error('Profil de la sauvegarde inconnu.'); // profil d'un autre appareil possible : la restauration vérifie la destination
   if (backup.schemaVersion !== 1) throw new Error('Version de sauvegarde non prise en charge (' + backup.schemaVersion + ').');
   const d = backup.data;
   if (!d || typeof d !== 'object') throw new Error('Sauvegarde sans données.');
@@ -42,6 +43,9 @@ export function parseBackupText(text) {
 export async function createBackupFile(profileId) {
   realProfile(profileId);
   const backup = await exportProfileData(profileId);
+  // V2-PROF1 : fiche du profil jointe (champ supplémentaire, ignoré par les versions précédentes : compatibles)
+  const rec = profileRecord(profileId);
+  if (rec) backup.profile = { id: rec.id, name: rec.name, goal: rec.goal, color: rec.color, createdAt: rec.createdAt, extra: rec.extra || {} };
   return { filename: 'pm-musculation-' + profileId + '-' + stamp() + '.json', text: JSON.stringify(backup, null, 1), summary: describeBackup(backup) };
 }
 /** Restaure dans le profil ACTIF uniquement ; mode 'replace' ou 'merge'. */
@@ -49,6 +53,19 @@ export async function restoreBackup(profileId, backup, mode) {
   realProfile(profileId);
   if (backup.profileId !== profileId) throw new Error('Cette sauvegarde appartient à ' + backup.profileId + ' : elle ne peut pas être restaurée dans le profil ' + profileId + '.');
   await restoreProfileData(profileId, backup, mode);
+}
+/**
+ * Restaure la sauvegarde d'un profil ABSENT de cet appareil (autre appareil, ou profil supprimé) sous SON identifiant :
+ * inscription dans le registre (fiche jointe à la sauvegarde), puis restauration de ses données. Refusé si le profil
+ * existe déjà ici (utiliser restoreBackup, qui exige le profil actif = profil du fichier) : aucun doublon, aucun
+ * mélange. Inscription et données en une seule transaction : un échec ne laisse rien (ni fiche, ni donnée, ni annonce).
+ * @returns {Promise<object>} la fiche du profil inscrit
+ */
+export async function restoreBackupAsNewProfile(backup) {
+  if (!backup || backup.format !== BACKUP_FORMAT) throw new Error('Ce fichier n’est pas une sauvegarde PM Musculation.');
+  if (isKnownProfile(backup.profileId)) throw new Error('Ce profil existe déjà sur cet appareil : ouvre-le puis restaure sa sauvegarde depuis son espace.');
+  const meta = { ...(backup.profile && typeof backup.profile === 'object' ? backup.profile : {}), id: backup.profileId };
+  return adoptRestoredProfile(meta, backup); // fiche + données en UNE transaction : tout ou rien
 }
 /** Efface TOUTES les donnees du profil (remplacement par une sauvegarde vide). */
 export async function clearProfileData(profileId) {
@@ -110,7 +127,7 @@ export function saveTextFile(filename, text, mime = 'application/json') { return
 const LAST_KEY = 'backup.last';
 /** Derniere sauvegarde du profil : { at: ISO, sessions: nombre de seances a ce moment-la, how } ou null. */
 export async function getBackupStatus(profileId) {
-  if (PROFILES.indexOf(profileId) === -1) return null;
+  if (!isRealProfile(profileId)) return null;
   try { return await getSetting(profileId, LAST_KEY, null); } catch (_) { return null; }
 }
 export async function markBackupDone(profileId, { sessions = 0, how = 'manual', now = new Date() } = {}) {
