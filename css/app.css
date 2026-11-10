@@ -340,3 +340,9 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-gym-name { font-size:14px; font-weight:700; overflow-wrap:anywhere; }
 .pm-gym-check { margin-top:0; font-size:12px; min-height:44px; }
 @media (max-width:360px) { .pm-gym-row { grid-template-columns:minmax(0, 1fr) auto; } .pm-gym-name { grid-column:1 / -1; } .pm-coach-grid { grid-template-columns:1fr; } }
+.pm-manage-list { list-style:none; margin:8px 0; padding:0; display:flex; flex-direction:column; gap:10px; }
+.pm-manage-row { border:1px solid var(--stroke); border-radius:var(--radius-12); padding:10px; display:flex; flex-direction:column; gap:6px; }
+.pm-manage-head { display:flex; flex-wrap:wrap; gap:4px 10px; align-items:baseline; }
+.pm-manage-tags { font-size:13px; }
+.pm-history-import-summary p { margin:4px 0; }
+.pm-chip-imported { opacity:.8; }

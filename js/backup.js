@@ -153,3 +153,73 @@ export async function runBackup(profileId, { extraFiles = [] } = {}) {
   if (how !== 'cancelled') await markBackupDone(profileId, { sessions: f.summary.sessions, how });
   return { ...f, how };
 }
+
+// ---------------------------------------------------------------- V2-EVOLUTION-1 : transfert d'historique entre profils
+/**
+ * « Importer l'historique d'un autre profil » : lit une sauvegarde PM Musculation (même si son identifiant de profil est
+ * différent, ex. ancien profil « pierre » → nouveau profil « Pierre2 ») et prépare l'ajout, dans le profil DESTINATION,
+ * des séances TERMINÉES ou PARTIELLES et des pesées. Rien d'autre : ni programmes, ni objectifs, ni réglages.
+ * - Les données sont recopiées telles qu'enregistrées (charges, répétitions, séries validées, dates, cardio, ressenti,
+ *   remarques) ; rien n'est inventé ni recalculé.
+ * - Chaque séance importée porte `importedFrom` (profil et séance d'origine, date d'import) : on distingue ainsi
+ *   l'historique importé (charges et répétitions des séries validées : confirmées ; durées et autres valeurs dérivées :
+ *   indicatives) des séances faites dans ce profil.
+ * - Sans doublon, y compris au deuxième import : identifiant dérivé de l'origine, et séance ignorée si la destination a
+ *   déjà la même séance (même origine, ou même date et même heure de début) ; pesée ignorée si même date et même poids.
+ * - Écriture atomique en mode fusion (storage.restoreProfileData 'merge') : rien d'existant n'est modifié, aucun autre
+ *   profil n'est touché.
+ */
+const closedStatus = s => s && (s.status === 'completed' || s.status === 'partial');
+const importId = (source, id) => 'imp-' + source + '-' + id;
+
+/** @returns {{source, target, sessions:object[], weights:object[], found:{sessions, weights, open}, skipped:{sessions, weights}, first, last}} */
+export async function planHistoryTransfer(backup, targetId, { existing } = {}) {
+  realProfile(targetId);
+  if (!backup || backup.format !== BACKUP_FORMAT || !backup.data) throw new Error('Ce fichier n’est pas une sauvegarde PM Musculation.');
+  const source = backup.profileId;
+  const now = new Date().toISOString();
+  const cur = existing || await exportProfileData(targetId);
+  const have = (cur.data ? cur.data.sessions : cur.sessions || []).map(r => r.data || r).filter(Boolean);
+  const haveW = (cur.data ? cur.data.weights : cur.weights || []).map(r => r.data || r).filter(Boolean);
+  const ids = new Set(have.map(s => s.id));
+  const origins = new Set(have.filter(s => s.importedFrom).map(s => s.importedFrom.profileId + '|' + s.importedFrom.sessionId));
+  const moments = new Set(have.map(s => s.date + '|' + (s.startedAt || '')));
+  const rows = (backup.data.sessions || []).map(r => r && r.data).filter(Boolean);
+  const closed = rows.filter(closedStatus);
+  const sessions = [];
+  let skippedS = 0;
+  for (const s of closed) {
+    const id = source === targetId ? s.id : importId(source, s.id);
+    const dup = ids.has(id) || ids.has(s.id) || origins.has(source + '|' + s.id) || moments.has(s.date + '|' + (s.startedAt || ''));
+    if (dup) { skippedS++; continue; }
+    const copy = JSON.parse(JSON.stringify(s));
+    copy.id = id; copy.profileId = targetId;
+    copy.importedFrom = { profileId: source, sessionId: s.id, at: now, backupAt: backup.exportedAt || null };
+    sessions.push(copy); ids.add(id); moments.add(s.date + '|' + (s.startedAt || ''));
+  }
+  const weights = [];
+  let skippedW = 0;
+  const seenW = new Set(haveW.map(w => w.date + '|' + w.kg));
+  for (const w of (backup.data.weights || []).map(r => r && r.data).filter(Boolean)) {
+    if (!Number.isFinite(w.kg) || !/^\d{4}-\d{2}-\d{2}$/.test(w.date || '')) { skippedW++; continue; }
+    if (seenW.has(w.date + '|' + w.kg)) { skippedW++; continue; }
+    seenW.add(w.date + '|' + w.kg);
+    weights.push({ id: source === targetId ? w.id : importId(source, w.id), kg: w.kg, date: w.date, importedFrom: { profileId: source, at: now } });
+  }
+  const dates = sessions.map(s => s.date).sort();
+  return { source, target: targetId, sessions, weights, found: { sessions: closed.length, weights: (backup.data.weights || []).length, open: rows.length - closed.length },
+    skipped: { sessions: skippedS, weights: skippedW }, first: dates[0] || null, last: dates[dates.length - 1] || null };
+}
+/** Écrit un plan préparé par planHistoryTransfer (fusion atomique ; refusé si le plan ne vise pas ce profil). */
+export async function applyHistoryTransfer(plan) {
+  realProfile(plan.target);
+  const t = plan.target, at = new Date().toISOString();
+  const synthetic = { format: BACKUP_FORMAT, schemaVersion: 1, profileId: t, exportedAt: at, data: {
+    programs: [], settings: [],
+    sessions: plan.sessions.map(s => ({ profileId: t, id: s.id, status: s.status, data: s, updatedAt: at })),
+    weights: plan.weights.map(w => ({ profileId: t, id: w.id, data: w, updatedAt: at }))
+  } };
+  if (!synthetic.data.sessions.length && !synthetic.data.weights.length) return { sessions: 0, weights: 0 };
+  await restoreProfileData(t, synthetic, 'merge');
+  return { sessions: plan.sessions.length, weights: plan.weights.length };
+}
