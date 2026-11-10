@@ -136,4 +136,4 @@ const reload = () => { if (!page.hidden) refresh(); };
 document.addEventListener('pm:profile-changed', reload);
 document.addEventListener('pm:workout-changed', e => { if (!root.classList.contains('pm-workout-active') || (e.detail && e.detail.final)) reload(); });
 document.addEventListener('pm:data-changed', reload);
-document.addEventListener('click', e => { if (e.target.closest?.('.nav-btn[data-go="progres"]')) refresh(); });
+document.addEventListener('click', e => { if (e.target.closest?.('[data-go="progres"]')) refresh(); });

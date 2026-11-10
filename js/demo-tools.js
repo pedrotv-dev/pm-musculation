@@ -213,7 +213,7 @@ export async function prepareDemoSession(o, { onStep, beforeCommit, afterCommit,
 }
 const nameOf = a => a.name || a.machineId || 'activité';
 
-// ---------------------------------------------------------------- interface (Profil → Mode démo)
+// ---------------------------------------------------------------- interface (Réglages ⚙︎ → Données → Mode démo)
 
 function select(label, options, value) {
   const wrap = el('label', 'pm-demo-field');

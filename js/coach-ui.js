@@ -93,6 +93,11 @@ export function identitySection(profile) {
 
 /** Identifiants stables des champs essentiels (liens « Compléter » de la section ChatGPT). */
 const ESSENTIAL_IDS = { mainGoal: 'pm-sport-mainGoal', level: 'pm-sport-level', frequency: 'pm-sport-frequency', days: 'pm-sport-days', durationMin: 'pm-sport-duration' };
+/** LOT 1 : retour direct vers « Préparer mon programme avec ChatGPT » (onglet Programme) depuis Réglages. */
+export function openCoach() {
+  document.querySelector('.nav-btn[data-go="programme"]')?.click();
+  setTimeout(() => document.querySelector('[data-page="programme"] .pm-coach-section')?.scrollIntoView({ block: 'start' }), 0);
+}
 export async function sportSection(profile) {
   const [s, weights] = await Promise.all([getSportProfile(profile), listBodyWeights(profile).catch(() => [])]);
   let lastW = [...weights].sort((a, b) => b.date.localeCompare(a.date))[0] || null;
@@ -157,7 +162,7 @@ export async function sportSection(profile) {
     el('h4', 'pm-coach-sub', 'Restrictions et préférences'), field('Mouvements ou exercices à éviter', avoid), field('Contraintes', constraints), field('Préférences', prefs),
     el('h4', 'pm-coach-sub', 'Santé (facultatif)'), el('p', 'pm-muted pm-coach-warning', 'Facultatif. N’indique que ce que tu acceptes de partager. Ces informations restent sur ce téléphone et ne remplacent pas un avis médical : en cas de douleur, de blessure ou de traitement, demande l’avis d’un professionnel de santé.'),
     field('Informations de santé', health), healthShare,
-    save, st);
+    save, st, btn('Préparer mon programme avec ChatGPT →', 'pm-link pm-to-coach', openCoach));
   if (s.updatedAt) box.append(el('p', 'pm-muted', 'Dernière mise à jour : ' + formatDateFr(s.updatedAt.slice(0, 10)) + (s.history.length ? ' · ' + s.history.length + ' changement(s) mémorisé(s)' : '')));
   return box;
 }
@@ -217,8 +222,14 @@ export async function coachInput(profile, targetWeek, today = new Date()) {
   const todayIso = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
   return { profileId: profile, name: getProfileInfo(profile)?.name || profile, sport, gym, catalog: cat.list, sessions, weights, programs, targetWeek, today: todayIso };
 }
-/** Ouvre « Mon profil sportif » sur un champ essentiel manquant. */
-function goToField(key) {
+/** Ouvre « Mon profil sportif » (page Réglages) sur un champ essentiel manquant. */
+async function goToField(key) {
+  const settings = document.querySelector('[data-page="profil"]');
+  if (settings && settings.hidden) { // LOT 1 : la demande ChatGPT est dans Programme, le profil sportif dans Réglages
+    const rendered = new Promise(resolve => { document.addEventListener('pm:settings-rendered', resolve, { once: true }); setTimeout(resolve, 3000); });
+    document.querySelector('.pm-settings-btn[data-go="profil"]')?.click();
+    await rendered;
+  }
   const fold = document.querySelector('.pm-sport-fold');
   if (fold) fold.open = true;
   const target = document.getElementById(ESSENTIAL_IDS[key]);
@@ -233,10 +244,10 @@ function missingBlock(missing) {
   const list = el('ul', 'pm-coach-missing-list');
   for (const m of missing) {
     const li = el('li');
-    li.append(btn('Compléter : ' + m.label, 'pm-link', () => goToField(m.key)));
+    li.append(btn('Compléter : ' + m.label, 'pm-link', () => goToField(m.key).catch(console.error)));
     list.append(li);
   }
-  wrap.append(list, el('p', 'pm-muted', 'Le reste (poids, mensurations, santé, performances de départ…) est facultatif. Pense aussi à vérifier « Mes machines ».'));
+  wrap.append(list, el('p', 'pm-muted', 'Le reste (poids, mensurations, santé, performances de départ…) est facultatif. Pense aussi à vérifier « Mes machines » (Réglages ⚙︎).'));
   return wrap;
 }
 const gate = { refresh: null };
@@ -248,7 +259,7 @@ if (typeof document !== 'undefined') document.addEventListener('pm:coach-changed
  */
 export function coachSection(profile) {
   if (C.profile !== profile) { C.text = ''; C.week = null; C.profile = profile; }
-  const box = panel('Préparer mon programme avec ChatGPT', 'L’application rédige ta demande : profil sportif, machines, disponibilités, historique et format attendu. Copie-la dans ChatGPT, puis importe le JSON qu’il te renvoie (Séances → Programme → Importer).');
+  const box = panel('Préparer mon programme avec ChatGPT', 'L’application rédige ta demande : profil sportif, machines, disponibilités, historique et format attendu. Copie-la dans ChatGPT, puis importe le JSON qu’il te renvoie juste en dessous (« Importer un programme hebdomadaire »). Profil sportif et machines : Réglages ⚙︎.');
   box.classList.add('pm-coach-section');
   const body = el('div', 'pm-coach-body');
   box.append(body);
@@ -288,7 +299,7 @@ function generator(profile) {
     try { const how = await saveTextFile('demande-programme-' + C.week + '.txt', C.text, 'text/plain'); say(st, how === 'cancelled' ? 'Annulé.' : 'Fichier prêt.', ''); } catch (e) { say(st, e.message || 'Impossible.', 'error'); }
   });
   const toImport = btn('Importer la réponse de ChatGPT', 'pm-secondary pm-block', () => {
-    document.querySelector('.nav-btn[data-go="seances"]')?.click();
+    document.querySelector('.nav-btn[data-go="programme"]')?.click();
     setTimeout(() => { const d = document.querySelector('.pm-import'); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); } }, 0);
   });
   return [field('Semaine à préparer', week), gen, add(el('div', 'pm-row-actions'), cp, share), st, out, toImport];

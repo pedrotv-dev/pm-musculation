@@ -34,13 +34,13 @@ await step('ouvrir la démo depuis le choix de profil', async () => {
   assert.match(await text('[data-page="accueil"]'), /Mode démo/);
 });
 await step('programme démo avec bouton de démarrage, sans import', async () => {
-  await page.click('.nav-btn[data-go="seances"]');
+  await page.click('.nav-btn[data-go="programme"]');
   await page.waitForSelector('.pm-day-tab');
   assert.equal(await page.locator('.pm-day-tab').count(), 5);
   assert.equal(await page.locator('.pm-import').isHidden(), true);
 });
 await step('historique : 30 séances fictives + calendrier', async () => {
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
   await page.waitForSelector('.pm-history-card');
   assert.equal(await page.locator('.pm-history-card').count(), 31);
   await page.click('.pm-seg-btn:has-text("Calendrier")');
@@ -80,7 +80,7 @@ await step('valider les séries, chrono de repos, reporter, pause, terminer', as
   assert.equal(await page.locator('.pm-history-card').count(), 31);
 });
 await step('démarrer une nouvelle fausse séance depuis le programme', async () => {
-  await page.click('.nav-btn[data-go="seances"]');
+  await page.click('.nav-btn[data-go="programme"]');
   await page.click('.pm-day-tab:has-text("Lundi")');
   await page.click('.pm-start-workout');
   await page.waitForSelector(screen + ':not([hidden])');
@@ -91,11 +91,11 @@ await step('aucune donnée écrite dans IndexedDB par la démo', async () => {
   assert.ok((await dbRows()) <= 0, 'lignes IndexedDB : ' + (await dbRows()));
 });
 await step('réinitialiser la démo', async () => {
-  await page.click('.nav-btn[data-go="profil"]');
+  await page.click('.pm-settings-btn[data-go="profil"]');
   await page.click('button:has-text("Réinitialiser la démo")');
   await page.click('.pm-modal .pm-primary');
   await page.waitForSelector('.nav-btn[data-go="accueil"]');
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
   await page.waitForFunction(() => document.querySelectorAll('.pm-history-card').length === 31);
   await page.click('.nav-btn[data-go="accueil"]');
   assert.match(await text('[data-page="accueil"]'), /Séance en cours/);
@@ -103,7 +103,7 @@ await step('réinitialiser la démo', async () => {
 await step('quitter la démo puis Pierre est vide (aucune fuite)', async () => {
   await page.click('#switch-profile');
   await page.click('[data-select-profile="pierre"]');
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
   await page.waitForSelector('[data-page="historique"] .empty');
   assert.match(await text('[data-page="historique"]'), /Aucune séance enregistrée/);
 });

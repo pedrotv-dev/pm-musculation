@@ -35,7 +35,11 @@
         <img class="brand-logo" src="./assets/icons/icon-192.png" alt="" width="47" height="47"> <!-- même fichier que l'icône de l'application : remplacer assets/icons/* met à jour les deux -->
         <div><h1 class="brand-name">PM Musculation</h1><span class="brand-sub">Pierre &amp; Manon</span></div>
       </div>
-      <button type="button" class="profile-switch" id="switch-profile" hidden>Changer de profil</button>
+      <div class="header-actions">
+        <button type="button" class="profile-switch" id="switch-profile" hidden>Changer de profil</button>
+        <!-- LOT 1 : Réglages accessibles en permanence (profil sportif, chrono, sauvegardes, profils, à propos) -->
+        <button type="button" class="pm-settings-btn" id="open-settings" data-go="profil" aria-label="Réglages" title="Réglages" hidden><svg aria-hidden="true"><use href="assets/ascent/icones.svg#ico-reglages"/></svg></button>
+      </div>
     </header>
 
     <main id="main-content">
@@ -69,16 +73,16 @@
 
       <!-- Les pages sont remplies par js/home-ui.js, program-ui.js, history-ui.js, progress-ui.js et profile-ui.js -->
       <div id="app-pages" hidden>
-        <!-- onglet « Séances » : deux sous-pages, Programme et Historique -->
-        <div class="pm-seances-tabs" id="seances-tabs" role="group" aria-label="Séances" hidden>
-          <button type="button" class="pm-subtab" data-go="programme">Programme</button>
+        <!-- onglet « Progression » (LOT 1) : deux sous-pages, Vue d'ensemble et Historique des séances -->
+        <div class="pm-seances-tabs" id="progress-tabs" role="group" aria-label="Progression" hidden>
+          <button type="button" class="pm-subtab" data-go="progres">Vue d’ensemble</button>
           <button type="button" class="pm-subtab" data-go="historique">Historique</button>
         </div>
         <section class="page" data-page="accueil" aria-label="Accueil"></section>
         <section class="page" data-page="programme" aria-label="Programme" hidden></section>
         <section class="page" data-page="historique" aria-label="Historique" hidden></section>
         <section class="page" data-page="progres" aria-label="Progrès" hidden></section>
-        <section class="page" data-page="profil" aria-label="Profil" hidden></section>
+        <section class="page" data-page="profil" aria-label="Réglages" hidden></section>
       </div>
     </main>
   </div>
@@ -86,9 +90,8 @@
   <nav class="bottom-nav" id="bottom-nav" aria-label="Navigation principale" hidden>
     <div class="bottom-nav-inner">
       <button type="button" class="nav-btn active" data-go="accueil" aria-current="page"><svg aria-hidden="true"><use href="assets/ascent/icones.svg#ico-accueil"/></svg>Accueil</button>
-      <button type="button" class="nav-btn" data-go="seances"><svg aria-hidden="true"><use href="assets/ascent/icones.svg#ico-seances"/></svg>Séances</button>
+      <button type="button" class="nav-btn" data-go="programme"><svg aria-hidden="true"><use href="assets/ascent/icones.svg#ico-seances"/></svg>Programme</button>
       <button type="button" class="nav-btn" data-go="progres"><svg aria-hidden="true"><use href="assets/ascent/icones.svg#ico-progression"/></svg>Progression</button>
-      <button type="button" class="nav-btn" data-go="profil"><svg aria-hidden="true"><use href="assets/ascent/icones.svg#ico-profil"/></svg>Profil</button>
     </div>
   </nav>
 

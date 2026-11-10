@@ -19,7 +19,9 @@ const db = (fn, arg) => page.evaluate(fn, arg);
 const text = sel => page.locator(sel).innerText();
 const coach = '.pm-coach-section';
 const openFold = async title => { const d = page.locator('details.pm-fold', { has: page.locator('summary', { hasText: new RegExp('^' + title + '$') }) }); if (!(await d.evaluate(x => x.open))) await d.locator('summary').click(); return d; };
-const goProfil = async () => { await page.click('.nav-btn[data-go="profil"]'); await page.waitForSelector(coach + ' h3'); };
+// LOT 1 : profil sportif et machines dans Réglages (⚙︎) ; « Préparer mon programme avec ChatGPT » dans l'onglet Programme
+const goProfil = async () => { await page.click('.pm-settings-btn[data-go="profil"]'); await page.waitForSelector('[data-page="profil"] .pm-sport-fold'); };
+const goCoach = async () => { await page.click('.nav-btn[data-go="programme"]'); await page.waitForSelector('[data-page="programme"] ' + coach + ' h3'); };
 const saveSport = async f => { await f.locator('.pm-coach-status').first().evaluate(p => { p.dataset.state = ''; p.textContent = ''; }); await f.locator('button:has-text("Enregistrer mon profil sportif")').click(); await f.locator('.pm-coach-status[data-state="ok"]').first().waitFor(); };
 const noOverflow = () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
 const open = id => db(async id => (await import('./js/workouts.js')).getResumableWorkout(id), id);
@@ -50,8 +52,7 @@ const weekA = (id, weekStart) => ({ schemaVersion: 1, weekStart, programs: { [id
     { type: 'cardio', name: 'Rameur', durationMinutes: 8 }] }] } } });
 const reply = p => 'Programme centré sur la prise de muscle, 3 séances sous 60 min.\nVolume modéré la première semaine.\nHypothèse : pas de douleur.\n\n```json\n' + JSON.stringify(p, null, 2) + '\n```\n';
 const importReply = async text => {
-  await page.click('.nav-btn[data-go="seances"]');
-  await page.click('[data-go="programme"]');
+  await page.click('.nav-btn[data-go="programme"]');
   if (!(await page.locator('.pm-import').evaluate(d => d.open))) await page.click('.pm-import summary');
   await page.fill('.pm-textarea', text);
   await page.click('.pm-action-verify');
@@ -92,9 +93,10 @@ await step('1.1 lundi 9 novembre : création du profil « Alex fictif » depuis 
 });
 
 await step('1.2 profil sportif incomplet : la génération ChatGPT n’apparaît pas, ce qui manque est listé', async () => {
-  await goProfil();
+  await goCoach();
   await page.waitForSelector(coach + ' .pm-coach-missing');
   assert.equal(await page.locator(coach + ' button:has-text("Générer ma demande")').count(), 0);
+  await goProfil();
 });
 
 await step('1.3 profil sportif, poids actuel et poids cible ; machines de la salle', async () => {
@@ -119,6 +121,7 @@ await step('1.3 profil sportif, poids actuel et poids cible ; machines de la sal
 });
 
 await step('1.4 « Générer ma demande » apparaît ; génération et copie', async () => {
+  await goCoach();
   await page.waitForSelector(coach + ' button:has-text("Générer ma demande")');
   await context.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
   await page.getByLabel('Semaine à préparer').selectOption('2026-11-09');
@@ -231,7 +234,7 @@ await step('2.7 fin de séance PARTIELLE (cardio non fait) avec ressenti et rema
   assert.deepEqual([s.feedback.feeling, s.feedback.note], [4, 'Leg Press plus facile que prévu (fictif)']);
   const done = s.activities.filter(a => a.type === 'strength').map(a => a.sets.filter(x => x.done).length);
   assert.deepEqual(done, [3, 1, 2], 'Leg Press 3, Chest Press 1, Seated Row 2');
-  await page.click('.nav-btn[data-go="seances"]');
+  await page.click('.nav-btn[data-go="progres"]');
   await page.click('[data-go="historique"]');
   await page.waitForSelector('.pm-history-card');
   assert.match(await text('[data-page="historique"]'), /Partielle/);
@@ -352,6 +355,7 @@ await step('4.1 deuxième profil « Sam fictif » (endurance, perte de graisse) 
   await f.getByLabel('Fatigue actuelle').selectOption('4');
   await f.locator('#pm-sport-weight').fill('64,2');
   await saveSport(f);
+  await goCoach();
   await page.waitForSelector(coach + ' button:has-text("Générer ma demande")');
 });
 
@@ -408,8 +412,8 @@ await step('4.4 sauvegarde individuelle de Sam (fichier), restauration « Rempla
 // ------------------------------------------------------------------ 5. mobile et hors ligne
 await step('5.1 petit écran (320 px) : aucun débordement, boutons de validation ≥ 44 px, champs numériques', async () => {
   await page.setViewportSize({ width: 320, height: 640 });
-  for (const tab of ['accueil', 'seances', 'progres', 'profil']) {
-    await page.click('.nav-btn[data-go="' + tab + '"]');
+  for (const tab of ['accueil', 'programme', 'progres', 'historique', 'profil']) {
+    await page.click({ historique: '.pm-subtab', profil: '.pm-settings-btn' }[tab] ? ({ historique: '.pm-subtab', profil: '.pm-settings-btn' }[tab] + '[data-go="' + tab + '"]') : '.nav-btn[data-go="' + tab + '"]');
     await page.waitForTimeout(300);
     assert.equal(await noOverflow(), true, 'onglet ' + tab);
   }
@@ -478,6 +482,7 @@ await step('6.1 Alex : demande pour la semaine du 23 novembre — performances, 
   const f = await openFold('Mon profil sportif');
   await f.getByLabel('Fatigue actuelle').selectOption('4');
   await saveSport(f);
+  await goCoach();
   await page.getByLabel('Semaine à préparer').selectOption('2026-11-23');
   await page.click(coach + ' button:has-text("Générer ma demande")');
   await page.waitForSelector('.pm-coach-out:not([hidden])');
@@ -495,7 +500,7 @@ await step('6.1 Alex : demande pour la semaine du 23 novembre — performances, 
 await step('6.2 Sam (endurance) : orientation différente, alimentation, durée 45 min, aucun poids cible inventé', async () => {
   await page.evaluate(id => document.dispatchEvent(new CustomEvent('pm:select-profile', { detail: { profile: id } })), sam);
   await page.waitForFunction(id => document.documentElement.dataset.pmProfile === id, sam);
-  await goProfil();
+  await goCoach();
   await page.getByLabel('Semaine à préparer').selectOption('2026-11-23');
   await page.click(coach + ' button:has-text("Générer ma demande")');
   await page.waitForSelector('.pm-coach-out:not([hidden])');

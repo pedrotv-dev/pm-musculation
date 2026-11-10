@@ -34,7 +34,7 @@ console.log('V2 · création d’un profil local');
 await step('installation « V1 » (Pierre : programme ; Manon : poids) puis mise à jour : migration automatique', async () => {
   await page.goto(srv.url);
   await page.click('[data-select-profile="pierre"]');
-  await page.click('.nav-btn[data-go="seances"]');
+  await page.click('.nav-btn[data-go="programme"]');
   await page.click('.pm-import summary');
   await page.fill('.pm-textarea', JSON.stringify(exampleProgram()));
   await page.click('.pm-action-verify');

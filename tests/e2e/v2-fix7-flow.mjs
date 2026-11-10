@@ -27,7 +27,7 @@ async function newPage() {
 async function startPierre(page) {
   await page.goto(srv.url);
   await page.click('[data-select-profile="pierre"]');
-  await page.click('.nav-btn[data-go="seances"]');
+  await page.click('.nav-btn[data-go="programme"]');
   await page.click('.pm-import summary');
   await page.fill('.pm-textarea', JSON.stringify(exampleProgram()));
   await page.click('.pm-action-verify');
@@ -463,14 +463,14 @@ await step('chemins normaux : séance vide annulée depuis l’écran de séance
     await W.finishWorkout('pierre', s.id, 'partial');
   });
   await a.goto(srv.url);
-  await a.click('.nav-btn[data-go="seances"]');
+  await a.click('.nav-btn[data-go="programme"]');
   await a.click('.pm-day-tab:has-text("Mardi")'); await a.click('.pm-start-workout');
   await a.waitForSelector(screen + ':not([hidden])');
   await a.click(screen + ' button:has-text("Annuler cette séance (vide)")');
   await a.click('.pm-modal .pm-modal-btn:has-text("Annuler la séance")');
   await a.waitForTimeout(600);
   assert.equal(await resumable(a), false, 'séance vide annulée (écran de séance)');
-  await a.click('.nav-btn[data-go="seances"]');
+  await a.click('.nav-btn[data-go="programme"]');
   await a.click('.pm-day-tab:has-text("Mardi")'); await a.click('.pm-start-workout');
   await a.waitForSelector(screen + ':not([hidden])');
   await a.click(screen + ' .pm-workout-bar button:has-text("Quitter")');

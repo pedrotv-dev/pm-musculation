@@ -21,7 +21,7 @@ const rowsOf = ids => page.evaluate(async ids => (await import('./storage.js')).
 /** Programme d'exemple ; pour un profil créé, son contenu est placé sous SON identifiant (clé du fichier). */
 const programFor = id => { const p = exampleProgram(); if (id && !p.programs[id]) p.programs = { [id]: p.programs.pierre }; return p; };
 const importViaUi = async id => {
-  await page.click('.nav-btn[data-go="seances"]');
+  await page.click('.nav-btn[data-go="programme"]');
   await page.click('.pm-import summary');
   await page.fill('.pm-textarea', JSON.stringify(programFor(id)));
   await page.click('.pm-action-verify');
@@ -159,7 +159,7 @@ await step('restauration d’un profil absent : tout ou rien (échec pendant l�
 await step('démo : fonctionne comme avant, rien d’écrit en base, registre inchangé', async () => {
   const before = await page.evaluate(async () => JSON.stringify((await (await import('./storage.js')).loadProfileRegistry())));
   await page.click('[data-select-profile="demo"]'); await page.waitForSelector('.pm-home-card');
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
   await page.waitForSelector('.pm-history-card');
   assert.equal(await rowsOf(['demo']), 0);
   assert.equal(await page.evaluate(async () => JSON.stringify((await (await import('./storage.js')).loadProfileRegistry()))), before);

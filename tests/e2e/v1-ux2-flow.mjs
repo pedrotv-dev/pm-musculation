@@ -49,7 +49,7 @@ for (const [w, h] of SIZES) {
   await page.waitForSelector('.pm-home-card');
 
   await step(`UX2-02 · Profil : option « Garder l’écran allumé pendant l’entraînement », cochée par défaut (${w} px)`, async () => {
-    await page.click('.nav-btn[data-go="profil"]');
+    await page.click('.pm-settings-btn[data-go="profil"]');
     const box = page.locator('.pm-profile-option', { hasText: 'Garder l’écran allumé pendant l’entraînement' }).locator('input[type=checkbox]');
     assert.equal(await box.isChecked(), true);
     assert.equal(await box.isDisabled(), false);
@@ -115,7 +115,7 @@ for (const [w, h] of SIZES) {
     await page.click(screen + ' .pm-bar-actions button:has-text("Quitter")');
     await page.waitForSelector('.pm-home-card');
     assert.equal((await wl()).active, false, 'verrou conservé après « Quitter »');
-    await page.click('.nav-btn[data-go="profil"]');
+    await page.click('.pm-settings-btn[data-go="profil"]');
     await page.locator('.pm-profile-option', { hasText: 'Garder l’écran allumé pendant l’entraînement' }).locator('input[type=checkbox]').uncheck();
     await page.waitForTimeout(300);
     await page.click('.nav-btn[data-go="accueil"]');
@@ -170,15 +170,15 @@ for (const [w, h] of SIZES) {
     const check = async (label, action) => { await page.evaluate(() => scrollTo(0, 99999)); await page.waitForTimeout(80); await action(); await page.waitForTimeout(500); assert.equal(await y(), 0, label); };
     await check('détail → liste', () => page.click('button:has-text("Retour à la liste")'));
     await check('Historique → Progression', () => page.click('.nav-btn[data-go="progres"]'));
-    await check('Progression → Profil', () => page.click('.nav-btn[data-go="profil"]'));
+    await check('Progression → Profil', () => page.click('.pm-settings-btn[data-go="profil"]'));
     await check('bouton retour du téléphone', () => page.goBack().catch(() => {}));
-    await check('Programme → Historique', async () => { await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]'); });
+    await check('Programme → Historique', async () => { await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]'); });
     await page.click('.nav-btn[data-go="accueil"]');
     await page.waitForTimeout(300);
   });
 
   await step(`UX2-04 · pas de retour en haut pendant une correction dans l’historique (${w} px)`, async () => {
-    await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]');
+    await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
     await page.locator('.pm-history-card').nth(1).click();
     await page.waitForSelector('.pm-hist-set input');
     const input = page.locator('.pm-hist-set input').nth(2);

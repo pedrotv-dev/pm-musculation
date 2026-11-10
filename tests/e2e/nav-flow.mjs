@@ -20,7 +20,7 @@ page.setDefaultTimeout(12000);
 const errors = watch(page);
 const screen = '#pm-workout-screen';
 const wl = () => page.evaluate(() => ({ requests: window.__wl.requests, releases: window.__wl.releases, active: !!window.__wl.active }));
-const activeTab = () => page.evaluate(() => document.querySelector('.nav-btn.active').dataset.go);
+const activeTab = () => page.evaluate(() => document.documentElement.dataset.pmPage === 'profil' ? 'profil' : document.querySelector('.nav-btn.active').dataset.go); // LOT 1 : Réglages = icône ⚙︎ (hors barre du bas)
 const guard = () => page.evaluate(() => !!(history.state && history.state.pmGuard));
 const resume = async () => { // la question sur l'interruption n'est posée que si la dernière modification date de plus de 2 minutes
   await page.click('.pm-home-card .pm-validate:has-text("Reprendre")');
@@ -40,7 +40,7 @@ await step('à l\'accueil : aucune entrée ajoutée à l\'historique (retour qui
   assert.equal(await guard(), false);
 });
 await step('autre onglet : retour → accueil', async () => {
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]'); await page.waitForSelector('.pm-history-card');
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]'); await page.waitForSelector('.pm-history-card');
   await page.waitForTimeout(200);
   assert.equal(await guard(), true);
   await back();
@@ -48,17 +48,17 @@ await step('autre onglet : retour → accueil', async () => {
   await noGuard(); // plus rien à fermer : le prochain retour quitterait l'application
 });
 await step('détail d\'une séance : retour → liste, puis retour → accueil', async () => {
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]'); await page.click('.pm-history-card'); await page.waitForSelector('.pm-hist-set');
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]'); await page.click('.pm-history-card'); await page.waitForSelector('.pm-hist-set');
   await page.waitForTimeout(200);
   await back();
   assert.equal(await page.evaluate(() => document.querySelector('[data-page="historique"]').dataset.view), 'list');
-  assert.equal(await activeTab(), 'seances');
+  assert.equal(await activeTab(), 'progres');
   assert.equal(await page.evaluate(() => document.querySelector('.pm-subtab.active').dataset.go), 'historique');
   await back();
   assert.equal(await activeTab(), 'accueil');
 });
 await step('dialogue ouvert : retour le ferme sans rien faire (aucune réinitialisation)', async () => {
-  await page.click('.nav-btn[data-go="profil"]'); await page.waitForSelector('button:has-text("Réinitialiser la démo")');
+  await page.click('.pm-settings-btn[data-go="profil"]'); await page.waitForSelector('button:has-text("Réinitialiser la démo")');
   await page.waitForTimeout(300);
   await page.click('button:has-text("Réinitialiser la démo")'); await page.waitForSelector('.pm-modal');
   await page.waitForTimeout(200);
@@ -123,7 +123,7 @@ await step('« Quitter » : retour à l\'accueil, séance conservée, écran lib
   await noGuard(); // retour à l'accueil : la garde est retirée
 });
 await step('réglages : écran allumé désactivable, nouvelle séance sans verrou', async () => {
-  await page.click('.nav-btn[data-go="profil"]'); await page.waitForSelector('label:has-text("Garder l’écran allumé")');
+  await page.click('.pm-settings-btn[data-go="profil"]'); await page.waitForSelector('label:has-text("Garder l’écran allumé")');
   await page.waitForTimeout(300);
   await page.uncheck('label:has-text("Garder l’écran allumé") input');
   await page.waitForTimeout(200);
@@ -135,15 +135,15 @@ await step('réglages : écran allumé désactivable, nouvelle séance sans verr
 });
 await step('réglages : bouton retour désactivable (comportement normal du navigateur)', async () => {
   await page.click(screen + ' .pm-bar-actions button:has-text("Quitter")'); await page.waitForSelector('.pm-home-card');
-  await page.click('.nav-btn[data-go="profil"]'); await page.waitForSelector('label:has-text("Bouton retour du téléphone")');
+  await page.click('.pm-settings-btn[data-go="profil"]'); await page.waitForSelector('label:has-text("Bouton retour du téléphone")');
   await page.waitForTimeout(300);
   await page.uncheck('label:has-text("Bouton retour du téléphone") input');
   await page.waitForTimeout(300);
-  await page.click('.nav-btn[data-go="seances"]'); await page.click('.pm-subtab[data-go="historique"]'); await page.waitForSelector('.pm-history-card'); await page.waitForTimeout(300);
+  await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]'); await page.waitForSelector('.pm-history-card'); await page.waitForTimeout(300);
   await noGuard(); // aucune garde ajoutée : « retour » n'est plus intercepté
 });
 await step('API verrou d\'écran refusée : aucune erreur, séance utilisable', async () => {
-  await page.click('.nav-btn[data-go="profil"]'); await page.waitForSelector('label:has-text("Garder l’écran allumé")'); await page.waitForTimeout(300);
+  await page.click('.pm-settings-btn[data-go="profil"]'); await page.waitForSelector('label:has-text("Garder l’écran allumé")'); await page.waitForTimeout(300);
   await page.check('label:has-text("Garder l’écran allumé") input');
   await page.evaluate(() => { window.__wl.refuse = true; });
   await page.click('.nav-btn[data-go="accueil"]');
