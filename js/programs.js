@@ -29,6 +29,7 @@
 import { saveProgram, getProgram, listPrograms } from '../storage.js';
 import { CARDIO_METRICS, metricError } from './cardio.js';
 import { isRealProfile } from './profiles.js';
+import { isPerSide } from './machine-rules.js';
 
 const PROGRAM_SCHEMA_VERSION = 1;
 
@@ -81,16 +82,53 @@ export function getProgramStatus(weekStart, date = new Date()) {
   return weekStart > current ? 'upcoming' : 'past';
 }
 
+/**
+ * Durée ESTIMÉE d'une journée de programme (minutes, arrondie aux 5 min) : échauffement et cardio (durée prévue + 1 min
+ * de transition), musculation (≈ 45 s par série, repos entre les séries, ≈ 2 min d'installation / changement de
+ * machine). Simple estimation : la durée réelle peut varier.
+ */
+export function estimateDayMinutes(day) {
+  let sec = 0;
+  for (const a of (day && day.activities) || []) {
+    if (a.type === 'strength') {
+      const n = (a.sets || []).length * (isPerSide(a.machineId, a.perSide) ? 2 : 1);
+      if (!n) continue;
+      sec += 120 + n * 45 + Math.max(0, n - 1) * (Number.isFinite(a.restSeconds) ? a.restSeconds : 90);
+    } else {
+      const min = Number.isFinite(a.durationMinutes) ? a.durationMinutes : Number.isFinite(a.durationSeconds) ? a.durationSeconds / 60 : 5;
+      sec += (min + 1) * 60;
+    }
+  }
+  return Math.max(5, Math.ceil(sec / 300) * 5);
+}
+
 // ---------------------------------------------------------------- lecture de la source
 
-/** Texte JSON (colle ou fichier) -> objet. Tolere un BOM. */
+/**
+ * Réponse complète de ChatGPT (justification courte + UN bloc de code JSON) : texte du bloc JSON, ou null.
+ * Seul un bloc de code (```json … ``` ou ``` … ```) dont le contenu est un objet est retenu ; s'il y en a plusieurs,
+ * rien n'est choisi au hasard (null → erreur explicite).
+ */
+export function extractJsonBlock(text) {
+  const blocks = [...String(text).matchAll(/```[a-zA-Z]*[ \t]*\r?\n([\s\S]*?)```/g)].map(m => m[1].trim()).filter(b => b.startsWith('{'));
+  return blocks.length === 1 ? blocks[0] : null;
+}
+/** Texte JSON (colle ou fichier) -> objet. Tolere un BOM et la réponse complète de ChatGPT (texte + un bloc JSON). */
 export function parseProgramJson(text) {
   if (typeof text !== 'string') throw new ProgramImportError('Le contenu doit etre du texte JSON.');
-  const clean = text.replace(/^﻿/, '').trim();
+  const clean = text.replace(/^\uFEFF/, '').trim();
   if (!clean) throw new ProgramImportError('Le texte JSON est vide.');
   if (clean.length > MAX_FILE_BYTES) throw new ProgramImportError('Fichier trop volumineux (max 1 Mo).');
   try { return JSON.parse(clean); }
-  catch (error) { throw new ProgramImportError(`JSON invalide : ${error.message}`); }
+  catch (error) {
+    const block = clean.startsWith('{') ? null : extractJsonBlock(clean);
+    if (block) {
+      try { return JSON.parse(block); }
+      catch (inner) { throw new ProgramImportError(`JSON invalide dans le bloc de code : ${inner.message}`); }
+    }
+    if (/```/.test(clean)) throw new ProgramImportError('Réponse illisible : colle un seul bloc de code JSON (ou seulement le JSON).');
+    throw new ProgramImportError(`JSON invalide : ${error.message}`);
+  }
 }
 
 /** Fichier (File/Blob choisi dans l'interface) -> objet. */

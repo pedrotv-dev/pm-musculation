@@ -28,6 +28,7 @@
  *     status: 'pending'|'done'|'skipped', postponed, wasPostponed,
  *     planned: {copie du programme},
  *     sets: [{id, kg, reps, done, doneAt}],   // musculation
+ *     prefill?: {reason, kg, reps, date, sessionId, sets}  // V2 : charges préremplies au démarrage (last-loads.js)
  *     actual: {durationMinutes?} | null        // echauffement / cardio
  *   }],
  *   summary: {setsDone, volumeKg, activitiesDone, activitiesTotal, durationMinutes}
@@ -42,6 +43,7 @@ import { mondayOf } from './programs.js';
 import { isPerSide, expandSides, nextSide } from './machine-rules.js';
 import { cleanMetrics } from './cardio.js';
 import { isRealProfile } from './profiles.js';
+import { lastPerformance, knownLoads, planLoads } from './last-loads.js';
 
 const WORKOUT_SCHEMA_VERSION = 1;
 
@@ -327,7 +329,7 @@ export function getWorkoutSummary(session, now) {
  * (code SESSION_IN_PROGRESS, `error.sessionId`) : une seule seance ouverte par profil, garantie par IndexedDB.
  * @returns {Promise<session>}
  */
-export function startWorkout(profileId, { dayId, weekStart, now = new Date(), store, free = false } = {}) {
+export function startWorkout(profileId, { dayId, weekStart, now = new Date(), store, free = false, lastLoads = false } = {}) {
   try { writable(profileId); } catch (error) { return Promise.reject(error); }
   return (async () => {
     const week = weekStart || mondayOf(now);
@@ -356,6 +358,22 @@ export function startWorkout(profileId, { dayId, weekStart, now = new Date(), st
       }
       return a;
     });
+
+    // V2 : charges réelles mémorisées (option `lastLoads`, demandée par l'écran de séance) — séries de travail
+    // préremplies d'après la dernière séance terminée du profil (séries validées seulement, voir last-loads.js).
+    // Rien n'est validé ; le programme reste dans `planned` ; `prefill` décrit la décision (affichage, retour possible).
+    if (lastLoads && activities.some(a => a.type === 'strength')) {
+      const past = (await backend(profileId, store).list(profileId).catch(() => [])).map(r => r && r.data).filter(s => s && isClosed(s));
+      for (const a of activities) {
+        if (a.type !== 'strength') continue;
+        const lastFor = side => lastPerformance(past, a.machineId, { side });
+        const ref = lastFor(null);
+        if (!ref) continue;
+        const r = planLoads(a, lastFor, { known: knownLoads(past, a.machineId) });
+        for (const c of r.changes) a.sets.find(x => x.id === c.setId).kg = c.kg;
+        a.prefill = { reason: r.reason, kg: ref.kg, reps: ref.reps, date: ref.date, sessionId: ref.sessionId, sets: r.changes.length };
+      }
+    }
 
     const session = {
       schemaVersion: WORKOUT_SCHEMA_VERSION,
@@ -538,6 +556,27 @@ export function removeSet(profileId, sessionId, activityKey, setId, options) {
     checkSet(findSet(a, setId), options && options.expectSet);
     a.sets = a.sets.filter(x => x.id !== setId);
     refresh(a);
+  }, options);
+}
+
+/**
+ * Applique des charges choisies par l'utilisateur (ex. « Reprendre mes dernières charges ») aux séries NON validées
+ * d'une activité : `changes` = [{ setId, from, kg }]. Chaque série doit être encore non validée et à la charge `from`
+ * (vérifié dans la transaction : SET_CONFLICT sinon, rien n'est écrit). Répétitions et programme inchangés.
+ */
+export function setLoads(profileId, sessionId, activityKey, changes, options) {
+  return mutate(profileId, sessionId, s => {
+    const a = findActivity(s, activityKey);
+    requireStrength(a);
+    if (!Array.isArray(changes) || !changes.length || changes.length > MAX_SETS) throw new WorkoutError('Modification invalide.', 'INVALID_SET');
+    for (const c of changes) {
+      const set = findSet(a, c && c.setId);
+      if (set.done || set.kg !== c.from) {
+        throw new WorkoutError('Cette série a été modifiée entre-temps : rien n’a été changé. Vérifie les valeurs affichées.', 'SET_CONFLICT', { setId: set.id });
+      }
+      checkKg(c.kg);
+    }
+    for (const c of changes) findSet(a, c.setId).kg = c.kg;
   }, options);
 }
 

@@ -2,13 +2,13 @@
  * PM Musculation V2 — sections du Profil : identité (nom, couleur, suppression), profil sportif, machines de la salle,
  * demande de programme pour ChatGPT. Tout reste sur l'appareil ; aucune IA intégrée, aucun appel réseau.
  */
-import { el, btn, add, dialog, confirmDialog, toast, formatDateFr } from './dom.js';
+import { el, btn, add, dialog, confirmDialog, toast, formatDateFr, fmtNum, localISODate } from './dom.js';
 import { getProfileInfo, isRealProfile, isLegacyProfile, updateProfile, deleteProfile, PROFILE_COLORS, NAME_MAX, GOAL_MAX } from './profiles.js';
-import { GOALS, LEVELS, DAYS, DURATIONS, INTENSITIES, FATIGUE, SLEEP, MEASURES, TEXT_MAX, getSportProfile, saveSportProfile, getGym, saveGym } from './sport-profile.js';
+import { GOALS, LEVELS, DAYS, DURATIONS, INTENSITIES, FATIGUE, SLEEP, MEASURES, TEXT_MAX, getSportProfile, saveSportProfile, getGym, saveGym, missingEssentials, weightOrNull } from './sport-profile.js';
 import { buildCoachPrompt } from './coach.js';
 import { loadCatalog } from './catalog.js';
 import { listWorkouts, getDemoProgram } from './workouts.js';
-import { listBodyWeights } from './weights.js';
+import { listBodyWeights, recordBodyWeight } from './weights.js';
 import { listPrograms } from '../storage.js';
 import { mondayOf } from './programs.js';
 import { addDays } from './stats.js';
@@ -91,15 +91,23 @@ export function identitySection(profile) {
 
 // ---------------------------------------------------------------- profil sportif
 
+/** Identifiants stables des champs essentiels (liens « Compléter » de la section ChatGPT). */
+const ESSENTIAL_IDS = { mainGoal: 'pm-sport-mainGoal', level: 'pm-sport-level', frequency: 'pm-sport-frequency', days: 'pm-sport-days', durationMin: 'pm-sport-duration' };
 export async function sportSection(profile) {
-  const s = await getSportProfile(profile);
-  const box = fold('Mon profil sportif', 'Ces informations servent à préparer ton programme avec ChatGPT. Aucune n’est obligatoire ; modifie-les quand ta situation change (l’historique de tes changements est conservé).');
+  const [s, weights] = await Promise.all([getSportProfile(profile), listBodyWeights(profile).catch(() => [])]);
+  let lastW = [...weights].sort((a, b) => b.date.localeCompare(a.date))[0] || null;
+  const box = fold('Mon profil sportif', 'Ces informations servent à préparer ton programme avec ChatGPT. Les informations essentielles (objectif principal, niveau, séances par semaine, jours disponibles, durée maximale) sont marquées d’un astérisque ; le reste est facultatif. Modifie-les quand ta situation change (l’historique de tes changements est conservé).');
+  box.classList.add('pm-sport-fold');
+  const mainGoal = select(GOALS.map(g => [g, g]), s.mainGoal || (s.goals.length === 1 ? s.goals[0] : null));
+  mainGoal.id = ESSENTIAL_IDS.mainGoal;
   const goals = checks(GOALS, s.goals);
   const goalNote = area(s.goalNote, 'Ex. : préparer un trail en mars, reprendre après une pause…');
-  const level = select(LEVELS, s.level);
-  const freq = select([1, 2, 3, 4, 5, 6, 7].map(n => [n, n + ' séance' + (n > 1 ? 's' : '')]), s.frequency);
-  const days = checks(DAYS, s.days, cap);
-  const dur = select(DURATIONS.map(d => [d, d + ' min']), s.durationMin);
+  const level = select(LEVELS, s.level); level.id = ESSENTIAL_IDS.level;
+  const freq = select([1, 2, 3, 4, 5, 6, 7].map(n => [n, n + ' séance' + (n > 1 ? 's' : '')]), s.frequency); freq.id = ESSENTIAL_IDS.frequency;
+  const days = checks(DAYS, s.days, cap); days.box.id = ESSENTIAL_IDS.days;
+  const dur = select(DURATIONS.map(d => [d, d + ' min']), s.durationMin); dur.id = ESSENTIAL_IDS.durationMin;
+  const weightNow = input(lastW ? fmtNum(lastW.kg) : '', { inputMode: 'decimal' }); weightNow.id = 'pm-sport-weight';
+  const target = input(s.targetWeightKg === null ? '' : fmtNum(s.targetWeightKg), { inputMode: 'decimal' }); target.id = 'pm-sport-target';
   const intensity = select(INTENSITIES, s.intensity);
   const fatigue = select(FATIGUE, s.fatigue);
   const sleep = select(SLEEP, s.sleep);
@@ -117,20 +125,35 @@ export async function sportSection(profile) {
     save.disabled = true;
     try {
       const m = {}; for (const [k, i] of measures) m[k] = i.value.trim().replace(',', '.');
-      await saveSportProfile(profile, { goals: goals.values(), goalNote: goalNote.value, level: level.value, frequency: freq.value, days: days.values(), durationMin: dur.value,
-        intensity: intensity.value, fatigue: fatigue.value, sleep: sleep.value, recoveryNote: recovery.value, measures: m, initialPerf: perf.value,
+      // poids actuel : vérifié AVANT tout enregistrement (rien n'est écrit si la valeur est invalide)
+      const typed = weightOrNull(weightNow.value.trim(), 'Poids actuel');
+      const newWeight = typed !== null && (!lastW || typed !== lastW.kg) ? typed : null; // Progression se relit à l'ouverture
+      await saveSportProfile(profile, { mainGoal: mainGoal.value, goals: goals.values(), goalNote: goalNote.value, level: level.value, frequency: freq.value, days: days.values(), durationMin: dur.value,
+        targetWeightKg: target.value.trim(), intensity: intensity.value, fatigue: fatigue.value, sleep: sleep.value, recoveryNote: recovery.value, measures: m, initialPerf: perf.value,
         avoid: avoid.value, constraints: constraints.value, preferences: prefs.value, health: health.value, healthInBilan: hs.checked });
-      say(st, 'Profil sportif enregistré ✓', 'ok'); toast('Profil sportif enregistré');
+      let extra = '';
+      if (newWeight !== null) {
+        try {
+          const r = await recordBodyWeight(profile, newWeight, localISODate());
+          lastW = r.measure;
+          extra = r.change === 'updated' ? ' Pesée du jour corrigée : ' + fmtNum(newWeight) + ' kg.' : r.change === 'added' ? ' Pesée enregistrée : ' + fmtNum(newWeight) + ' kg (aujourd’hui).' : '';
+        } catch (e) { say(st, 'Profil sportif enregistré, mais la pesée n’a pas pu l’être : ' + (e.message || e), 'error'); return; }
+      }
+      say(st, 'Profil sportif enregistré ✓' + extra, 'ok'); toast('Profil sportif enregistré');
     } catch (e) { say(st, (e.message || 'Enregistrement impossible.') + ' Rien n’a été modifié.', 'error'); }
     finally { save.disabled = false; }
   });
   const mgrid = el('div', 'pm-coach-grid'); measures.forEach(([, i, label]) => mgrid.append(field(label, i)));
   add(box,
-    el('h4', 'pm-coach-sub', 'Objectifs'), goals.box, field('Précision (facultatif)', goalNote), field('Niveau d’expérience', level),
-    el('h4', 'pm-coach-sub', 'Disponibilités'), field('Séances par semaine', freq), el('p', 'pm-coach-label', 'Jours disponibles'), days.box, field('Durée d’une séance', dur),
+    el('h4', 'pm-coach-sub', 'Objectifs'), field('Objectif principal *', mainGoal), el('p', 'pm-coach-label', 'Objectifs secondaires (facultatif)'), goals.box, field('Précision (facultatif)', goalNote), field('Niveau d’expérience *', level),
+    el('h4', 'pm-coach-sub', 'Disponibilités'), field('Séances par semaine *', freq), el('p', 'pm-coach-label', 'Jours disponibles *'), days.box,
+    field('Durée maximale par séance *', dur, 'Le temps dont tu disposes au maximum, pas une durée à remplir : une séance plus courte est normale.'),
     el('h4', 'pm-coach-sub', 'Intensité, fatigue et récupération'), field('Difficulté souhaitée (RPE)', intensity, 'RPE : effort ressenti de 1 à 10 ; 8 = il reste environ 2 répétitions possibles.'),
     field('Fatigue actuelle', fatigue), field('Sommeil', sleep), field('Récupération (facultatif)', recovery),
-    el('h4', 'pm-coach-sub', 'Corps et performances'), el('p', 'pm-muted', 'Le poids se saisit dans Progression (historique daté).'), mgrid, field('Performances de départ (facultatif)', perf),
+    el('h4', 'pm-coach-sub', 'Corps et performances'),
+    field('Poids actuel (kg, facultatif)', weightNow, lastW ? 'Dernière mesure : ' + fmtNum(lastW.kg) + ' kg (' + formatDateFr(lastW.date) + '). Une nouvelle valeur ajoute une pesée datée d’aujourd’hui, visible dans Progression.' : 'Aucune pesée enregistrée. Une valeur ajoute une pesée datée d’aujourd’hui, visible dans Progression.'),
+    field('Poids cible (kg, facultatif)', target, 'Objectif personnel, ni obligation médicale ni promesse de résultat. Laisse vide pour ne pas en avoir.'),
+    mgrid, field('Performances de départ (facultatif)', perf),
     el('h4', 'pm-coach-sub', 'Restrictions et préférences'), field('Mouvements ou exercices à éviter', avoid), field('Contraintes', constraints), field('Préférences', prefs),
     el('h4', 'pm-coach-sub', 'Santé (facultatif)'), el('p', 'pm-muted pm-coach-warning', 'Facultatif. N’indique que ce que tu acceptes de partager. Ces informations restent sur ce téléphone et ne remplacent pas un avis médical : en cas de douleur, de blessure ou de traitement, demande l’avis d’un professionnel de santé.'),
     field('Informations de santé', health), healthShare,
@@ -194,9 +217,54 @@ export async function coachInput(profile, targetWeek, today = new Date()) {
   const todayIso = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
   return { profileId: profile, name: getProfileInfo(profile)?.name || profile, sport, gym, catalog: cat.list, sessions, weights, programs, targetWeek, today: todayIso };
 }
+/** Ouvre « Mon profil sportif » sur un champ essentiel manquant. */
+function goToField(key) {
+  const fold = document.querySelector('.pm-sport-fold');
+  if (fold) fold.open = true;
+  const target = document.getElementById(ESSENTIAL_IDS[key]);
+  if (!target) return;
+  target.scrollIntoView({ block: 'center' });
+  (target.matches('input, select, textarea') ? target : target.querySelector('input'))?.focus();
+}
+/** Section ChatGPT tant que le profil sportif est incomplet : informations manquantes et accès direct à leur saisie. */
+function missingBlock(missing) {
+  const wrap = el('div', 'pm-coach-missing');
+  wrap.append(el('p', 'pm-coach-warning', 'Pour préparer une demande adaptée, complète d’abord ton profil sportif. Il manque :'));
+  const list = el('ul', 'pm-coach-missing-list');
+  for (const m of missing) {
+    const li = el('li');
+    li.append(btn('Compléter : ' + m.label, 'pm-link', () => goToField(m.key)));
+    list.append(li);
+  }
+  wrap.append(list, el('p', 'pm-muted', 'Le reste (poids, mensurations, santé, performances de départ…) est facultatif. Pense aussi à vérifier « Mes machines ».'));
+  return wrap;
+}
+const gate = { refresh: null };
+if (typeof document !== 'undefined') document.addEventListener('pm:coach-changed', e => { if (gate.refresh && e.detail?.profile === C.profile) gate.refresh(); });
+/**
+ * « Préparer mon programme avec ChatGPT » (V2, parcours) : la génération n'apparaît qu'une fois les informations
+ * essentielles du profil sportif renseignées (missingEssentials) ; sinon, la liste de ce qui manque, avec un lien
+ * direct vers chaque champ. Mise à jour dès l'enregistrement du profil sportif.
+ */
 export function coachSection(profile) {
   if (C.profile !== profile) { C.text = ''; C.week = null; C.profile = profile; }
   const box = panel('Préparer mon programme avec ChatGPT', 'L’application rédige ta demande : profil sportif, machines, disponibilités, historique et format attendu. Copie-la dans ChatGPT, puis importe le JSON qu’il te renvoie (Séances → Programme → Importer).');
+  box.classList.add('pm-coach-section');
+  const body = el('div', 'pm-coach-body');
+  box.append(body);
+  let seq = 0;
+  const refresh = async () => {
+    const mine = ++seq;
+    const sport = await getSportProfile(profile).catch(() => null);
+    if (mine !== seq) return;
+    const missing = sport ? missingEssentials(sport) : [];
+    body.replaceChildren(...(missing.length ? [missingBlock(missing)] : generator(profile)));
+  };
+  gate.refresh = refresh;
+  refresh();
+  return box;
+}
+function generator(profile) {
   const thisWeek = mondayOf();
   const weeks = [[addDays(thisWeek, 7), 'Semaine prochaine'], [thisWeek, 'Semaine en cours'], [addDays(thisWeek, 14), 'Dans deux semaines']];
   if (!C.week) C.week = weeks[0][0];
@@ -223,6 +291,5 @@ export function coachSection(profile) {
     document.querySelector('.nav-btn[data-go="seances"]')?.click();
     setTimeout(() => { const d = document.querySelector('.pm-import'); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); } }, 0);
   });
-  add(box, field('Semaine à préparer', week), gen, add(el('div', 'pm-row-actions'), cp, share), st, out, toImport);
-  return box;
+  return [field('Semaine à préparer', week), gen, add(el('div', 'pm-row-actions'), cp, share), st, out, toImport];
 }

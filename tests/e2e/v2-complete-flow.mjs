@@ -50,11 +50,12 @@ await step('1-2 · premier lancement, création du profil « Alex fictif » (ouv
 await step('3 · profil sportif (objectifs, niveau, disponibilités, intensité, fatigue, restrictions, santé non partagée)', async () => {
   await goProfil();
   const f = await openFold('Mon profil sportif');
-  for (const g of ['Prise de muscle', 'Force']) await f.locator('label.pm-check', { hasText: new RegExp('^\\s*' + g + '$') }).locator('input').check();
+  await f.getByLabel('Objectif principal').selectOption('Prise de muscle');
+  await f.locator('label.pm-check', { hasText: /^\s*Force$/ }).locator('input').check();
   await f.getByLabel('Niveau d’expérience').selectOption('intermediaire');
   await f.getByLabel('Séances par semaine').selectOption('3');
   for (const d of ['Lundi', 'Mercredi', 'Vendredi']) await f.locator('label.pm-check', { hasText: new RegExp('^\\s*' + d + '$') }).locator('input').check();
-  await f.getByLabel('Durée d’une séance').selectOption('60');
+  await f.getByLabel('Durée maximale par séance').selectOption('60');
   await f.getByLabel('Difficulté souhaitée (RPE)').selectOption('soutenue');
   await f.getByLabel('Fatigue actuelle').selectOption('2');
   await f.getByLabel('Mouvements ou exercices à éviter').fill('Flexions profondes du genou (fictif)');
@@ -64,7 +65,8 @@ await step('3 · profil sportif (objectifs, niveau, disponibilités, intensité,
   await f.locator('button:has-text("Enregistrer mon profil sportif")').click();
   await f.locator('.pm-coach-status[data-state="ok"]').waitFor();
   const s = await settingOf(alex, 'coach.profile');
-  assert.deepEqual([s.goals, s.level, s.frequency, s.days, s.durationMin, s.intensity, s.fatigue, s.measures.waistCm, s.healthInBilan], [['Prise de muscle', 'Force'], 'intermediaire', 3, ['lundi', 'mercredi', 'vendredi'], 60, 'soutenue', 2, 82.5, false]);
+  assert.equal(s.mainGoal, 'Prise de muscle');
+  assert.deepEqual([s.goals, s.level, s.frequency, s.days, s.durationMin, s.intensity, s.fatigue, s.measures.waistCm, s.healthInBilan], [['Force'], 'intermediaire', 3, ['lundi', 'mercredi', 'vendredi'], 60, 'soutenue', 2, 82.5, false]);
 });
 
 await step('3b · profil sportif : jours incohérents refusés, rien n’est écrit', async () => {
@@ -94,8 +96,8 @@ await step('5 · demande pour ChatGPT : profil, machines, disponibilités, forma
   await page.click('button:has-text("Générer ma demande")');
   await page.waitForSelector('.pm-coach-out:not([hidden])');
   const t = await page.inputValue('.pm-coach-out');
-  for (const want of ['Pour : Alex fictif', 'identifiant dans l’application : ' + alex, 'weekStart = "' + week + '"', 'Objectifs : Prise de muscle, Force', 'Jours disponibles : lundi, mercredi, vendredi',
-    'Durée souhaitée d’une séance : 60 min', 'Mouvements ou exercices à éviter : Flexions profondes du genou (fictif)', 'Machines à éviter : Calf Press (calf-press)', 'tour de taille 82,5 cm',
+  for (const want of ['Pour : Alex fictif', 'identifiant dans l’application : ' + alex, 'weekStart = "' + week + '"', 'Objectif principal : Prise de muscle', 'Objectifs secondaires : Force', 'Jours disponibles : lundi, mercredi, vendredi',
+    'Durée maximale par séance : 60 min', 'Mouvements ou exercices à éviter : Flexions profondes du genou (fictif)', 'Machines à éviter : Calf Press (calf-press)', 'tour de taille 82,5 cm',
     'Poids : non renseigné', 'Santé : non communiquée', 'programs contient UNE seule clé : "' + alex + '"', 'aucun programme importé']) assert.ok(t.includes(want), 'attendu : ' + want);
   assert.equal(/^- leg-press — /m.test(t), false, 'machine indisponible absente de la liste utilisable');
   assert.equal(t.includes('entorse'), false, 'santé non partagée');
@@ -208,7 +210,7 @@ await step('16-17 · rechargement : toutes les données vérifiées dans Indexed
     return { sessions: (await W.listWorkouts(id)).length, kg: s.activities[1].sets[0].kg, note: s.feedback.note, program: (await S.getProgram(id, w))?.days[0].name,
       sport: (await S.getSetting(id, 'coach.profile', null))?.goals, avoid: (await S.getSetting(id, 'coach.gym', null))?.avoid };
   }, [alex, week]);
-  assert.deepEqual(r, { sessions: 1, kg: 32.5, note: 'Bonne séance fictive', program: 'Haut du corps modifié', sport: ['Prise de muscle', 'Force'], avoid: ['calf-press'] });
+  assert.deepEqual(r, { sessions: 1, kg: 32.5, note: 'Bonne séance fictive', program: 'Haut du corps modifié', sport: ['Force'], avoid: ['calf-press'] });
   await page.waitForSelector('.pm-hero-title:has-text("Salut Alex fictif")');
 });
 

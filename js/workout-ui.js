@@ -8,10 +8,11 @@
 import {
   startWorkout, getResumableWorkout, getWorkout, listWorkouts, updateSet, addSet, removeSet, completeActivity, skipActivity,
   postponeActivity, returnToPostponed, pauseWorkout, resumeWorkout, finishWorkout, discardWorkout,
-  addActivity, removeActivity, moveActivity, setCursor, setWorkoutFeedback, getNextActivity, getWorkoutSummary,
+  addActivity, removeActivity, moveActivity, setCursor, setLoads, setWorkoutFeedback, getNextActivity, getWorkoutSummary,
   getWorkoutDuration, getPostponedActivities
 } from './workouts.js';
-import { el, btn, clear, add, dialog, confirmDialog, toast, formatClock, formatMinutes, fmtNum, parseNum, localISODate } from './dom.js';
+import { el, btn, clear, add, dialog, confirmDialog, toast, formatClock, formatMinutes, fmtNum, parseNum, localISODate, formatDateFr } from './dom.js';
+import { lastPerformance, planLoads, programLoads, knownLoads } from './last-loads.js';
 import { icon, withIcon } from './icons.js';
 import { loadCatalog, machineImage } from './catalog.js';
 import { isKnownProfile, isRealProfile, getProfileInfo } from './profiles.js';
@@ -611,6 +612,51 @@ function scheduleReveal(key) {
   requestAnimationFrame(() => revealCurrentSet());
   setTimeout(() => { if (S.revealed === key) revealCurrentSet(); }, 320);
 }
+/**
+ * Charges réelles mémorisées (V2) : « Dernière fois : 80 kg × 12 » (séances terminées du profil, séries validées
+ * seulement). Au démarrage, le moteur a déjà prérempli les séries de travail si besoin (`a.prefill`, voir last-loads.js) ;
+ * rien n'est validé. Deux retours possibles, toujours sur décision de l'utilisateur et seulement sur les séries non
+ * validées : « Revenir à la charge du programme » et « Reprendre mes dernières charges ».
+ */
+function lastLoadHint(T, a) {
+  if (a.type !== 'strength' || !a.machineId) return null;
+  const lastFor = side => lastPerformance(S.history, a.machineId, { excludeId: S.session?.id, side });
+  const last = lastFor(null);
+  if (!last) return null;
+  const known = knownLoads(S.history, a.machineId);
+  const box = el('div', 'pm-last-load');
+  box.append(el('p', 'pm-last-load-text', 'Dernière fois : ' + (last.assisted ? 'assistance ' : '') + fmtNum(last.kg) + ' kg × ' + last.reps +
+    ' · ' + formatDateFr(last.date) + (last.assisted ? ' (moins d’assistance = plus difficile)' : '')));
+  const toProgram = programLoads(a);
+  const toLast = planLoads(a, lastFor, { known, mode: 'last' }).changes;
+  const pre = a.prefill || {};
+  const info = [];
+  if (pre.reason === 'last' && pre.sets && toProgram.length) info.push('Charges préremplies d’après ta dernière séance. Rien n’est validé : modifie-les si besoin.');
+  else if (pre.reason === 'light') info.push('Charge allégée prévue par le programme : conservée.');
+  else if (pre.reason === 'progression') info.push('Progression prévue par le programme : conservée.');
+  if (last.skipped && last.skipped.length) info.push('Séance allégée du ' + formatDateFr(last.skipped[0].date) + ' non retenue comme référence.');
+  if (info.length) box.append(el('p', 'pm-muted pm-last-load-info', info.join(' ')));
+  const apply = (label, compute, done) => btn(label, 'pm-secondary pm-last-apply', async () => {
+    await flushAll();
+    if (!isLive(T)) return;
+    const fresh = act(S.session, a.key);
+    if (!fresh) return;
+    // une saisie en cours ou en échec sur cette machine n'est jamais écrasée
+    if ([...S.writers.values()].some(w => isLive(w.t) && w.activityKey === a.key && (w.pending || w.failed.size || isDirty(w)))) {
+      setStatus('Termine d’abord la saisie en cours sur cette machine, puis réessaie.', 'error'); return;
+    }
+    const ch = compute(fresh);
+    if (!ch.length) { render(); return; }
+    const gen = genOf(S.session);
+    for (const w of [...S.writers.values()]) if (w.activityKey === a.key) S.writers.delete(w.key); // référence = valeurs enregistrées
+    if (await guardedCommit(T, (p, id) => setLoads(p, id, a.key, ch, { expectGen: gen }))) setStatus(done(ch.length), 'ok');
+  });
+  const row = el('div', 'pm-last-actions');
+  if (toProgram.length) row.append(apply('Revenir à la charge du programme', fresh => programLoads(fresh), n => 'Charge du programme reprise pour ' + n + ' série(s).'));
+  if (toLast.length) row.append(apply('Reprendre mes dernières charges', fresh => planLoads(fresh, lastFor, { known, mode: 'last' }).changes, n => 'Dernières charges reprises pour ' + n + ' série(s). Tu peux toujours les modifier.'));
+  if (row.childNodes.length) box.append(row);
+  return box;
+}
 function renderSets(card, a) {
   const T = targetNow(); // cible capturée au rendu : les rappels (même après une attente) visent CETTE séance
   const current = a.sets.find(s => !s.done);
@@ -657,6 +703,8 @@ function renderSets(card, a) {
     const plan = plannedFor(a, curIdx);
     add(box, head, grid);
     if (plan) box.append(el('p', 'pm-current-plan', 'Objectif du programme : ' + fmtNum(plan.kg) + ' kg × ' + plan.reps));
+    const hint = lastLoadHint(T, a);
+    if (hint) box.append(hint);
     box.inputs = { kg: kgF.input, reps: repsF.input };
     // « Valider » fait partie du cadre : charge, répétitions et validation restent groupées (audit V1, C2)
     const idx = curIdx, next = { set: current };
@@ -814,8 +862,9 @@ function renderMachine(a) {
     const past = machineHistory(S.history, a.machineId);
     if (past.length) {
       const last = past[past.length - 1], best = Math.max(...past.map(x => x.topKg));
-      card.append(el('p', 'pm-progress-line', 'Dernière fois (' + last.date.slice(8, 10) + '/' + last.date.slice(5, 7) + ') : ' +
-        fmtNum(last.topKg) + ' kg · ' + last.reps.join(' / ') + ' reps' + (best > last.topKg ? ' · record ' + fmtNum(best) + ' kg' : '')));
+      // « Dernière fois » : dans le cadre de la série en cours (lastLoadHint) ; ici, le résumé de l'historique
+      card.append(el('p', 'pm-progress-line', past.length + ' séance' + (past.length > 1 ? 's' : '') + ' enregistrée' + (past.length > 1 ? 's' : '') +
+        ' · dernière : ' + fmtNum(last.topKg) + ' kg · ' + last.reps.join(' / ') + ' reps' + (best > last.topKg ? ' · record ' + fmtNum(best) + ' kg' : '')));
     }
     renderSets(card, a);
   } else {
@@ -956,7 +1005,15 @@ async function addMachineDialog() {
   const reps = inputField('reps', 10, { kind: 'reps' });
   const rest = inputField('repos (s)', 90, { kind: 'reps' });
   const grid = el('div', 'pm-grid-4'); grid.append(nSets.wrap, kg.wrap, reps.wrap, rest.wrap);
-  content.append(sel, grid);
+  // dernière charge validée de la machine choisie (séances terminées et séance en cours), modifiable avant l'ajout
+  const note = el('p', 'pm-muted pm-last-load-text');
+  const prefill = () => {
+    const last = lastPerformance([...S.history, ...(S.session ? [S.session] : [])], sel.value);
+    if (last) { kg.input.value = fmtNum(last.kg); reps.input.value = String(last.reps); note.textContent = 'Dernière fois : ' + (last.assisted ? 'assistance ' : '') + fmtNum(last.kg) + ' kg × ' + last.reps + ' · ' + formatDateFr(last.date) + ' (modifiable)'; }
+    else { kg.input.value = '20'; reps.input.value = '10'; note.textContent = 'Jamais faite : choisis une charge prudente.'; }
+  };
+  sel.addEventListener('change', prefill); prefill();
+  content.append(sel, note, grid);
   const choice = await dialog({ title: 'Ajouter une machine', message: 'Elle sera ajoutée à la fin de cette séance.', content,
     choices: [{ label: 'Annuler', value: null }, { label: 'Ajouter', value: 'ok', kind: 'primary' }] });
   if (choice !== 'ok') return;
@@ -1264,7 +1321,7 @@ async function begin(detail) {
   try {
     let session;
     try {
-      session = await startWorkout(profile, { dayId: detail.dayId, weekStart: detail.weekStart, free: detail.free === true });
+      session = await startWorkout(profile, { dayId: detail.dayId, weekStart: detail.weekStart, free: detail.free === true, lastLoads: true });
     } catch (error) {
       if (error.code !== 'SESSION_IN_PROGRESS') throw error;
       const pick = await dialog({ title: 'Une séance est déjà en cours', message: 'Reprends-la ou termine-la avant d’en démarrer une autre.',
