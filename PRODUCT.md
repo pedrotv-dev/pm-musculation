@@ -22,7 +22,7 @@ Salle de sport, machines guidées (catalogue de machines avec photos), repos chr
 Inscription guidée en 7 étapes ; programme hebdomadaire importé ; séance libre ; écran une machine à la fois avec « Série en cours », − / +, Valider, Machine occupée ; chrono de repos (son, vibration) ; ressenti par machine ; « Mes charges » déclarées (distinctes des performances réelles) ; historique éditable ; progression, records ; mode Démo sans écriture ; multi-profils isolés ; sauvegarde/restauration JSON. Interface en français. Ne jamais toucher aux données réelles ; tests avec données fictives.
 
 ## Brand Commitments
-Nom : PM Musculation. Mascotte Korv (corbeau, images existantes dans assets/mascot et assets/ascent) conservée telle quelle. Gamification conservée : niveaux, XP, succès (hexagones), écran « Niveau supérieur ». Ton : tutoiement, encourageant, sobre.
+Nom : PM Musculation. Univers visuel ASCENT conservé (fond sombre, menthe, Korv), choisi par les utilisateurs après essai d’une refonte « carnet » rejetée (quadrillage, couleurs, pas assez « appli de sport »). Mascotte Korv (corbeau, images existantes dans assets/mascot et assets/ascent) conservée telle quelle. Gamification conservée : niveaux, XP, succès (hexagones), écran « Niveau supérieur ». Ton : tutoiement, encourageant, sobre.
 
 ## Evidence on Hand
 Photos des machines (assets/machines), illustrations de Korv, icônes. Aucun témoignage, chiffre ou client à inventer.

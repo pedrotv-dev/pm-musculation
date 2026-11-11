@@ -1,6 +1,6 @@
 /* PM Musculation — PULSE : progression personnelle, succes et recompenses.
    Palette retenue : turquoise d'action, lavande reservee aux recompenses. */
-:root { --pulse-reward:var(--ok); }
+:root { --pulse-reward:#b9f08a; }
 
 /* Carte de niveau : le grade prime sur le chiffre, Korv accompagne en retrait. */
 .pm-level-card { display:grid; gap:14px; }
@@ -30,7 +30,7 @@
 }
 .pm-level-card .pm-mascot-line-text {
   padding:10px 12px; border-left:2px solid var(--turq);
-  border-radius:0 10px 10px 0; background:rgba(var(--accent-rgb),.055);
+  border-radius:0 10px 10px 0; background:rgba(41,212,194,.055);
 }
 .pm-mascot-line-text {
   margin:0; color:var(--text); font-size:13px;
@@ -62,11 +62,11 @@
 }
 .pm-badge-tile:not(.pm-unlocked) { opacity:.82; }
 .pm-badge-tile::before {
-  content:'À débloquer'; color:var(--muted); font-size:10px;
+  content:'À débloquer'; color:var(--muted); font-size:12px;
   font-weight:800; letter-spacing:.06em; text-transform:uppercase;
 }
 .pm-badge-tile.pm-unlocked {
-  border:1px solid rgba(var(--accent-rgb),.65); background:rgba(var(--accent-rgb),.085);
+  border:1px solid rgba(41,212,194,.65); background:rgba(41,212,194,.085);
 }
 .pm-badge-tile.pm-unlocked::before { content:'✓ Débloqué'; color:var(--turq); }
 .pm-badge-name {
@@ -98,7 +98,7 @@
   content:counter(rank); flex:none; width:30px; height:30px;
   border-radius:9px; display:grid; place-items:center;
   font-size:13px; font-weight:850; color:var(--turq);
-  background:rgba(var(--accent-rgb),.10);
+  background:rgba(41,212,194,.10);
 }
 .pm-rank-list li > span:first-child { flex:1; min-width:0; overflow-wrap:break-word; } /* coupe entre les mots, jamais au milieu (« Semaine du ») */
 .pm-rank-value {
@@ -114,7 +114,7 @@
 .pm-reward {
   margin:14px 0; padding:19px; border-radius:16px;
   border:1px solid rgba(184,164,239,.48);
-  background:linear-gradient(145deg,rgba(184,164,239,.095),rgba(var(--accent-rgb),.045) 76%),var(--surface);
+  background:linear-gradient(145deg,rgba(184,164,239,.095),rgba(41,212,194,.045) 76%),var(--surface);
   display:grid; gap:15px; text-align:left;
 }
 .pm-reward-head {
@@ -170,12 +170,12 @@
 /* ASCENT — progression sur paliers et recompenses sobres. */
 .pm-level-card {
   position:relative; overflow:hidden; border-color:var(--ascent-rim);
-  background:linear-gradient(140deg,rgba(var(--accent-rgb),.06),transparent 63%),var(--surface);
+  background:linear-gradient(140deg,rgba(20,230,199,.06),transparent 63%),var(--surface);
 }
 .pm-level-card .tag {
   min-height:35px; display:inline-flex; align-items:center;
-  color:var(--turq); border-color:rgba(var(--accent-rgb),.4);
-  background:rgba(var(--accent-rgb),.08);
+  color:var(--turq); border-color:rgba(20,230,199,.4);
+  background:rgba(20,230,199,.08);
 }
 .pm-level-text h3 { font-weight:860; }
 .pm-xp-track {
@@ -183,17 +183,17 @@
   background:var(--ascent-raised);
 }
 .pm-xp-fill { background:linear-gradient(90deg,var(--turq),var(--ascent-sage)); }
-.pm-level-card .pm-mascot-line-text { background:rgba(var(--accent-rgb),.045); border-color:var(--turq); }
+.pm-level-card .pm-mascot-line-text { background:rgba(20,230,199,.045); border-color:var(--turq); }
 .pm-badge-tile.pm-unlocked {
   border-color:rgba(185,240,138,.4); background:rgba(185,240,138,.06);
 }
 .pm-badge-tile.pm-unlocked::before { color:var(--ok); }
 .pm-rank-list li { background:var(--surface); border-color:var(--ascent-rim); }
 .pm-reward {
-  background:linear-gradient(150deg,rgba(var(--accent-rgb),.085),transparent 70%),var(--surface);
+  background:linear-gradient(150deg,rgba(20,230,199,.085),transparent 70%),var(--surface);
   border-color:var(--ascent-rim);
 }
-.pm-reward-xp { color:var(--turq); text-shadow:0 0 22px rgba(var(--accent-rgb),.16); }
+.pm-reward-xp { color:var(--turq); text-shadow:0 0 22px rgba(20,230,199,.16); }
 .pm-reward .pm-xp-fill { background:linear-gradient(90deg,var(--turq),var(--ascent-sage)); }
 .pm-reward-level.pm-levelup { color:var(--ok); }
 .pm-reward-records li { border-left-color:var(--ascent-sage); }
@@ -210,18 +210,18 @@
 .pm-hero-korv > img { width:100%; height:100%; display:block; }
 .pm-hero-korv img { object-fit:contain; object-position:bottom; filter:drop-shadow(0 6px 18px rgba(0,0,0,.55)); }
 .pm-korv-bubble { grid-column:1; grid-row:2; align-self:end; position:relative; margin:16px 0 18px; padding:10px 12px;
-  border-radius:14px; border:1px solid var(--ascent-rim, var(--stroke)); background:rgba(var(--surface-rgb),.88); }
+  border-radius:14px; border:1px solid var(--ascent-rim, var(--stroke)); background:rgba(26,33,39,.88); }
 .pm-korv-bubble::after { content:''; position:absolute; right:-7px; top:22px; width:12px; height:12px; transform:rotate(45deg);
-  background:rgba(var(--surface-rgb),.88); border-top:1px solid var(--ascent-rim, var(--stroke)); border-right:1px solid var(--ascent-rim, var(--stroke)); }
+  background:rgba(26,33,39,.88); border-top:1px solid var(--ascent-rim, var(--stroke)); border-right:1px solid var(--ascent-rim, var(--stroke)); }
 .pm-korv-name { display:block; font-size:12px; font-weight:820; color:var(--turq); letter-spacing:.04em; margin-bottom:3px; }
 .pm-korv-line { margin:0; font-size:13px; line-height:1.45; color:var(--text); }
 .pm-mascot-xl { width:150px; height:178px; }
 
 .pm-hex { flex:none; display:grid; place-items:center; width:70px; height:78px;
-  clip-path:polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background:linear-gradient(160deg, var(--turq), rgba(var(--accent-rgb),.35)); }
+  clip-path:polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background:linear-gradient(160deg, var(--turq), rgba(20,230,199,.35)); }
 .pm-hex-inner { display:grid; place-items:center; align-content:center; width:calc(100% - 5px); height:calc(100% - 6px);
   clip-path:polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background:var(--surface); }
-.pm-hex-label { font-size:10px; font-weight:800; letter-spacing:.08em; color:var(--muted); line-height:1; }
+.pm-hex-label { font-size:12px; font-weight:800; letter-spacing:.08em; color:var(--muted); line-height:1; }
 .pm-hex-value { font-size:26px; font-weight:880; line-height:1.05; color:var(--text); font-variant-numeric:tabular-nums; }
 .pm-level-strip { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; column-gap:14px; row-gap:8px; }
 .pm-level-body { display:grid; gap:8px; min-width:0; }
@@ -244,12 +244,12 @@
 .pm-next-card .pm-section-head { margin-bottom:12px; }
 .pm-next-when { font-size:13px; color:var(--muted); font-weight:700; }
 .pm-next-row { display:flex; align-items:center; gap:12px; padding:12px; border-radius:14px; background:var(--surface-raised); border:1px solid var(--ascent-rim, var(--stroke)); }
-.pm-next-icon { flex:none; display:grid; place-items:center; width:44px; height:44px; border-radius:12px; background:rgba(var(--accent-rgb),.10); color:var(--turq); }
+.pm-next-icon { flex:none; display:grid; place-items:center; width:44px; height:44px; border-radius:12px; background:rgba(20,230,199,.10); color:var(--turq); }
 .pm-next-icon svg { width:24px; height:24px; stroke-width:1.9; }
 .pm-next-info { flex:1; min-width:0; display:grid; gap:2px; }
 .pm-next-info strong { font-size:16px; overflow-wrap:anywhere; }
 .pm-play { flex:none; display:grid; place-items:center; width:52px; height:52px; border:0; border-radius:14px; cursor:pointer;
-  background:var(--turq); color:var(--turq-dark); box-shadow:0 4px 16px rgba(var(--accent-rgb),.22); }
+  background:var(--turq); color:var(--turq-dark); box-shadow:0 4px 16px rgba(20,230,199,.22); }
 .pm-play svg { width:22px; height:22px; }
 .pm-play:active { transform:scale(.96); }
 .pm-play:focus-visible { outline:3px solid var(--text); outline-offset:3px; }
@@ -295,11 +295,11 @@
 .pm-levelup-overlay .pm-levelup-lines { order:3; align-self:center; }
 .pm-levelup-overlay .pm-modal-actions { order:4; margin-top:20px; }
 .pm-levelup-overlay .pm-modal-btn.pm-primary { width:100%; min-height:58px; font-size:18px; font-weight:850; }
-.pm-levelup-korv { width:170px; height:212px; filter:drop-shadow(0 0 22px rgba(var(--accent-rgb),.28)); }
+.pm-levelup-korv { width:170px; height:212px; filter:drop-shadow(0 0 22px rgba(20,230,199,.28)); }
 .pm-levelup-korv img { width:100%; height:100%; object-fit:contain; -webkit-mask-image:linear-gradient(180deg, #000 72%, transparent); mask-image:linear-gradient(180deg, #000 72%, transparent); }
-.pm-levelup-hex { position:relative; filter:drop-shadow(0 0 18px rgba(var(--accent-rgb),.35)); }
+.pm-levelup-hex { position:relative; filter:drop-shadow(0 0 18px rgba(20,230,199,.35)); }
 .pm-levelup-lines { list-style:none; margin:0; padding:0; display:grid; gap:8px; width:100%; max-width:420px; text-align:left; }
-.pm-levelup-lines li { display:flex; align-items:center; gap:12px; min-height:48px; padding:8px 14px; border-radius:12px; border:1px solid var(--ascent-rim, var(--stroke)); background:rgba(var(--surface-rgb),.85); font-size:15px; }
+.pm-levelup-lines li { display:flex; align-items:center; gap:12px; min-height:48px; padding:8px 14px; border-radius:12px; border:1px solid var(--ascent-rim, var(--stroke)); background:rgba(26,33,39,.85); font-size:15px; }
 .pm-levelup-ico { flex:none; width:22px; text-align:center; color:var(--turq); font-weight:900; }
 @media (prefers-reduced-motion: reduce) { .pm-levelup-overlay * { animation:none !important; transition:none !important; } }
 .pm-reward-korv .pm-korv-bubble { grid-column:2; grid-row:1; }
@@ -307,7 +307,7 @@
 /* ASCENT — barres d'XP : lisibles, sans mouvement de mise en page. */
 .pm-xp-track {
   height:14px;
-  border:1px solid rgba(var(--accent-rgb),.24);
+  border:1px solid rgba(20,230,199,.24);
   border-radius:999px;
   background:linear-gradient(180deg,#101a1e,#2a353a);
   box-shadow:inset 0 2px 3px rgba(0,0,0,.35);
@@ -323,8 +323,8 @@
 }
 .pm-xp-fill {
   position:relative; z-index:1; min-height:100%;
-  background:linear-gradient(90deg,var(--turq) 4%,#37e8bd 62%,var(--ok) 100%);
-  box-shadow:0 0 10px rgba(var(--accent-rgb),.23);
+  background:linear-gradient(90deg,#14e6c7 4%,#37e8bd 62%,#b9f08a 100%);
+  box-shadow:0 0 10px rgba(20,230,199,.23);
   transition:none; /* largeur fournie par js/jeu-ui.js, jamais animee */
 }
 .pm-xp-fill::after {
@@ -338,7 +338,7 @@
 .pm-level-next { color:var(--muted); font-variant-numeric:tabular-nums; }
 .pm-reward .pm-xp-track { height:16px; }
 .pm-reward .pm-xp-fill {
-  background:linear-gradient(90deg,var(--turq),#5ae9ba 64%,var(--ok));
+  background:linear-gradient(90deg,#14e6c7,#5ae9ba 64%,#b9f08a);
 }
 .pm-reward-xpcount { font-weight:780; color:var(--text); }
 
