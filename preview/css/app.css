@@ -411,3 +411,9 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-loads-actions .pm-coach-status:empty { display:none; }
 .pm-loads-actions .pm-validate { min-height:48px; }
 .pm-load-name .pm-machine-photo, .pm-load-name > :first-child:not(div) { width:40px; height:40px; }
+
+/* Passe ASCENT · Préparer ma semaine : « Copier » et « Ouvrir ChatGPT » côte à côte, même hauteur, sans coupure */
+.pm-coach-section .pm-row-actions { display:grid; grid-template-columns:minmax(0, 1.35fr) minmax(0, 1fr); gap:10px; align-items:stretch; }
+.pm-coach-section .pm-row-actions .pm-coach-copy { margin-top:0; min-height:56px; font-size:16.5px; }
+.pm-coach-section .pm-row-actions .pm-coach-open { min-height:56px; white-space:nowrap; }
+.pm-select { text-overflow:ellipsis; }

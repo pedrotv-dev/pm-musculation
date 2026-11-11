@@ -9,7 +9,7 @@
  * - Ne touche JAMAIS a IndexedDB ni a localStorage : une mise a jour du code ne supprime aucune donnee.
  * VERSION est recalculee par `node tools/release.mjs` (date + empreinte des fichiers) ; tests/pwa.test.mjs verifie qu'elle est a jour.
  */
-const VERSION = '2026.11.11-4ea11276';
+const VERSION = '2026.11.11-d27d2acf';
 // Production : caches « pm-musculation-<version> » (inchangés). Aperçu (/preview/sw.js) : « pmprev-<version> ». Les deux préfixes ne se
 // recouvrent pas : chaque service worker ne supprime QUE ses propres anciens caches, jamais ceux de l'autre.
 const PREVIEW = /\/preview\/sw\.js$/.test(self.location.pathname);
@@ -32,7 +32,7 @@ const PRECACHE = [
   'assets/machines/rear-delt-pec-fly.png', 'assets/machines/leg-press.png', 'assets/machines/arm-curl.png', 'assets/machines/diverging-lat-pulldown.png',
   'assets/machines/dip-chin-assist.png', 'assets/machines/hip-abduction.png', 'assets/machines/hip-abduction-open-close.png', 'assets/machines/hip-abduction-close-open.png', 'assets/machines/rotary-hip.png', 'assets/machines/calf-press.png',
   'assets/machines/lat-pulldown.png', 'assets/machines/treadmill.png', 'assets/machines/recumbent-bike.png', 'assets/machines/elliptical.png', 'assets/machines/rowing-machine.png',
-  'assets/icons/icon-192.png', 'assets/icons/icon-512.png', 'assets/icons/icon-maskable-512.png', 'assets/icons/apple-touch-icon.png'
+  'assets/icons/icon-192.png', 'assets/icons/logo-96.webp', 'assets/icons/icon-512.png', 'assets/icons/icon-maskable-512.png', 'assets/icons/apple-touch-icon.png'
 ];
 
 self.addEventListener('install', event => {
