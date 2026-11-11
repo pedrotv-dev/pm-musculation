@@ -13,7 +13,7 @@
 .pm-text-btn { font-size:13px; padding:0 12px; min-width:0; }
 .pm-row-actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:14px; }
 .pm-row-actions > button { flex:1 1 140px; }
-.pm-chip { display:inline-block; border-radius:var(--radius-pill); padding:4px 10px; font-size:11px; font-weight:800; background:var(--surface-raised); color:var(--muted); border:1px solid var(--stroke); }
+.pm-chip { display:inline-block; border-radius:var(--radius-pill); padding:4px 10px; font-size:12px; font-weight:800; background:var(--surface-raised); color:var(--muted); border:1px solid var(--stroke); }
 .pm-chip-done { color:var(--ok); border-color:var(--stroke-success); background:var(--surface-success); }
 .pm-chip-skipped { color:var(--warn); border-color:var(--stroke-warning); background:var(--surface-skipped); }
 .pm-chip-postponed { color:var(--text-postponed); border-color:var(--stroke-postponed); background:var(--surface-postponed); }
@@ -33,7 +33,7 @@
 .pm-toast-action { border:0; background:var(--turq); color:var(--turq-dark); border-radius:var(--radius-10); padding:8px 14px; font:inherit; font-weight:850; min-height:40px; }
 /* champs numériques */
 .pm-field { display:block; min-width:0; }
-.pm-field-name { display:block; font-size:11px; color:var(--muted); margin-bottom:3px; font-weight:750; }
+.pm-field-name { display:block; font-size:12px; color:var(--muted); margin-bottom:3px; font-weight:750; }
 .pm-input, .pm-select { width:100%; min-height:48px; padding:var(--space-2); border-radius:var(--radius-11); border:1px solid var(--stroke); background:var(--surface-raised); color:var(--text); font:inherit; font-size:19px; font-weight:800; text-align:center; font-variant-numeric:tabular-nums; color-scheme:dark; }
 .pm-select { font-size:15px; font-weight:650; text-align:left; padding:8px 12px; }
 .pm-input:focus-visible, .pm-select:focus-visible, .pm-textarea-note:focus-visible { outline:3px solid var(--turq); outline-offset:1px; }
@@ -41,7 +41,7 @@
 .pm-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin:14px 0; }
 .pm-stat { border-radius:var(--radius-13); background:var(--surface-raised); border:1px solid var(--stroke); padding:11px 13px; }
 .pm-stat strong { display:block; font-size:20px; font-variant-numeric:tabular-nums; }
-.pm-stat span { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+.pm-stat span { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
 .pm-machine-image { width:92px; height:92px; flex:none; border-radius:var(--radius-16); background:var(--surface-raised); border:1px solid var(--stroke); display:grid; place-items:center; overflow:hidden; }
 .pm-machine-image img { width:100%; height:100%; object-fit:contain; }
 .pm-machine-image.pm-no-image::before { content:attr(data-fallback); font-size:34px; color:var(--muted); }
@@ -55,7 +55,7 @@
 .pm-history-top { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:var(--space-1); }
 .pm-cal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; text-transform:capitalize; }
 .pm-cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; text-align:center; }
-.pm-cal-dow { font-size:11px; color:var(--muted); }
+.pm-cal-dow { font-size:12px; color:var(--muted); }
 .pm-cal-day { aspect-ratio:1; min-height:38px; border-radius:var(--radius-10); border:1px solid transparent; background:transparent; color:var(--muted); font:inherit; }
 .pm-cal-day.pm-has { background:var(--calendar-done-bg); color:var(--text); border-color:var(--calendar-done-stroke); font-weight:800; }
 .pm-cal-day.pm-has[data-status="partial"] { background:var(--calendar-partial-bg); border-color:var(--stroke-postponed); }
@@ -65,10 +65,10 @@
 .pm-hist-set .pm-input-sm:first-child { grid-column:1 / 3; }
 .pm-input-sm { min-height:44px; font-size:16px; }
 .pm-unit { font-size:12px; color:var(--muted); white-space:nowrap; }
-.pm-gap-hist { font-size:11px; color:var(--warn); margin:-2px 0 4px 30px; }
+.pm-gap-hist { font-size:12px; color:var(--warn); margin:-2px 0 4px 30px; }
 .pm-chart { width:100%; height:auto; display:block; margin:8px 0; }
 .pm-chart .pm-grid { stroke:var(--stroke); stroke-width:1; }
-.pm-chart .pm-axis { fill:var(--muted); font-size:10px; }
+.pm-chart .pm-axis { fill:var(--muted); font-size:12px; }
 .pm-chart .pm-line { stroke:var(--turq); stroke-width:2.4; stroke-linejoin:round; }
 .pm-chart .pm-dot-c { fill:var(--turq); }
 .pm-chart .pm-bar { fill:var(--accent); }
@@ -81,7 +81,7 @@
 .pm-file-line { display:flex; gap:var(--space-2); align-items:center; flex-wrap:wrap; margin-top:10px; }
 .pm-file-line input[type=file] { max-width:100%; font-size:13px; color:var(--muted); }
 .pm-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
-.pm-check { display:flex; align-items:center; gap:var(--space-2); margin-top:10px; font-size:14px; min-height:36px; }
+.pm-check { display:flex; align-items:center; gap:var(--space-2); margin-top:10px; font-size:14px; min-height:44px; }
 .pm-check input { width:22px; height:22px; accent-color:var(--turq); }
 
 /* Audit mobile : cibles tactiles >= 44 px, champs >= 16 px (pas de zoom automatique sur iPhone), pas de délai de double-tap */
@@ -204,7 +204,7 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 [data-page="progres"] .pm-stat span {
   display:block;
   color:var(--muted);
-  font-size:11px;
+  font-size:12px;
   font-weight:750;
   line-height:1.3;
   letter-spacing:.055em;
@@ -223,7 +223,7 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 }
 [data-page="progres"] .pm-chart .pm-axis {
   fill:var(--muted);
-  font-size:11px;
+  font-size:12px;
 }
 [data-page="progres"] .pm-chart .pm-line {
   fill:none;
@@ -411,3 +411,9 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-loads-actions .pm-coach-status:empty { display:none; }
 .pm-loads-actions .pm-validate { min-height:48px; }
 .pm-load-name .pm-machine-photo, .pm-load-name > :first-child:not(div) { width:40px; height:40px; }
+
+/* Passe ASCENT · Préparer ma semaine : « Copier » et « Ouvrir ChatGPT » côte à côte, même hauteur, sans coupure */
+.pm-coach-section .pm-row-actions { display:grid; grid-template-columns:minmax(0, 1.35fr) minmax(0, 1fr); gap:10px; align-items:stretch; }
+.pm-coach-section .pm-row-actions .pm-coach-copy { margin-top:0; min-height:56px; font-size:16.5px; }
+.pm-coach-section .pm-row-actions .pm-coach-open { min-height:56px; white-space:nowrap; }
+.pm-select { text-overflow:ellipsis; }

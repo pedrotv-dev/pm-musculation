@@ -62,7 +62,7 @@
 }
 .pm-badge-tile:not(.pm-unlocked) { opacity:.82; }
 .pm-badge-tile::before {
-  content:'À débloquer'; color:var(--muted); font-size:10px;
+  content:'À débloquer'; color:var(--muted); font-size:12px;
   font-weight:800; letter-spacing:.06em; text-transform:uppercase;
 }
 .pm-badge-tile.pm-unlocked {
@@ -221,7 +221,7 @@
   clip-path:polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background:linear-gradient(160deg, var(--turq), rgba(20,230,199,.35)); }
 .pm-hex-inner { display:grid; place-items:center; align-content:center; width:calc(100% - 5px); height:calc(100% - 6px);
   clip-path:polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background:var(--surface); }
-.pm-hex-label { font-size:10px; font-weight:800; letter-spacing:.08em; color:var(--muted); line-height:1; }
+.pm-hex-label { font-size:12px; font-weight:800; letter-spacing:.08em; color:var(--muted); line-height:1; }
 .pm-hex-value { font-size:26px; font-weight:880; line-height:1.05; color:var(--text); font-variant-numeric:tabular-nums; }
 .pm-level-strip { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; column-gap:14px; row-gap:8px; }
 .pm-level-body { display:grid; gap:8px; min-width:0; }

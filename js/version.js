@@ -1,2 +1,2 @@
 /** Version de l'application : doit rester identique a VERSION dans sw.js (verifie par tests/pwa.test.mjs). */
-export const APP_VERSION = '2026.11.10-4c17e99a';
+export const APP_VERSION = '2026.11.11-d27d2acf';

@@ -5,7 +5,7 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-bar-title { display:flex; flex-direction:column; min-width:0; }
 .pm-bar-title strong, .pm-bar-title .pm-bar-h1 { font-size:16px; margin:0; font-weight:700; letter-spacing:normal; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .pm-bar-actions { display:flex; align-items:center; gap:8px; }
-.pm-badge { font-size:11px; font-weight:800; color:var(--accent); letter-spacing:.07em; text-transform:uppercase; }
+.pm-badge { font-size:12px; font-weight:800; color:var(--accent); letter-spacing:.07em; text-transform:uppercase; }
 .pm-clock { font-size:19px; font-weight:850; font-variant-numeric:tabular-nums; padding:0 4px; }
 .pm-progress { display:flex; flex-direction:column; gap:8px; margin-bottom:16px; font-size:13px; font-weight:650; color:var(--muted); }
 .pm-dots { display:flex; gap:6px; flex-wrap:wrap; }
@@ -26,12 +26,12 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-set-mark { align-self:center; text-align:center; font-size:16px; font-variant-numeric:tabular-nums; font-weight:850; color:var(--muted); }
 .pm-set-done .pm-set-mark { color:var(--ok); }
 .pm-set-mark { display:flex; flex-direction:column; align-items:center; gap:2px; }
-.pm-set-side { font-size:11px; font-weight:850; line-height:1.2; padding:3px 6px; border:1px solid rgba(41,212,194,.4); border-radius:6px; background:rgba(41,212,194,.12); color:var(--turq); }
+.pm-set-side { font-size:12px; font-weight:850; line-height:1.2; padding:3px 6px; border:1px solid rgba(41,212,194,.4); border-radius:6px; background:rgba(41,212,194,.12); color:var(--turq); }
 .pm-set-side.pm-side-right { background:rgba(41,212,194,.12); color:var(--turq); }
 .pm-side-note { margin:0 0 6px; font-size:.9rem; }
 .pm-set-tools { display:flex; gap:5px; align-self:end; }
 .pm-set-tools .pm-icon-btn { min-width:38px; min-height:48px; padding:0 6px; }
-.pm-gap { grid-column:2 / -1; font-size:11px; color:var(--warn); margin-top:-2px; }
+.pm-gap { grid-column:2 / -1; font-size:12px; color:var(--warn); margin-top:-2px; }
 .pm-machine-done { text-align:center; font-weight:850; color:var(--ok); padding:18px 0 7px; font-size:17px; }
 .pm-footer { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:16px; }
 .pm-postponed-note { margin-top:14px; font-size:13px; color:#b9c6ff; }
@@ -81,7 +81,7 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 
 /* PULSE · Etape 3 : hierarchie visuelle pendant la séance.
    Les etats sont toujours identifiables par texte/symbole, pas seulement couleur. */
-.pm-workout-screen .pm-chip { font-size:11px; letter-spacing:.02em; font-weight:850; }
+.pm-workout-screen .pm-chip { font-size:12px; letter-spacing:.02em; font-weight:850; }
 .pm-workout-screen .pm-machine-image { border-radius:13px; flex:none; }
 .pm-workout-screen .pm-machine-titles .pm-muted { font-size:13px; line-height:1.45; }
 .pm-workout-screen .pm-set-current .pm-set-mark { color:var(--turq); }
@@ -117,7 +117,7 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-workout-screen .pm-dots .pm-dot-done::after,
 .pm-workout-screen .pm-dots .pm-dot-skipped::after,
 .pm-workout-screen .pm-dots .pm-dot-postponed::after {
-  position:absolute; top:2px; right:0; font-size:11px; font-weight:900;
+  position:absolute; top:2px; right:0; font-size:12px; font-weight:900;
 }
 .pm-workout-screen .pm-dots .pm-dot-done::after { content:'✓'; }
 .pm-workout-screen .pm-dots .pm-dot-skipped::after { content:'–'; }

@@ -286,7 +286,7 @@ function generator(profile) {
   const thisWeek = mondayOf();
   const weeks = [[thisWeek, 'Semaine en cours'], [addDays(thisWeek, 7), 'Semaine prochaine'], [addDays(thisWeek, 14), 'Dans deux semaines']];
   if (!weeks.some(([w]) => w === C.week)) C.week = weeks[1][0];
-  const week = select(weeks.map(([w, l]) => [w, l + ' (lundi ' + formatDateFr(w) + ')']), C.week, 'Semaine');
+  const week = select(weeks.map(([w, l]) => [w, l + ' · ' + formatDateFr(w)]), C.week, 'Semaine');
   week.querySelector('option[value=""]').disabled = true;
   week.addEventListener('change', () => { C.week = week.value; C.text = ''; out.value = ''; out.hidden = true; });
   const out = el('textarea', 'pm-coach-out'); out.readOnly = true; out.setAttribute('aria-label', 'Demande à copier dans ChatGPT'); out.value = C.text; out.hidden = !C.text;
