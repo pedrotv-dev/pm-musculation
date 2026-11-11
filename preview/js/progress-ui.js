@@ -44,11 +44,6 @@ async function render() {
     page.append(add(el('article', 'panel empty'), el('div', 'empty-icon', '↗'), el('h3', '', 'Premiers résultats à venir'),
       el('p', '', 'Les statistiques apparaîtront dès qu’une séance sera terminée.')));
   } else {
-    const weeks = perWeek(closed, { weeks: 8 });
-    page.append(iconPanel('calendrier', 'Fréquence d’entraînement', el('p', 'pm-muted', 'Séances par semaine (8 dernières semaines)'),
-      barChart(weeks.map(w => ({ label: shortDate(w.weekStart), value: w.sessions })), { title: 'Séances par semaine' })));
-    page.append(panel('Volume d’entraînement', el('p', 'pm-muted', 'Charge × répétitions des séries validées, par semaine'),
-      barChart(weeks.map(w => ({ label: shortDate(w.weekStart), value: Math.round(w.volumeKg / 100) / 10 })), { title: 'Volume par semaine', unit: 'tonnes' })));
 
     const machines = machineList(closed);
     if (machines.length) {
@@ -79,6 +74,11 @@ async function render() {
         (r.previousKg !== null && r.kg > r.previousKg ? ' · +' + fmtNum(r.kg - r.previousKg) : '') + ' · ' + shortDate(r.date)))));
       page.append(iconPanel('record', 'Records récents', list));
     }
+    const weeks = perWeek(closed, { weeks: 8 });
+    page.append(iconPanel('calendrier', 'Fréquence d’entraînement', el('p', 'pm-muted', 'Séances par semaine (8 dernières semaines)'),
+      barChart(weeks.map(w => ({ label: shortDate(w.weekStart), value: w.sessions })), { title: 'Séances par semaine' })));
+    page.append(panel('Volume d’entraînement', el('p', 'pm-muted', 'Charge × répétitions des séries validées, par semaine'),
+      barChart(weeks.map(w => ({ label: shortDate(w.weekStart), value: Math.round(w.volumeKg / 100) / 10 })), { title: 'Volume par semaine', unit: 'tonnes' })));
     const cardio = cardioSummary(closed);
     if (cardio.length) {
       const list = el('ul', 'list');
@@ -93,8 +93,6 @@ async function render() {
     }
   }
 
-  // succès et classements personnels (toi contre toi)
-  page.append(badgesPanel(game), rankingsPanel(game, name), howPanel());
 
   // poids corporel
   const wBox = iconPanel('feuille', 'Poids corporel');
@@ -128,6 +126,11 @@ async function render() {
   });
   wBox.append(form);
   page.append(wBox);
+
+  // LOT 4 : succès et classements personnels (toi contre toi) repliés en bas : le niveau reste visible en haut
+  const gameFold = el('details', 'panel pm-fold pm-game-fold');
+  gameFold.append(el('summary', 'pm-fold-title', 'Succès et classements · ' + game.unlockedCount + ' / ' + game.badges.length), badgesPanel(game), rankingsPanel(game, name), howPanel());
+  page.append(gameFold);
 }
 
 // Optimisation : un onglet masqué ne relit pas la base ; il se met à jour à l'ouverture (clic sur son onglet)
@@ -136,4 +139,4 @@ const reload = () => { if (!page.hidden) refresh(); };
 document.addEventListener('pm:profile-changed', reload);
 document.addEventListener('pm:workout-changed', e => { if (!root.classList.contains('pm-workout-active') || (e.detail && e.detail.final)) reload(); });
 document.addEventListener('pm:data-changed', reload);
-document.addEventListener('click', e => { if (e.target.closest?.('.nav-btn[data-go="progres"]')) refresh(); });
+document.addEventListener('click', e => { if (e.target.closest?.('[data-go="progres"]')) refresh(); });

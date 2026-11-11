@@ -21,13 +21,13 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-sets-title { font-size:14px; letter-spacing:.01em; font-weight:800; margin:18px 0 10px; color:var(--text); }
 .pm-sets { display:grid; gap:10px; }
 .pm-set-row { position:relative; display:grid; grid-template-columns:30px minmax(0,1fr) minmax(0,1fr) auto; gap:9px; align-items:end; padding:10px; border-radius:14px; border:1px solid var(--stroke); background:var(--surface-raised); min-width:0; }
-.pm-set-row.pm-set-current { border-color:var(--turq); background:rgba(41,212,194,.095); box-shadow:inset 3px 0 0 var(--turq); }
+.pm-set-row.pm-set-current { border-color:var(--turq); background:rgba(var(--accent-rgb),.095); box-shadow:inset 3px 0 0 var(--turq); }
 .pm-set-row.pm-set-done { opacity:.76; background:rgba(127,220,171,.055); border-color:var(--stroke); box-shadow:none; }
 .pm-set-mark { align-self:center; text-align:center; font-size:16px; font-variant-numeric:tabular-nums; font-weight:850; color:var(--muted); }
 .pm-set-done .pm-set-mark { color:var(--ok); }
 .pm-set-mark { display:flex; flex-direction:column; align-items:center; gap:2px; }
-.pm-set-side { font-size:11px; font-weight:850; line-height:1.2; padding:3px 6px; border:1px solid rgba(41,212,194,.4); border-radius:6px; background:rgba(41,212,194,.12); color:var(--turq); }
-.pm-set-side.pm-side-right { background:rgba(41,212,194,.12); color:var(--turq); }
+.pm-set-side { font-size:11px; font-weight:850; line-height:1.2; padding:3px 6px; border:1px solid rgba(var(--accent-rgb),.4); border-radius:6px; background:rgba(var(--accent-rgb),.12); color:var(--turq); }
+.pm-set-side.pm-side-right { background:rgba(var(--accent-rgb),.12); color:var(--turq); }
 .pm-side-note { margin:0 0 6px; font-size:.9rem; }
 .pm-set-tools { display:flex; gap:5px; align-self:end; }
 .pm-set-tools .pm-icon-btn { min-width:38px; min-height:48px; padding:0 6px; }
@@ -50,14 +50,14 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-recap-set.pm-undone { opacity:.85; }
 .pm-feelings { display:flex; flex-wrap:wrap; gap:7px; }
 .pm-feeling { flex:1 1 90px; min-height:44px; border-radius:11px; border:1px solid var(--stroke); background:var(--surface-raised); color:var(--text); font:inherit; font-size:12px; font-weight:750; }
-.pm-feeling.pm-on { background:rgba(46,211,192,.18); border-color:var(--turq); color:var(--turq); }
+.pm-feeling.pm-on { background:rgba(var(--accent-rgb),.18); border-color:var(--turq); color:var(--turq); }
 .pm-done { text-align:center; }
 .pm-done-icon { width:64px; height:64px; margin:6px auto 4px; border-radius:50%; background:var(--turq); color:var(--turq-dark); display:grid; place-items:center; font-size:32px; font-weight:900; }
 .pm-recap-kind { margin:0 0 4px; }
 .pm-home-card { padding:16px; border-radius:16px; border:1px solid rgba(var(--accent-rgb),.38); background:rgba(var(--accent-rgb),.08); margin:14px 0; }
 .pm-start-workout { width:100%; min-height:50px; border:0; border-radius:14px; margin-bottom:12px; background:var(--turq); color:var(--turq-dark); font-weight:850; font-size:16px; }
 @media (max-width:420px) { .pm-machine-image { width:76px; height:76px; } .pm-set-row { grid-template-columns:22px minmax(0,1fr) minmax(0,1fr) auto; gap:6px; padding:8px 6px; } }
-.pm-progress-line { font-size:13px; line-height:1.5; color:var(--muted); margin:0 0 14px; padding:9px 11px; border-left:2px solid var(--turq); background:rgba(41,212,194,.055); border-radius:0 9px 9px 0; }
+.pm-progress-line { font-size:13px; line-height:1.5; color:var(--muted); margin:0 0 14px; padding:9px 11px; border-left:2px solid var(--turq); background:rgba(var(--accent-rgb),.055); border-radius:0 9px 9px 0; }
 /* points de progression : zone tactile agrandie, trait visuel inchangé */
 .pm-dot { position:relative; width:44px; height:44px; min-width:44px; min-height:44px; padding:0; background:transparent; border:0; border-radius:10px; color:var(--text); display:grid; place-items:center; }
 .pm-dot-done { color:var(--ok); }
@@ -70,7 +70,7 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-cardio-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; margin:12px 0 15px; }
 .pm-cardio-hint { margin:0 0 14px; font-size:13px; line-height:1.5; color:var(--muted); }
 
-.pm-fun { margin:14px 0; padding:14px; border-radius:16px; border:1px dashed var(--turq); background:rgba(46,211,192,.07); text-align:center; }
+.pm-fun { margin:14px 0; padding:14px; border-radius:16px; border:1px dashed var(--turq); background:rgba(var(--accent-rgb),.07); text-align:center; }
 .pm-fun-kicker { margin:0 0 6px; font-size:.85rem; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
 .pm-fun-text { margin:0 0 10px; font-size:1.15rem; font-weight:800; line-height:1.35; }
 /* Audit V1, C1 : réglages cardio de l'historique, chaque libellé au-dessus de son champ, sans débordement. */
@@ -150,12 +150,12 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-workout-card h2 { font-weight:840; font-size:clamp(23px,5.8vw,29px); }
 .pm-set-row { border-color:var(--ascent-rim); background:var(--ascent-card); }
 .pm-set-row.pm-set-current {
-  background:linear-gradient(110deg,rgba(20,230,199,.13),rgba(20,230,199,.035) 70%);
-  border-color:rgba(20,230,199,.65);
-  box-shadow:inset 3px 0 0 var(--turq),0 0 12px rgba(20,230,199,.06);
+  background:linear-gradient(110deg,rgba(var(--accent-rgb),.13),rgba(var(--accent-rgb),.035) 70%);
+  border-color:rgba(var(--accent-rgb),.65);
+  box-shadow:inset 3px 0 0 var(--turq),0 0 12px rgba(var(--accent-rgb),.06);
 }
 .pm-workout-screen .pm-set-current .pm-input {
-  background:rgba(5,17,19,.82); border-color:rgba(20,230,199,.55);
+  background:rgba(var(--surface-rgb),.82); border-color:rgba(var(--accent-rgb),.55);
 }
 .pm-workout-screen .pm-validate {
   background:linear-gradient(115deg,#19f0d3,#0bcfb6);
@@ -168,7 +168,7 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-done { position:relative; isolation:isolate; overflow:hidden; padding-top:42px; }
 .pm-done::before {
   content:''; position:absolute; z-index:-1; top:0; left:0; right:0; height:145px;
-  background:linear-gradient(180deg,rgba(20,230,199,.10),transparent 75%),
+  background:linear-gradient(180deg,rgba(var(--accent-rgb),.10),transparent 75%),
   linear-gradient(155deg,transparent 37%,#233239 37% 41%,transparent 41%) left top/85% 125px no-repeat,
   linear-gradient(25deg,transparent 36%,#18252c 36% 41%,transparent 41%) right top/90% 115px no-repeat;
   opacity:.62; pointer-events:none;
@@ -177,12 +177,12 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
   background:rgba(185,240,138,.095); border:2px solid var(--ok);
   color:var(--ok); box-shadow:0 0 22px rgba(185,240,138,.12);
 }
-.pm-feeling.pm-on { color:var(--turq); background:rgba(20,230,199,.10); }
+.pm-feeling.pm-on { color:var(--turq); background:rgba(var(--accent-rgb),.10); }
 
 /* ===== ASCENT · écran de séance (structure posée par Claude Code ; habillage fin : mission 1) ===== */
 .pm-visually-hidden { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
-.pm-current-set { margin:4px 0 16px; padding:14px; border-radius:16px; border:1px solid rgba(20,230,199,.65);
-  background:linear-gradient(110deg, rgba(20,230,199,.11), rgba(20,230,199,.03) 70%), var(--surface); box-shadow:0 0 18px rgba(20,230,199,.07); }
+.pm-current-set { margin:4px 0 16px; padding:14px; border-radius:16px; border:1px solid rgba(var(--accent-rgb),.65);
+  background:linear-gradient(110deg, rgba(var(--accent-rgb),.11), rgba(var(--accent-rgb),.03) 70%), var(--surface); box-shadow:0 0 18px rgba(var(--accent-rgb),.07); }
 .pm-current-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
 .pm-current-tag { display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:820; color:var(--turq); }
 .pm-current-tag::before { content:''; width:10px; height:10px; border-radius:50%; border:2px solid var(--turq); box-shadow:inset 0 0 0 2px var(--surface), inset 0 0 0 5px var(--turq); }
@@ -192,7 +192,7 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-stepper-name { font-size:12px; font-weight:750; color:var(--muted); }
 .pm-stepper-row { display:grid; grid-template-columns:44px minmax(0,1fr) 44px; align-items:center; gap:6px; width:100%; }
 .pm-workout-screen .pm-stepper-input { min-height:54px; padding:0 4px; text-align:center; font-size:clamp(20px, 6.6vw, 28px); font-weight:880; font-variant-numeric:tabular-nums;
-  background:rgba(5,17,19,.82); border:1px solid rgba(20,230,199,.45); border-radius:12px; color:var(--text); width:100%; min-width:0; }
+  background:rgba(var(--surface-rgb),.82); border:1px solid rgba(var(--accent-rgb),.45); border-radius:12px; color:var(--text); width:100%; min-width:0; }
 .pm-step-btn { min-width:44px; min-height:44px; border-radius:12px; border:1px solid var(--ascent-rim, var(--stroke)); background:var(--surface-raised);
   color:var(--text); font:inherit; font-size:24px; font-weight:700; line-height:1; cursor:pointer; }
 .pm-step-btn:active { transform:scale(.95); }
@@ -202,7 +202,7 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-sets { list-style:none; margin:0; padding:0; display:grid; gap:8px; }
 .pm-workout-screen .pm-sets .pm-set-row { display:grid; grid-template-columns:22px minmax(0,1fr) auto auto; align-items:center; gap:10px;
   min-height:52px; padding:6px 6px 6px 12px; border-radius:12px; border:1px solid var(--ascent-rim, var(--stroke)); background:var(--ascent-card, var(--surface-raised)); box-shadow:none; opacity:1; }
-.pm-workout-screen .pm-sets .pm-set-row.pm-set-current { border-color:rgba(20,230,199,.65); background:rgba(20,230,199,.08); }
+.pm-workout-screen .pm-sets .pm-set-row.pm-set-current { border-color:rgba(var(--accent-rgb),.65); background:rgba(var(--accent-rgb),.08); }
 .pm-workout-screen .pm-sets .pm-set-current .pm-set-mark::before { content:none; }
 .pm-workout-screen .pm-sets .pm-set-mark { flex-direction:row; font-size:16px; color:var(--muted); }
 .pm-workout-screen .pm-sets .pm-set-done .pm-set-mark { color:var(--ok); }
@@ -243,7 +243,7 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
   background:#3b4a51;
 }
 .pm-workout-screen .pm-dots .pm-dot-done::before {
-  background:var(--ascent-sage, #b9f08a);
+  background:var(--ascent-sage, var(--ok));
 }
 /* intégration : garde les couleurs des activités passées et reportées */
 .pm-workout-screen .pm-dots .pm-dot-skipped::before { background:var(--warn); }
@@ -253,7 +253,7 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 }
 .pm-workout-screen .pm-dots .pm-dot-current:not(.pm-dot-done):not(.pm-dot-skipped):not(.pm-dot-postponed)::before {
   background:var(--turq);
-  box-shadow:0 0 0 3px rgba(20,230,199,.12);
+  box-shadow:0 0 0 3px rgba(var(--accent-rgb),.12);
 }
 .pm-workout-screen .pm-dots .pm-dot:active { transform:scale(.96); }
 .pm-workout-screen .pm-dots .pm-dot:focus-visible {
@@ -305,3 +305,10 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-last-load-info { margin:0; font-size:13px; }
 .pm-last-actions { display:flex; flex-wrap:wrap; gap:8px; }
 .pm-last-apply { min-height:44px; flex:1 1 180px; }
+
+/* V2-UX LOT 3 · ressenti facultatif d'une machine terminée */
+.pm-feel-row { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:12px 0 4px; }
+.pm-feel-label { width:100%; font-size:13px; color:var(--muted); font-weight:700; }
+.pm-feel-btn { min-height:44px; padding:0 12px; border-radius:999px; border:1px solid var(--ascent-rim, var(--stroke)); background:var(--surface); color:var(--text); font:inherit; font-size:14px; font-weight:720; cursor:pointer; }
+.pm-feel-btn.pm-feel-on { border-color:rgba(var(--accent-rgb),.75); background:rgba(var(--accent-rgb),.14); color:var(--turq); }
+.pm-feel-btn:focus-visible { outline:3px solid var(--turq); outline-offset:2px; }

@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b0f12">
+  <meta name="theme-color" content="#1b2a6e">
   <meta name="color-scheme" content="dark">
   <meta name="referrer" content="no-referrer">
-  <meta name="description" content="PM Musculation — entraînements de Pierre et Manon.">
+  <meta name="description" content="PM Musculation — ton carnet de musculation guidé, 100 % sur ton téléphone.">
   <!-- Aucun script ni style en ligne : tout vient de fichiers locaux (hors ligne, sécurité). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self'; script-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <link rel="manifest" href="./manifest.webmanifest">
@@ -26,6 +26,7 @@
   <link rel="stylesheet" href="./css/jeu.css">
   <link rel="stylesheet" href="./css/succes.css">
   <link rel="stylesheet" href="./css/effets.css">
+  <link rel="stylesheet" href="./css/carnet.css">
 </head>
 <body>
   <!-- Icônes : sprite local assets/ascent/icones.svg (précaché, aucun téléchargement externe). -->
@@ -33,23 +34,29 @@
     <header class="header">
       <div class="brand">
         <img class="brand-logo" src="./assets/icons/icon-192.png" alt="" width="47" height="47"> <!-- même fichier que l'icône de l'application : remplacer assets/icons/* met à jour les deux -->
-        <div><h1 class="brand-name">PM Musculation</h1><span class="brand-sub">Pierre &amp; Manon</span></div>
+        <div><h1 class="brand-name">PM Musculation</h1><span class="brand-sub">Carnet de salle</span></div>
       </div>
-      <button type="button" class="profile-switch" id="switch-profile" hidden>Changer de profil</button>
+      <div class="header-actions">
+        <button type="button" class="profile-switch" id="switch-profile" hidden>Changer de profil</button>
+        <!-- LOT 1 : Réglages accessibles en permanence (profil sportif, chrono, sauvegardes, profils, à propos) -->
+        <button type="button" class="pm-settings-btn" id="open-settings" data-go="profil" aria-label="Réglages" title="Réglages" hidden><svg aria-hidden="true"><use href="assets/ascent/icones.svg#ico-reglages"/></svg></button>
+      </div>
     </header>
 
     <main id="main-content">
       <section id="screen-select" aria-labelledby="select-title">
         <div class="eyebrow">Bienvenue</div>
-        <h2 id="select-title">Choisis ton profil</h2>
-        <p class="description">Ton choix sera mémorisé sur cet appareil. Tu pourras changer de profil plus tard.</p>
-        <div class="choice-grid">
-          <button type="button" class="choice pierre" data-select-profile="pierre"><span class="initial">P</span><strong>Pierre</strong><span>Prise de muscle</span></button>
-          <button type="button" class="choice manon" data-select-profile="manon"><span class="initial">M</span><strong>Manon</strong><span>Renforcement</span></button>
+        <!-- V2-UX-FINALISATION : aucun profil précréé. Titre et texte adaptés par js/app.js (installation neuve ou profils) -->
+        <h2 id="select-title">Bienvenue sur PM Musculation</h2>
+        <p class="description" id="select-intro">Crée ton profil en quelques étapes, ou essaie le mode Démo avec des données fictives. Tout reste sur ce téléphone : aucun compte.</p>
+        <!-- Profils historiques : affichés SEULEMENT s'ils existent sur cet appareil (ancienne installation migrée) -->
+        <div class="choice-grid" id="legacy-profiles" hidden>
+          <button type="button" class="choice pierre" data-select-profile="pierre" hidden><span class="initial">P</span><strong>Pierre</strong><span>Prise de muscle</span></button>
+          <button type="button" class="choice manon" data-select-profile="manon" hidden><span class="initial">M</span><strong>Manon</strong><span>Renforcement</span></button>
         </div>
         <!-- Profils créés sur cet appareil (registre IndexedDB) et création d'un profil local : rempli par js/app.js -->
         <div class="choice-grid" id="user-profiles" hidden></div>
-        <button type="button" class="secondary pm-create-profile" id="create-profile">+ Créer un profil</button>
+        <button type="button" class="secondary pm-create-profile" id="create-profile">+ Créer mon profil</button>
         <form class="pm-create-form" id="create-profile-form" hidden novalidate>
           <label class="pm-create-label" for="new-profile-name">Prénom ou pseudo</label>
           <input class="pm-input" id="new-profile-name" name="name" type="text" maxlength="40" autocomplete="off" autocapitalize="words" enterkeyhint="done">
@@ -63,22 +70,26 @@
         <button type="button" class="secondary pm-create-profile" id="import-profile">Importer un profil (fichier de sauvegarde)</button>
         <input type="file" id="import-profile-file" accept=".json,application/json" hidden aria-label="Fichier de sauvegarde d’un profil">
         <p class="pm-create-error" id="import-profile-status" role="status" hidden></p>
-        <button type="button" class="choice demo" data-select-profile="demo"><span class="initial" aria-hidden="true">▶</span><span class="demo-copy"><strong>Explorer la démo</strong><span>Exemples de programmes, séances et progrès · données fictives</span></span></button>
+        <button type="button" class="choice demo" data-select-profile="demo"><span class="initial" aria-hidden="true">▶</span><span class="demo-copy"><strong>Essayer le mode Démo</strong><span>Exemples de programmes, séances et progrès · données fictives</span></span></button>
         <p class="footnote">Aucun compte à créer. La démo ne modifie pas vos historiques.</p>
       </section>
 
+      <!-- V2-UX-FINALISATION : inscription guidée (étapes 2 à 7), avant l'Accueil, tant que le profil n'est pas terminé -->
+      <section id="screen-onboarding" aria-labelledby="pm-ob-title" hidden></section>
+
       <!-- Les pages sont remplies par js/home-ui.js, program-ui.js, history-ui.js, progress-ui.js et profile-ui.js -->
       <div id="app-pages" hidden>
-        <!-- onglet « Séances » : deux sous-pages, Programme et Historique -->
-        <div class="pm-seances-tabs" id="seances-tabs" role="group" aria-label="Séances" hidden>
-          <button type="button" class="pm-subtab" data-go="programme">Programme</button>
+        <!-- onglet « Progression » (LOT 1) : deux sous-pages, Vue d'ensemble et Historique des séances -->
+        <div class="pm-seances-tabs" id="progress-tabs" role="group" aria-label="Progression" hidden>
+          <button type="button" class="pm-subtab" data-go="progres">Vue d’ensemble</button>
           <button type="button" class="pm-subtab" data-go="historique">Historique</button>
         </div>
         <section class="page" data-page="accueil" aria-label="Accueil"></section>
         <section class="page" data-page="programme" aria-label="Programme" hidden></section>
         <section class="page" data-page="historique" aria-label="Historique" hidden></section>
         <section class="page" data-page="progres" aria-label="Progrès" hidden></section>
-        <section class="page" data-page="profil" aria-label="Profil" hidden></section>
+        <section class="page" data-page="profil" aria-label="Réglages" hidden></section>
+        <section class="page" data-page="charges" aria-label="Mes charges" hidden></section>
       </div>
     </main>
   </div>
@@ -86,9 +97,8 @@
   <nav class="bottom-nav" id="bottom-nav" aria-label="Navigation principale" hidden>
     <div class="bottom-nav-inner">
       <button type="button" class="nav-btn active" data-go="accueil" aria-current="page"><svg aria-hidden="true"><use href="assets/ascent/icones.svg#ico-accueil"/></svg>Accueil</button>
-      <button type="button" class="nav-btn" data-go="seances"><svg aria-hidden="true"><use href="assets/ascent/icones.svg#ico-seances"/></svg>Séances</button>
+      <button type="button" class="nav-btn" data-go="programme"><svg aria-hidden="true"><use href="assets/ascent/icones.svg#ico-seances"/></svg>Programme</button>
       <button type="button" class="nav-btn" data-go="progres"><svg aria-hidden="true"><use href="assets/ascent/icones.svg#ico-progression"/></svg>Progression</button>
-      <button type="button" class="nav-btn" data-go="profil"><svg aria-hidden="true"><use href="assets/ascent/icones.svg#ico-profil"/></svg>Profil</button>
     </div>
   </nav>
 
@@ -102,6 +112,7 @@
   <script type="module" src="./js/profile-ui.js"></script>
   <script type="module" src="./js/rest-ui.js"></script>
   <script type="module" src="./js/nav-history.js"></script>
+  <script type="module" src="./js/declared-ui.js"></script>
   <script type="module" src="./js/effets.js"></script>
   <script type="module" src="./js/sfx.js"></script>
   <script type="module" src="./js/sons.js"></script>

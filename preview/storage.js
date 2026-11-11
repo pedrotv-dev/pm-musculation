@@ -37,6 +37,9 @@ const knownProfiles = new Map(LEGACY_PROFILE_IDS.map(id => [id, null]));
 // même identifiant (ses opérations en file appartiennent à l'ancienne). Seule une inscription faite ICI (création,
 // restauration) la réautorise.
 const retired = new Set();
+// V2-UX-FINALISATION : profils historiques (Pierre, Manon) SUPPRIMÉS volontairement. Liste conservée dans la ligne `meta`
+// du registre (`deletedLegacy`) : jamais réinscrits automatiquement, plus aucune écriture acceptée (sauf restauration).
+const deletedLegacy = new Set();
 const goneListeners = new Set();
 const newEpoch = () => (typeof crypto !== 'undefined' && crypto.getRandomValues)
   ? [...crypto.getRandomValues(new Uint8Array(8))].map(b => b.toString(16).padStart(2, '0')).join('')
@@ -45,13 +48,15 @@ const newEpoch = () => (typeof crypto !== 'undefined' && crypto.getRandomValues)
 export const isValidProfileId = id => typeof id === 'string' && PROFILE_ID_PATTERN.test(id) && id !== 'demo';
 
 function validProfile(profileId) {
-  if (!knownProfiles.has(profileId)) {
+  if (!knownProfiles.has(profileId) || deletedLegacy.has(profileId)) {
     throw new Error('Profil inconnu : selectionner un profil existant.');
   }
   return profileId;
 }
 /** Profils actuellement autorisés (historiques + registre chargé). */
 export function knownProfileIds() { return [...knownProfiles.keys()]; }
+/** Profils historiques supprimés volontairement (jamais réinscrits automatiquement). */
+export function deletedLegacyIds() { return [...deletedLegacy]; }
 /**
  * Prévient quand une écriture a été refusée parce que le profil n'existe plus (supprimé dans un autre onglet ou
  * remplacé par une restauration). Le profil est déjà retiré de la liste autorisée de CET onglet. Renvoie le désabonnement.
@@ -182,7 +187,7 @@ async function guardedWrite(profileId, storeNames, run) {
   validProfile(profileId);
   const legacy = LEGACY_PROFILE_IDS.includes(profileId);
   const expected = knownProfiles.get(profileId) ?? '';
-  const names = legacy || storeNames.includes('settings') ? storeNames : [...storeNames, 'settings'];
+  const names = storeNames.includes('settings') ? storeNames : [...storeNames, 'settings'];
   const db = await openStorage();
   return new Promise((resolve, reject) => {
     let tx;
@@ -201,8 +206,18 @@ async function guardedWrite(profileId, storeNames, run) {
       try { run(tx, value => { result = value; }, fail); }
       catch (error) { fail(error); }
     };
-    if (legacy) { go(); return; }
+    // Pierre / Manon : la liste `deletedLegacy` du registre est relue DANS la transaction d'écriture : un onglet endormi
+    // (message inter-onglets perdu) ne peut plus écrire pour un profil historique supprimé entre-temps.
     try {
+      if (legacy) {
+        const meta = tx.objectStore('settings').get([REGISTRY, META_KEY]);
+        meta.onsuccess = () => {
+          const gone = meta.result?.value?.deletedLegacy;
+          if (Array.isArray(gone) && gone.includes(profileId)) { deletedLegacy.add(profileId); fail(profileGone(profileId)); return; }
+          go();
+        };
+        return;
+      }
       const check = tx.objectStore('settings').get([REGISTRY, profileKey(profileId)]);
       check.onsuccess = () => {
         const row = check.result;
@@ -543,7 +558,10 @@ function applyRegistry(rows) {
   // inscription connue ici qui a disparu ou changé d'époque : retirée pour cet onglet
   for (const [id, epoch] of knownProfiles) if (epoch !== null && next.get(id) !== epoch) retired.add(id);
   knownProfiles.clear();
-  for (const id of LEGACY_PROFILE_IDS) knownProfiles.set(id, null);
+  const meta = rows.find(r => r.key === META_KEY);
+  deletedLegacy.clear();
+  for (const id of meta?.value?.deletedLegacy || []) if (LEGACY_PROFILE_IDS.includes(id)) deletedLegacy.add(id);
+  for (const id of LEGACY_PROFILE_IDS) if (!deletedLegacy.has(id)) knownProfiles.set(id, null);
   for (const [id, epoch] of next) if (!retired.has(id)) knownProfiles.set(id, epoch);
 }
 /** Fiches lisibles par CET onglet : historiques + inscriptions autorisées (jamais une inscription retirée ici). */
@@ -608,7 +626,7 @@ export async function migrateProfileRegistry(records, { now = new Date().toISOSt
           }
           const meta = rows.find(r => r.key === META_KEY);
           if (!meta || meta.value?.registryVersion !== registryVersion) {
-            const row = { profileId: REGISTRY, key: META_KEY, value: { registryVersion, migratedAt: meta?.value?.migratedAt || now, updatedAt: now } };
+            const row = { profileId: REGISTRY, key: META_KEY, value: { ...(meta?.value || {}), registryVersion, migratedAt: meta?.value?.migratedAt || now, updatedAt: now } };
             store.put(row);
             if (meta) rows.splice(rows.indexOf(meta), 1, row); else rows.push(row);
           }
@@ -646,7 +664,7 @@ export function addProfileRecord(record) {
  * mélange). Le profil n'est autorisé dans cet onglet qu'après la validation (commit) de la transaction.
  */
 export async function restoreAsNewProfile(record, backup) {
-  if (!isValidProfileId(record?.id) || LEGACY_PROFILE_IDS.includes(record.id)) throw new Error('Identifiant de profil invalide.');
+  if (!isValidProfileId(record?.id)) throw new Error('Identifiant de profil invalide.');
   const id = record.id;
   checkBackup(id, backup);
   const epoch = newEpoch();
@@ -669,6 +687,13 @@ export async function restoreAsNewProfile(record, backup) {
         try {
           if (reg.result) { fail(new Error('Ce profil existe déjà.')); return; }
           tx.objectStore('settings').put({ profileId: REGISTRY, key: profileKey(id), value: { ...record }, epoch });
+          if (LEGACY_PROFILE_IDS.includes(id)) { // historique supprimé puis restauré volontairement : retiré de la liste
+            const m = tx.objectStore('settings').get([REGISTRY, META_KEY]);
+            m.onsuccess = () => {
+              const meta = m.result;
+              if (meta && Array.isArray(meta.value?.deletedLegacy)) tx.objectStore('settings').put({ ...meta, value: { ...meta.value, deletedLegacy: meta.value.deletedLegacy.filter(x => x !== id) } });
+            };
+          }
           let pending = STORES.length;
           for (const name of STORES) {
             const request = tx.objectStore(name).index('byProfile').openCursor(IDBKeyRange.only(id));
@@ -684,7 +709,8 @@ export async function restoreAsNewProfile(record, backup) {
     } catch (error) { fail(error); }
   });
   retired.delete(id);
-  knownProfiles.set(id, epoch);
+  deletedLegacy.delete(id);
+  knownProfiles.set(id, LEGACY_PROFILE_IDS.includes(id) ? null : epoch);
   return { ...record };
 }
 
@@ -716,8 +742,33 @@ export async function updateProfileRecord(id, change) {
  * en UNE transaction ciblée sur son identifiant (index byProfile). Jamais les profils historiques ni la démo.
  * @returns {{programs:number, sessions:number, weights:number, settings:number}} lignes supprimées
  */
+/**
+ * Lignes orphelines d'un profil historique supprimé (écrites par un onglet d'une version antérieure, avant que la liste
+ * `deletedLegacy` ne soit relue dans chaque transaction) : supprimées dans UNE transaction qui relit cette liste. Une
+ * restauration volontaire retire l'identifiant de la liste dans sa propre transaction : ses données ne sont jamais touchées.
+ */
+export async function purgeDeletedLegacyOrphans() {
+  const db = await openStorage();
+  const removed = {};
+  await new Promise((resolve, reject) => {
+    let tx;
+    try { tx = db.transaction(STORES, 'readwrite'); } catch (error) { reject(error); return; }
+    tx.oncomplete = () => resolve();
+    tx.onabort = () => reject(tx.error || new Error('Nettoyage annulé.'));
+    const m = tx.objectStore('settings').get([REGISTRY, META_KEY]);
+    m.onsuccess = () => {
+      const ids = (m.result?.value?.deletedLegacy || []).filter(id => LEGACY_PROFILE_IDS.includes(id));
+      for (const id of ids) for (const name of STORES) {
+        const request = tx.objectStore(name).index('byProfile').openCursor(IDBKeyRange.only(id));
+        request.onsuccess = () => { const c = request.result; if (c) { removed[id] = (removed[id] || 0) + 1; c.delete(); c.continue(); } };
+      }
+    };
+  });
+  return removed;
+}
 export async function deleteProfileAndData(id) {
-  if (!isValidProfileId(id) || LEGACY_PROFILE_IDS.includes(id)) throw new Error('Ce profil ne peut pas être supprimé.');
+  if (!isValidProfileId(id)) throw new Error('Ce profil ne peut pas être supprimé.');
+  const legacy = LEGACY_PROFILE_IDS.includes(id);
   const counts = { programs: 0, sessions: 0, weights: 0, settings: 0 };
   // Gardée : la fiche doit exister avec l'époque connue de cet onglet (sinon PROFILE_DELETED, rien n'est supprimé).
   await guardedWrite(id, STORES, (tx, setResult, fail) => {
@@ -731,8 +782,19 @@ export async function deleteProfileAndData(id) {
       };
     }
     tx.objectStore('settings').delete([REGISTRY, profileKey(id)]);
+    if (legacy) { // Pierre / Manon : inscrits dans `deletedLegacy` de la ligne meta, dans la MÊME transaction
+      const store = tx.objectStore('settings');
+      const m = store.get([REGISTRY, META_KEY]);
+      m.onsuccess = () => {
+        try {
+          const now = new Date().toISOString();
+          const value = m.result?.value || { registryVersion: 1, migratedAt: now };
+          store.put({ profileId: REGISTRY, key: META_KEY, value: { ...value, updatedAt: now, deletedLegacy: [...new Set([...(value.deletedLegacy || []), id])] } });
+        } catch (error) { fail(error); }
+      };
+    }
   });
   knownProfiles.delete(id);
-  retired.add(id);
+  if (legacy) deletedLegacy.add(id); else retired.add(id);
   return counts;
 }

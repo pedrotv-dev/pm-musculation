@@ -4,7 +4,7 @@
  * Les sessions de demonstration sont uniquement des objets JavaScript en memoire.
  */
 import { prepareProgramImport, importProgram, listProgramWeeks, getActiveProgram, mondayOf, parseProgramJson, readProgramFile, estimateDayMinutes, getProgramStatus } from './programs.js';
-import { getGym, getSportProfile } from './sport-profile.js';
+import { getGym, getSportProfile, frequencyIssues } from './sport-profile.js';
 import { listWorkouts } from './workouts.js';
 import { machineHistory, isClosed } from './stats.js';
 import { confirmDialog } from './dom.js';
@@ -12,6 +12,7 @@ import { getProgram } from '../storage.js';
 import { getDemoProgram } from './workouts.js';
 import { el as node, add, clear as wipe, btn } from './dom.js';
 import { loadCatalog } from './catalog.js';
+import { coachSection } from './coach-ui.js';
 import { isPerSide } from './machine-rules.js';
 import { metricsText } from './cardio.js';
 import { PROFILE_STORAGE_KEY, isKnownProfile, isRealProfile, getProfileInfo } from './profiles.js';
@@ -176,9 +177,15 @@ select.addEventListener('change', () => {
 weekField.append(select);
 add(weekHeader, weekInfo, weekField);
 add(infoCard, weekHeader, historyView);
+// LOT 1 : « Préparer mon programme avec ChatGPT » (auparavant dans Profil) est ici, juste au-dessus de l'import :
+// préparer, copier, coller et importer se font dans le même onglet.
+const coachSlot = node('div', 'pm-coach-slot');
+const drawCoach = () => { coachSlot.replaceChildren(...(isKnownProfile(state.profile) ? [coachSection(state.profile)] : [])); };
 parent.replaceChildren(node('div', 'eyebrow', 'Entraînement'), node('h2', '', 'Programme'),
   node('p', 'description', 'Choisis une journée pour consulter les exercices, charges et répétitions.'),
-  infoCard, importCard);
+  infoCard, coachSlot, importCard);
+// À chaque ouverture de l'onglet : semaines proposées à jour (la demande déjà générée est conservée)
+document.addEventListener('click', e => { if (e.target.closest?.('.nav-btn[data-go="programme"]') && !parent.hidden) drawCoach(); });
 
 function resetPreview() {
   ++state.previewVersion;
@@ -255,7 +262,7 @@ async function displayProgram() {
   if (!week) {
     const blank = node('div', 'pm-empty');
     add(blank, node('strong', '', 'Aucun programme importé'),
-      node('p', '', 'Ouvre « Importer un programme hebdomadaire » ci-dessous pour commencer.'));
+      node('p', '', 'Prépare-le juste en dessous avec « Préparer ma semaine » (3 étapes), ou importe un fichier.'));
     historyView.append(blank);
     return;
   }
@@ -293,6 +300,7 @@ async function profileWarnings(profile, prepared) {
     const avail = gym.available ? new Set(gym.available) : null, avoid = new Set(gym.avoid || []);
     const name = id => state.names.get(id) || id;
     const seen = new Set();
+    out.push(...frequencyIssues(prepared.program.days.map(d => d.id), sport, { weekStart: prepared.weekStart, currentMonday: mondayOf() }));
     for (const day of prepared.program.days) {
       if (sport.days.length && !sport.days.includes(day.id)) out.push('Séance prévue le ' + day.id + ', qui n’est pas dans tes jours disponibles.');
       const est = estimateDayMinutes(day);
@@ -435,6 +443,14 @@ async function saveImport() {
       notify('Import annulé : le programme existant est conservé.', 'info'); return;
     }
     if (!sameProfile(profile, generation) || !state.preview) return;
+    // V2-EVOLUTION-1 : programme incomplet par rapport au profil sportif → refus par défaut, exception explicite possible
+    const sport = await getSportProfile(profile).catch(() => null);
+    const issues = sport ? frequencyIssues(state.preview.program.days.map(d => d.id), sport, { weekStart, currentMonday: mondayOf() }) : [];
+    if (!sameProfile(profile, generation) || !state.preview) return;
+    if (issues.length && !(await confirmDialog(issues.join(' ') + ' Le programme ne respecte pas ta fréquence. Refuser (et demander à ChatGPT un programme complet), ou l’importer quand même à titre d’exception ?', { title: 'Programme incomplet', ok: 'Importer quand même (exception)', cancel: 'Refuser ce programme' }))) {
+      notify('Import refusé : programme incomplet. Demande à ChatGPT les ' + sport.frequency + ' séances prévues.', 'info'); return;
+    }
+    if (!sameProfile(profile, generation) || !state.preview) return;
   }
   const request = ++state.importVersion;
   const source = sourceForImport();
@@ -483,6 +499,7 @@ async function setProfile(profileId) {
   resetPreview();
   wipe(select); select.disabled = true;
   wipe(historyView); importCard.hidden = true;
+  drawCoach();
 
   if (!recognized) return;
   importCard.hidden = profileId === 'demo';
@@ -520,6 +537,18 @@ document.addEventListener('pm:profile-changed', event => {
   const profile = event.detail.profile;
   const started = state.profileVersion + 1;
   setProfile(profile).catch(error => handleProfileError(error, profile, started));
+});
+// LOT 2 : assistant « Préparer ma semaine » → « Coller la réponse de ChatGPT » : texte du presse-papiers (ou rien : cadre
+// ouvert pour coller à la main) ; vérification lancée tout de suite, aperçu et bouton « Importer ce programme » visibles.
+document.addEventListener('pm:import-text', event => {
+  if (!isRealProfile(state.profile) && state.profile !== 'demo') return;
+  if (importCard.hidden) return;
+  const text = String(event.detail?.text || '');
+  importCard.open = true;
+  if (!text) { paste.focus(); paste.scrollIntoView({ block: 'center' }); return; }
+  paste.value = text; state.source = null; fileInput.value = ''; fileName.textContent = 'Aucun fichier sélectionné';
+  resetPreview();
+  previewImport().then(() => (previewView.hidden ? actionArea : previewView).scrollIntoView({ block: 'start' })).catch(showError);
 });
 // Accueil → « Voir mon programme » : affiche la semaine demandée (programme futur déjà enregistré)
 document.addEventListener('pm:show-program-week', event => {

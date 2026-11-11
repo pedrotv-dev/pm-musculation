@@ -1,14 +1,14 @@
 {
   "name": "PM Musculation (aperçu)",
   "short_name": "PM Aperçu",
-  "description": "Suivi d'entraînement de Pierre & Manon, hors ligne.",
+  "description": "Carnet de musculation guidé, hors ligne, données sur l'appareil.",
   "lang": "fr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0b0f12",
-  "theme_color": "#0b0f12",
+  "background_color": "#fcfdfd",
+  "theme_color": "#1b2a6e",
   "icons": [
     {
       "src": "assets/icons/icon-192.png",
