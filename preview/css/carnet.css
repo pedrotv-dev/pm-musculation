@@ -217,7 +217,7 @@ p, .description, .footnote { text-wrap: pretty; }
 .pm-set-current .pm-set-mark::after { border-color: var(--ink); background: radial-gradient(circle, var(--ink) 0 4px, transparent 4.5px); }
 .pm-set-done .pm-set-mark::after { /* coche manuscrite, tracée de gauche à droite */
   border: 0; border-radius: 0; width: 26px; height: 24px; margin: -12px 0 0 -13px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 24'%3E%3Cpath d='M3 13.5c2.6 1.6 4.4 3.6 6 6.4 3.4-7.1 7.6-12.6 14-17.2' fill='none' stroke='%239db8ff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 24'%3E%3Cpath d='M3 13.5c2.6 1.6 4.4 3.6 6 6.4 3.4-7.1 7.6-12.6 14-17.2' fill='none' stroke='%23a3bcff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
   animation: pm-pen .42s cubic-bezier(.2, .7, .2, 1) both;
 }
 @keyframes pm-pen { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
@@ -248,7 +248,7 @@ p, .description, .footnote { text-wrap: pretty; }
 /* ---------- surcouches ---------- */
 .pm-modal, .pm-modal-card, .pm-toast { background: var(--sheet); color: var(--graphite); border-color: var(--stroke); }
 .pm-toast { background: var(--cover); color: var(--cover-text); }
-.pm-levelup-overlay { background: rgba(20, 30, 80, .82); }
+.pm-levelup-overlay { background: rgba(4, 8, 22, .86); }
 
 @media (prefers-reduced-motion: reduce) {
   .pm-set-done .pm-set-mark::after { animation: none; }
