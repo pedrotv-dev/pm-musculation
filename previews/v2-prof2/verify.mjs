@@ -1,0 +1,92 @@
+import fs from 'node:fs';
+import {fileURLToPath} from 'node:url';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {serve} from './serve.mjs';
+const require=createRequire(path.join(process.env.PROF2_NODE_MODULES||path.resolve(path.dirname(process.execPath),'../node_modules'),'prof2.cjs'));
+const {chromium}=require('playwright');
+const out=new URL('./captures/',import.meta.url);fs.mkdirSync(out,{recursive:true});
+const server=await serve();
+const browser=await chromium.launch({executablePath:process.env.PROF2_CHROME||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
+const results=[];
+try {
+for(const width of [320,375,390]) {
+const context=await browser.newContext({viewport:{width,height:844},deviceScaleFactor:1});
+await context.addInitScript(()=>{
+for(const key of ['localStorage','sessionStorage','indexedDB'])Object.defineProperty(window,key,{get(){throw Error('STORAGE '+key);}});
+});
+const page=await context.newPage();const errors=[];const requests=[];
+page.on('pageerror',e=>errors.push(e.message));
+page.on('request',r=>requests.push(r.url()));
+page.on('response',r=>{if(r.status()>=400)errors.push(r.status()+' '+r.url());});
+const base='http://127.0.0.1:'+server.address().port;
+await page.goto(base+'/previews/v2-prof2/');
+async function snap(name) {
+await page.evaluate(()=>document.fonts.ready);
+assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,name+' overflow '+width);
+assert.equal(await page.locator('img').evaluateAll(imgs=>imgs.every(i=>i.complete&&i.naturalWidth)),true);
+const small=await page.locator('button,select,input[type=text],label.option').evaluateAll(nodes=>nodes.filter(n=>{const r=n.getBoundingClientRect();return r.width<44||r.height<44;}).map(n=>n.outerHTML));
+assert.deepEqual(small,[],name+' touch size');
+await page.screenshot({path:fileURLToPath(new URL(name+'-'+width+'.png',out)),fullPage:true});
+results.push({width,screen:name,overflow:false,touchTargets:'>=44px',imagesLoaded:true});
+}
+await snap('01-profils');
+await page.locator('[data-profile="1"]').click();
+assert.equal(await page.locator('[data-profile="1"]').getAttribute('aria-pressed'),'true');
+await page.locator('[data-action=start]').click();
+await snap('02-identite-vide');
+await page.getByRole('button',{name:'Continuer',exact:true}).click();
+await snap('03-erreur-nom');
+await page.locator('#name').fill('Pierre');await page.getByRole('button',{name:'Continuer',exact:true}).click();
+assert.match(await page.locator('#form-error').innerText(),/existe déjà/);
+await snap('04-erreur-doublon');
+await page.locator('#name').fill('Camille');
+await page.locator('[value=violet]').check();
+await snap('05-identite-valide');
+await page.locator('#name').press('Enter');
+await snap('06-objectif-vide');
+await page.getByRole('button',{name:'Continuer',exact:true}).click();
+await snap('07-erreur-objectif');
+await page.locator('[value="Renforcement"]').check();await page.getByRole('button',{name:'Continuer',exact:true}).click();
+await snap('08-rythme-vide');
+await page.getByRole('button',{name:'Continuer',exact:true}).click();await snap('09-erreur-rythme');
+await page.locator('#frequency').selectOption('3');await page.locator('#duration').selectOption('45 min');
+await page.locator('[value=Lundi]').check();
+await page.getByRole('button',{name:'Continuer',exact:true}).click();await snap('10-erreur-jours');
+await page.locator('[value=Mercredi]').check();await page.locator('[value=Vendredi]').check();
+await snap('11-rythme-valide');
+await page.getByRole('button',{name:'Retour',exact:true}).click();
+assert.equal(await page.locator('[value=Renforcement]').isChecked(),true);
+await page.getByRole('button',{name:'Continuer',exact:true}).click();
+assert.equal(await page.locator('#frequency').inputValue(),'3');
+await page.getByRole('button',{name:'Continuer',exact:true}).click();
+await snap('12-materiel-vide');
+await page.getByRole('button',{name:'Continuer',exact:true}).click();await snap('13-erreur-materiel');
+await page.locator('[value=Salle]').check();await page.locator('[value="Machines guidées"]').check();await page.locator('[value="Aucun matériel"]').check();
+assert.equal(await page.locator('[value=Salle]').isChecked(),false);
+assert.equal(await page.locator('[value="Machines guidées"]').isChecked(),false);
+await page.locator('[value=Maison]').check();await snap('14-materiel-valide');
+await page.getByRole('button',{name:'Continuer',exact:true}).click();await snap('15-recapitulatif');
+await page.getByRole('button',{name:'Créer mon profil',exact:true}).click();await snap('16-confirmation');
+await page.getByRole('button',{name:'Voir mes profils'}).click();
+assert.equal(await page.locator('.choice[aria-pressed=true] strong').innerText(),'Camille');
+await snap('17-profils-apres-creation');
+await page.locator('[data-tab=Séances]').click();await snap('18-sans-programme');
+await page.getByRole('button',{name:'Choisir un profil'}).click();
+await page.locator('[data-action=start]').click();await page.locator('#name').fill('<b>Zoé</b>');
+assert.equal(await page.locator('#live-preview b').count(),0);
+await page.getByRole('button',{name:'Retour',exact:true}).click();await page.locator('[data-action=start]').click();
+assert.equal(await page.locator('#name').inputValue(),'<b>Zoé</b>');
+await page.reload();assert.equal(await page.locator('.choice').count(),4);
+await page.locator('[data-action=start]').click();assert.equal(await page.locator('#name').inputValue(),'');
+assert.deepEqual(errors,[]);
+assert.equal(await page.evaluate(async()=>(await navigator.serviceWorker.getRegistrations()).length),0);
+assert.ok(requests.every(r=>r.startsWith(base+'/previews/v2-prof2/')||r===base+'/css/base.css'||r.startsWith(base+'/assets/')));
+results.push({width,checks:['active selection','duplicate validation','keyboard Enter','draft back/forward','coherent gear','create once','HTML escaped','reload reset','no storage access','no service worker','no business scripts','no browser errors'],requests});
+await context.close();
+}
+fs.writeFileSync(new URL('./verification.json',import.meta.url),JSON.stringify({browser:browser.version(),results},null,2)+'\n');
+console.log('PASS: 54 captures, 3 parcours complets, 320/375/390 px.');
+} finally {await browser.close();server.close();}
+
