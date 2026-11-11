@@ -130,7 +130,7 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 }
 .pm-chip { background:var(--surface-raised); border-color:var(--ascent-rim); color:var(--muted); }
 .pm-chip-done { color:var(--ok); border-color:rgba(185,240,138,.35); }
-.pm-seg-btn.pm-on { color:var(--turq); border-color:var(--turq); background:rgba(20,230,199,.09); }
+.pm-seg-btn.pm-on { color:var(--turq); border-color:var(--turq); background:rgba(var(--accent-rgb),.09); }
 .pm-input,.pm-select,.pm-textarea-note {
   background:var(--bg); border-color:var(--stroke); color:var(--text);
   border-radius:12px; font-variant-numeric:tabular-nums;
@@ -184,9 +184,9 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
   min-width:0;
   min-height:100px;
   padding:15px 12px 13px;
-  border:1px solid rgba(20,230,199,.14);
+  border:1px solid rgba(var(--accent-rgb),.14);
   border-radius:13px;
-  background:linear-gradient(155deg,rgba(20,230,199,.055),transparent 76%),var(--ascent-card, var(--surface-raised));
+  background:linear-gradient(155deg,rgba(var(--accent-rgb),.055),transparent 76%),var(--ascent-card, var(--surface-raised));
 }
 [data-page="progres"] .pm-stat strong {
   display:block;
@@ -281,7 +281,7 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 }
 /* intégration PR #54 : la carte de niveau garde son fond ASCENT (PR #53) sur Progression */
 [data-page="progres"] > .panel.pm-level-card {
-  background:linear-gradient(140deg,rgba(20,230,199,.06),transparent 63%),var(--surface);
+  background:linear-gradient(140deg,rgba(var(--accent-rgb),.06),transparent 63%),var(--surface);
 }
 
 /* V1-M1 · D2 — détail de l'historique : à 320 px la grille à 6 colonnes ne laissait que 40 px à chaque champ.
@@ -330,7 +330,7 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-coach-warning { font-size:13px; border-left:3px solid var(--turq); padding-left:10px; }
 .pm-coach-status { min-height:20px; font-size:14px; margin:8px 0 0; }
 .pm-coach-status[data-state="ok"] { color:var(--turq); }
-.pm-coach-status[data-state="error"] { color:#ff8a8a; }
+.pm-coach-status[data-state="error"] { color:var(--danger); }
 .pm-coach-missing-list { margin:8px 0; padding-left:18px; display:flex; flex-direction:column; gap:4px; }
 .pm-coach-missing-list .pm-link { min-height:44px; text-align:left; }
 .pm-upcoming-card .pm-validate { margin-top:4px; }
@@ -356,7 +356,7 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-qs-chip { position:relative; display:inline-flex; }
 .pm-qs-chip input { position:absolute; inset:0; opacity:0; margin:0; cursor:pointer; }
 .pm-qs-chip span { display:inline-flex; align-items:center; min-height:44px; padding:0 13px; border-radius:999px; border:1px solid var(--ascent-rim, var(--stroke)); background:var(--surface); color:var(--text); font-size:14px; font-weight:700; }
-.pm-qs-chip input:checked + span { border-color:rgba(20,230,199,.75); background:rgba(20,230,199,.14); color:var(--turq); }
+.pm-qs-chip input:checked + span { border-color:rgba(var(--accent-rgb),.75); background:rgba(var(--accent-rgb),.14); color:var(--turq); }
 .pm-qs-chip input:focus-visible + span { outline:3px solid var(--turq); outline-offset:2px; }
 .pm-qs-freq-field { margin-top:12px; }
 .pm-qs-freq-field[hidden] { display:none; }
@@ -364,7 +364,7 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 
 /* V2-UX LOT 2 · assistant « Préparer ma semaine » (Programme) : 3 étapes numérotées */
 .pm-coach-step { display:flex; align-items:center; gap:10px; margin:16px 0 8px; font-weight:720; font-size:14.5px; }
-.pm-coach-step-n { flex:none; display:inline-grid; place-items:center; width:26px; height:26px; border-radius:50%; background:rgba(20,230,199,.16); color:var(--turq); font-size:13px; font-weight:850; }
+.pm-coach-step-n { flex:none; display:inline-grid; place-items:center; width:26px; height:26px; border-radius:50%; background:rgba(var(--accent-rgb),.16); color:var(--turq); font-size:13px; font-weight:850; }
 .pm-coach-open { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:0 14px; border-radius:var(--radius-12, 12px); text-decoration:none; border:1px solid var(--ascent-rim, var(--stroke)); color:var(--text); background:var(--surface); font-weight:720; }
 .pm-coach-paste { width:100%; }
 .pm-coach-section .pm-coach-out { min-height:0; height:120px; }
@@ -373,7 +373,7 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 #screen-onboarding[hidden] { display:none; }
 .pm-onboarding h2 { margin:12px 0 10px; }
 .pm-ob-progress { height:8px; border-radius:999px; background:rgba(255,255,255,.07); overflow:hidden; margin:10px 0 14px; border:1px solid var(--ascent-rim, var(--stroke)); }
-.pm-ob-progress span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg, rgba(20,230,199,.55), var(--turq)); box-shadow:0 0 12px rgba(20,230,199,.35); transition:width .35s ease; }
+.pm-ob-progress span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg, rgba(var(--accent-rgb),.55), var(--turq)); box-shadow:0 0 12px rgba(var(--accent-rgb),.35); transition:width .35s ease; }
 .pm-ob-head { display:flex; align-items:center; gap:12px; }
 .pm-ob-head .pm-mascot { flex:none; width:64px; height:64px; }
 .pm-ob-bubble { display:flex; flex-direction:column; gap:2px; padding:10px 12px; border-radius:14px; border:1px solid var(--ascent-rim, var(--stroke)); background:var(--surface); font-size:13.5px; }
@@ -401,8 +401,8 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-load-fields { display:flex; align-items:center; gap:6px; flex:0 0 auto; }
 .pm-load-fields .pm-input { width:74px; min-height:44px; text-align:center; font-size:16px; }
 .pm-load-x { color:var(--muted); font-weight:800; }
-.pm-load-partial { border-color:#ff8a8a; }
-.pm-load-warn { width:100%; margin:0; color:#ff8a8a; font-size:13px; }
+.pm-load-partial { border-color:var(--danger); }
+.pm-load-warn { width:100%; margin:0; color:var(--danger); font-size:13px; }
 .pm-loads-actions { position:sticky; bottom:calc(env(safe-area-inset-bottom, 0px) + 74px); display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:12px; margin-top:16px; border-radius:15px; border:1px solid var(--ascent-rim, var(--stroke)); background:var(--surface-nav, var(--surface)); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); z-index:3; }
 .pm-loads-actions .pm-coach-status { width:100%; margin:0; }
 .pm-loads-actions .pm-validate { flex:1 1 60%; }
