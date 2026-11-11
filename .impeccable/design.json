@@ -1,37 +1,67 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-11T00:00:00Z",
+  "generatedAt": "2026-11-11T12:00:00Z",
   "title": "Design System: PM Musculation",
   "extensions": {
     "colorMeta": {
       "ink": {
         "role": "primary",
-        "displayName": "Encre stylo bille",
-        "canonical": "#1c3ca3",
+        "displayName": "Encre claire",
+        "canonical": "#a3bcff",
         "tonalRamp": [
-          "#141d39",
-          "#1e2f67",
-          "#233f99",
-          "#254ecf",
-          "#5776db",
-          "#8fa2e0",
-          "#c2ccea",
-          "#edeff8"
+          "#050a1c",
+          "#192341",
+          "#31406a",
+          "#4b5e95",
+          "#6b80b9",
+          "#91a4d5",
+          "#b9c8f0",
+          "#e8eeff"
         ]
       },
       "ink-deep": {
         "role": "primary",
         "displayName": "Encre appuyée",
-        "canonical": "#142b78",
+        "canonical": "#c9d6ff",
         "tonalRamp": [
-          "#141c39",
-          "#1d2e67",
-          "#233e9a",
-          "#254cd0",
-          "#5775db",
-          "#8fa2e1",
-          "#c2cbea",
-          "#edeff8"
+          "#080a15",
+          "#1f2436",
+          "#39415a",
+          "#566080",
+          "#7681a3",
+          "#9ba4c1",
+          "#c1c8e0",
+          "#e9eeff"
+        ]
+      },
+      "ink-fill": {
+        "role": "primary",
+        "displayName": "Aplat d'encre",
+        "canonical": "#3455d1",
+        "tonalRamp": [
+          "#02042d",
+          "#0e1c5b",
+          "#20378e",
+          "#3555c5",
+          "#5379ec",
+          "#7fa1fc",
+          "#b2c8fe",
+          "#e8eefe"
+        ]
+      },
+      "ink-fill-hover": {
+        "role": "primary",
+        "displayName": "Aplat d'encre appuyé",
+        "canonical": "#2a48bd",
+        "tonalRamp": [
+          "#02052b",
+          "#0e1d59",
+          "#21398b",
+          "#3656c1",
+          "#557ae8",
+          "#7ea1fd",
+          "#b2c8fe",
+          "#e8eefe"
         ]
       },
       "fluo": {
@@ -39,119 +69,134 @@
         "displayName": "Surligneur fluo",
         "canonical": "#f7ef3c",
         "tonalRamp": [
-          "#3e3c0e",
-          "#726e12",
-          "#aba512",
-          "#e9e00c",
-          "#efe743",
-          "#ece883",
-          "#f0eebc",
-          "#f9f9eb"
+          "#0e0c00",
+          "#292700",
+          "#474400",
+          "#696400",
+          "#8c8700",
+          "#b0aa30",
+          "#d1ce79",
+          "#f4f3b7"
         ]
       },
       "fluo-soft": {
         "role": "secondary",
         "displayName": "Surligneur posé",
-        "canonical": "rgba(247, 239, 60, .55)",
+        "canonical": "rgba(247, 239, 60, .2)",
         "tonalRamp": [
-          "#3e3c0e",
-          "#726e12",
-          "#aba512",
-          "#e9e00c",
-          "#efe743",
-          "#ece883",
-          "#f0eebc",
-          "#f9f9eb"
+          "#0e0c00",
+          "#292700",
+          "#474400",
+          "#696400",
+          "#8c8700",
+          "#b0aa30",
+          "#d1ce79",
+          "#f4f3b7"
+        ]
+      },
+      "on-fluo": {
+        "role": "secondary",
+        "displayName": "Encre sur surligneur",
+        "canonical": "#1a1c22",
+        "tonalRamp": [
+          "#090b10",
+          "#23252b",
+          "#3f4249",
+          "#5e6168",
+          "#7f828a",
+          "#a2a5ad",
+          "#c6c9d1",
+          "#ebeef7"
         ]
       },
       "cover": {
         "role": "tertiary",
-        "displayName": "Couverture polypro",
-        "canonical": "#1b2a6e",
+        "displayName": "Couverture de nuit",
+        "canonical": "#0a1026",
         "tonalRamp": [
-          "#161c36",
-          "#232e62",
-          "#2c3e91",
-          "#324cc3",
-          "#6175d1",
-          "#95a1da",
-          "#c5cbe7",
-          "#eeeff7"
+          "#080b13",
+          "#202532",
+          "#3b4155",
+          "#58607a",
+          "#78829c",
+          "#9ca5bb",
+          "#c2c9db",
+          "#e9eefc"
         ]
       },
       "cover-text": {
         "role": "tertiary",
         "displayName": "Blanc couverture",
-        "canonical": "#f3f5ff",
+        "canonical": "#eef1ff",
         "tonalRamp": [
-          "#0c1540",
-          "#0e2076",
-          "#0b27b2",
-          "#022af3",
-          "#3c5bf6",
-          "#7e91f1",
-          "#bac3f3",
-          "#ebedfa"
+          "#090a13",
+          "#22242e",
+          "#3f414c",
+          "#5e606c",
+          "#7f828e",
+          "#a1a4b1",
+          "#c5c8d6",
+          "#ebeefc"
         ]
       },
       "cover-muted": {
         "role": "tertiary",
         "displayName": "Lavande couverture",
-        "canonical": "#c3caf0",
+        "canonical": "#aeb8e6",
         "tonalRamp": [
-          "#171b36",
-          "#232d61",
-          "#2c3c90",
-          "#3249c3",
-          "#6173d1",
-          "#95a0da",
-          "#c5cae7",
-          "#eeeff7"
+          "#080a17",
+          "#202338",
+          "#3a405d",
+          "#575f84",
+          "#7780a7",
+          "#9ca3c5",
+          "#c1c8e3",
+          "#e9eeff"
         ]
       },
       "paper": {
         "role": "neutral",
-        "displayName": "Papier",
-        "canonical": "#fcfdfd",
+        "displayName": "Page ardoise",
+        "canonical": "#121a2c",
         "tonalRamp": [
-          "#212b2b",
-          "#384d4d",
-          "#4e6f6f",
-          "#629292",
-          "#86acac",
-          "#acc3c3",
-          "#d1dcdc",
-          "#f1f4f4"
+          "#080b12",
+          "#202530",
+          "#3b4251",
+          "#586175",
+          "#788298",
+          "#9ca5b7",
+          "#c2c9d8",
+          "#e9eff9"
         ]
       },
       "grid": {
         "role": "neutral",
         "displayName": "Carreau",
-        "canonical": "#dbe8f3",
+        "canonical": "rgba(150, 178, 230, .085)",
         "tonalRamp": [
-          "#192733",
-          "#28445c",
-          "#356288",
-          "#3e7fb6",
-          "#6b9dc7",
-          "#9bbad4",
-          "#c8d7e4",
-          "#eef3f6"
+          "#040b19",
+          "#18253c",
+          "#304263",
+          "#4a618c",
+          "#6a82b0",
+          "#91a6cc",
+          "#b9cae9",
+          "#e6efff"
         ]
       },
       "ruled-line": {
         "role": "neutral",
         "displayName": "Réglure",
-        "canonical": "#b9cfe2",
+        "canonical": "rgba(163, 188, 255, .22)",
         "tonalRamp": [
-          "#1b2731",
-          "#2d4458",
-          "#3c6181",
-          "#497eac",
-          "#739cbf",
-          "#a0b9cf",
-          "#cad7e2",
-          "#eff2f5"
+          "#050a1c",
+          "#192341",
+          "#31406a",
+          "#4b5e95",
+          "#6b80b9",
+          "#91a4d5",
+          "#b9c8f0",
+          "#e8eeff"
         ]
       },
       "margin-line": {
@@ -159,134 +204,164 @@
         "displayName": "Marge",
         "canonical": "#e5484d",
         "tonalRamp": [
-          "#3a1314",
-          "#691b1e",
-          "#9d2024",
-          "#d52026",
-          "#df5358",
-          "#e38d8f",
-          "#ebc1c2",
-          "#f8eded"
+          "#220000",
+          "#4d0009",
+          "#7d0a19",
+          "#b0212d",
+          "#d84b4d",
+          "#f27d79",
+          "#fdb3af",
+          "#ffe8e7"
         ]
       },
       "surface": {
         "role": "neutral",
-        "displayName": "Feuille",
-        "canonical": "#ffffff",
+        "displayName": "Feuille posée",
+        "canonical": "#1a2439",
         "tonalRamp": [
-          "#262626",
-          "#424242",
-          "#5e5e5e",
-          "#7a7a7a",
-          "#999999",
-          "#b8b8b8",
-          "#d6d6d6",
-          "#f2f2f2"
+          "#080b13",
+          "#1f2531",
+          "#394253",
+          "#566178",
+          "#77839a",
+          "#9ba5ba",
+          "#c1c9da",
+          "#e9effb"
         ]
       },
       "surface-raised": {
         "role": "neutral",
-        "displayName": "Papier teinté",
-        "canonical": "#eef3f9",
+        "displayName": "Feuille teintée",
+        "canonical": "#233050",
         "tonalRamp": [
-          "#1a2533",
-          "#29405b",
-          "#375b86",
-          "#4175b4",
-          "#6d95c5",
-          "#9cb5d3",
-          "#c9d5e4",
-          "#eff2f6"
+          "#070b16",
+          "#1d2536",
+          "#37415a",
+          "#536181",
+          "#7382a4",
+          "#98a5c2",
+          "#bec9e1",
+          "#e7effe"
         ]
       },
       "stroke": {
         "role": "neutral",
         "displayName": "Trait",
-        "canonical": "#c6d2df",
+        "canonical": "#34425f",
         "tonalRamp": [
-          "#1f262e",
-          "#344251",
-          "#475d76",
-          "#59799c",
-          "#7f98b3",
-          "#a8b7c8",
-          "#ced6de",
-          "#f0f2f4"
+          "#070b15",
+          "#1d2534",
+          "#374258",
+          "#53617e",
+          "#7482a0",
+          "#99a5bf",
+          "#bfc9de",
+          "#e7effe"
+        ]
+      },
+      "stroke-strong": {
+        "role": "neutral",
+        "displayName": "Trait appuyé",
+        "canonical": "#45558a",
+        "tonalRamp": [
+          "#060a1b",
+          "#1b233e",
+          "#344066",
+          "#4f5f90",
+          "#6f80b4",
+          "#94a4d0",
+          "#bcc8ec",
+          "#e8eeff"
+        ]
+      },
+      "pencil": {
+        "role": "neutral",
+        "displayName": "Crayon à papier",
+        "canonical": "#3a4763",
+        "tonalRamp": [
+          "#070b14",
+          "#1e2534",
+          "#384257",
+          "#54617c",
+          "#75829f",
+          "#99a5be",
+          "#c0c9dd",
+          "#e8effd"
         ]
       },
       "graphite": {
         "role": "neutral",
-        "displayName": "Graphite",
-        "canonical": "#23262d",
+        "displayName": "Craie",
+        "canonical": "#e6eaf3",
         "tonalRamp": [
-          "#23252a",
-          "#3c4049",
-          "#545a69",
-          "#6b7489",
-          "#8d94a5",
-          "#b0b5bf",
-          "#d3d5da",
-          "#f1f2f3"
+          "#090b11",
+          "#22252c",
+          "#3f4249",
+          "#5e6169",
+          "#7f828a",
+          "#a1a5ad",
+          "#c5c9d2",
+          "#eaeef7"
         ]
       },
       "muted": {
         "role": "neutral",
-        "displayName": "Crayon",
-        "canonical": "#535a66",
+        "displayName": "Craie estompée",
+        "canonical": "#a9b3c8",
         "tonalRamp": [
-          "#242629",
-          "#3d4148",
-          "#565c67",
-          "#6e7787",
-          "#8f96a3",
-          "#b2b6bd",
-          "#d3d5d9",
-          "#f1f2f3"
+          "#080b11",
+          "#21252e",
+          "#3c424f",
+          "#596172",
+          "#7a8295",
+          "#9ea5b5",
+          "#c3c9d6",
+          "#eaeff8"
         ]
       },
       "ok": {
         "role": "status",
         "displayName": "Réussite",
-        "canonical": "#1d7a45",
+        "canonical": "#6fd69a",
         "tonalRamp": [
-          "#163624",
-          "#22623e",
-          "#2b9257",
-          "#30c470",
-          "#60d291",
-          "#94dbb3",
-          "#c5e8d4",
-          "#eef7f2"
+          "#001004",
+          "#002e17",
+          "#00502c",
+          "#007444",
+          "#389764",
+          "#6fb88c",
+          "#a1d9b5",
+          "#d2fae0"
         ]
       },
       "warn": {
         "role": "status",
         "displayName": "Avertissement",
-        "canonical": "#a85a06",
+        "canonical": "#f2b265",
         "tonalRamp": [
-          "#3f270e",
-          "#734412",
-          "#ac6111",
-          "#ea7f0a",
-          "#ef9c43",
-          "#edba82",
-          "#f1d7bc",
-          "#f9f3eb"
+          "#170600",
+          "#371f00",
+          "#5d3901",
+          "#865506",
+          "#ac752e",
+          "#ca9b65",
+          "#e7c298",
+          "#feebd6"
         ]
       },
       "danger": {
         "role": "status",
         "displayName": "Danger",
-        "canonical": "#c22f37",
+        "canonical": "#ff8088",
         "tonalRamp": [
-          "#361618",
-          "#622326",
-          "#912c31",
-          "#c43139",
-          "#d26067",
-          "#db9598",
-          "#e7c5c7",
-          "#f7eeee"
+          "#200003",
+          "#470a14",
+          "#73202a",
+          "#a23642",
+          "#c95a62",
+          "#e4868a",
+          "#ffb2b3",
+          "#ffe8e8"
         ]
       }
     },
@@ -323,13 +398,13 @@
     "shadows": [
       {
         "name": "feuille-posee",
-        "value": "0 1px 0 rgba(20,40,90,.06), 0 8px 18px -12px rgba(20,40,90,.35)",
+        "value": "0 1px 0 rgba(0,0,0,.25), 0 10px 20px -12px rgba(0,0,0,.7)",
         "purpose": "Cartes, choix de profil, série en cours."
       },
       {
         "name": "bouton-encre",
         "value": "0 1px 0 rgba(10,20,60,.3), 0 8px 16px -10px rgba(20,40,120,.8)",
-        "purpose": "Boutons principaux."
+        "purpose": "Boutons à l'aplat d'encre."
       },
       {
         "name": "couverture",
@@ -338,7 +413,7 @@
       },
       {
         "name": "surcouche",
-        "value": "0 10px 24px -8px rgba(20,40,90,.45)",
+        "value": "0 10px 24px -8px rgba(0,0,0,.7)",
         "purpose": "Chrono de repos, toasts."
       },
       {
@@ -379,49 +454,49 @@
       "name": "Bouton principal",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "Action principale à l'encre : Commencer, Reprendre, Créer.",
+      "description": "Action principale à l'aplat d'encre : Commencer, Reprendre, Créer.",
       "html": "<button class=\"ds-btn-primary\">Reprendre la séance</button>",
-      "css": ":root{--ink:#1c3ca3;--ink-deep:#142b78;--fluo:#f7ef3c;--fluo-soft:rgba(247,239,60,.55);--cover:#1b2a6e;--cover-text:#f3f5ff;--cover-muted:#c3caf0;--stroke:#c6d2df;--graphite:#23262d;--muted:#535a66;--surface-raised:#eef3f9;--font-ui:'Barlow SC',system-ui,sans-serif;--font-hand:'Kalam','Barlow SC',cursive}.ds-btn-primary{background:var(--ink,#1c3ca3);color:#fff;border:0;border-radius:12px;min-height:50px;padding:0 24px;font-family:var(--font-ui,'Barlow SC',sans-serif);font-weight:760;font-size:18px;box-shadow:0 1px 0 rgba(10,20,60,.3),0 8px 16px -10px rgba(20,40,120,.8);cursor:pointer;transition:background .12s}.ds-btn-primary:hover{background:var(--ink-deep,#142b78)}.ds-btn-primary:focus-visible{outline:3px solid var(--ink,#1c3ca3);outline-offset:2px}.ds-btn-primary:active{transform:scale(.98)}"
+      "css": ":root{color-scheme:dark;--paper:#121a2c;--ink:#a3bcff;--ink-deep:#c9d6ff;--ink-fill:#3455d1;--ink-fill-hover:#2a48bd;--fluo:#f7ef3c;--fluo-soft:rgba(247,239,60,.2);--on-fluo:#1a1c22;--cover:#0a1026;--cover-text:#eef1ff;--cover-muted:#aeb8e6;--sheet:#1a2439;--surface-raised:#233050;--stroke:#34425f;--rule:rgba(163,188,255,.22);--graphite:#e6eaf3;--muted:#a9b3c8;--font-ui:'Barlow SC',system-ui,sans-serif;--font-hand:'Kalam','Barlow SC',cursive}.ds-btn-primary{background:var(--ink-fill,#3455d1);color:#fff;border:0;border-radius:12px;min-height:50px;padding:0 24px;font-family:var(--font-ui,'Barlow SC',sans-serif);font-weight:760;font-size:18px;box-shadow:0 1px 0 rgba(10,20,60,.3),0 8px 16px -10px rgba(20,40,120,.8);cursor:pointer;transition:background .12s}.ds-btn-primary:hover{background:var(--ink-fill-hover,#2a48bd)}.ds-btn-primary:focus-visible{outline:3px solid var(--ink,#a3bcff);outline-offset:2px}.ds-btn-primary:active{transform:scale(.98)}"
     },
     {
       "name": "Bouton secondaire",
       "kind": "button",
       "refersTo": "button-secondary",
-      "description": "Action d'appoint au trait d'encre : Garder en attente, Annuler.",
+      "description": "Action d'appoint au trait d'encre claire : Garder en attente, Annuler.",
       "html": "<button class=\"ds-btn-secondary\">Garder en attente</button>",
-      "css": ":root{--ink:#1c3ca3;--ink-deep:#142b78;--fluo:#f7ef3c;--fluo-soft:rgba(247,239,60,.55);--cover:#1b2a6e;--cover-text:#f3f5ff;--cover-muted:#c3caf0;--stroke:#c6d2df;--graphite:#23262d;--muted:#535a66;--surface-raised:#eef3f9;--font-ui:'Barlow SC',system-ui,sans-serif;--font-hand:'Kalam','Barlow SC',cursive}.ds-btn-secondary{background:#fff;color:var(--ink,#1c3ca3);border:1.5px solid var(--ink,#1c3ca3);border-radius:12px;min-height:48px;padding:0 16px;font-family:var(--font-ui,'Barlow SC',sans-serif);font-weight:700;font-size:16px;cursor:pointer}.ds-btn-secondary:hover{background:var(--surface-raised,#eef3f9)}.ds-btn-secondary:focus-visible{outline:3px solid var(--ink,#1c3ca3);outline-offset:2px}"
+      "css": ":root{color-scheme:dark;--paper:#121a2c;--ink:#a3bcff;--ink-deep:#c9d6ff;--ink-fill:#3455d1;--ink-fill-hover:#2a48bd;--fluo:#f7ef3c;--fluo-soft:rgba(247,239,60,.2);--on-fluo:#1a1c22;--cover:#0a1026;--cover-text:#eef1ff;--cover-muted:#aeb8e6;--sheet:#1a2439;--surface-raised:#233050;--stroke:#34425f;--rule:rgba(163,188,255,.22);--graphite:#e6eaf3;--muted:#a9b3c8;--font-ui:'Barlow SC',system-ui,sans-serif;--font-hand:'Kalam','Barlow SC',cursive}.ds-btn-secondary{background:var(--sheet,#1a2439);color:var(--ink,#a3bcff);border:1.5px solid var(--ink,#a3bcff);border-radius:12px;min-height:48px;padding:0 16px;font-family:var(--font-ui,'Barlow SC',sans-serif);font-weight:700;font-size:16px;cursor:pointer}.ds-btn-secondary:hover{background:var(--surface-raised,#233050)}.ds-btn-secondary:focus-visible{outline:3px solid var(--ink,#a3bcff);outline-offset:2px}"
     },
     {
       "name": "Champ de saisie",
       "kind": "input",
       "refersTo": "input",
-      "description": "Champ blanc au trait, focus à l'encre.",
+      "description": "Champ sur la feuille sombre, au trait, focus à l'encre claire.",
       "html": "<input class=\"ds-input\" placeholder=\"Prénom ou pseudo\">",
-      "css": ":root{--ink:#1c3ca3;--ink-deep:#142b78;--fluo:#f7ef3c;--fluo-soft:rgba(247,239,60,.55);--cover:#1b2a6e;--cover-text:#f3f5ff;--cover-muted:#c3caf0;--stroke:#c6d2df;--graphite:#23262d;--muted:#535a66;--surface-raised:#eef3f9;--font-ui:'Barlow SC',system-ui,sans-serif;--font-hand:'Kalam','Barlow SC',cursive}.ds-input{background:#fff;color:var(--graphite,#23262d);border:1.5px solid var(--stroke,#c6d2df);border-radius:10px;min-height:46px;padding:0 12px;font-family:var(--font-ui,'Barlow SC',sans-serif);font-size:16.5px;caret-color:var(--ink,#1c3ca3)}.ds-input:focus-visible{border-color:var(--ink,#1c3ca3);outline:3px solid rgba(28,60,163,.35)}"
+      "css": ":root{color-scheme:dark;--paper:#121a2c;--ink:#a3bcff;--ink-deep:#c9d6ff;--ink-fill:#3455d1;--ink-fill-hover:#2a48bd;--fluo:#f7ef3c;--fluo-soft:rgba(247,239,60,.2);--on-fluo:#1a1c22;--cover:#0a1026;--cover-text:#eef1ff;--cover-muted:#aeb8e6;--sheet:#1a2439;--surface-raised:#233050;--stroke:#34425f;--rule:rgba(163,188,255,.22);--graphite:#e6eaf3;--muted:#a9b3c8;--font-ui:'Barlow SC',system-ui,sans-serif;--font-hand:'Kalam','Barlow SC',cursive}.ds-input{background:var(--sheet,#1a2439);color:var(--graphite,#e6eaf3);border:1.5px solid var(--stroke,#34425f);border-radius:10px;min-height:46px;padding:0 12px;font-family:var(--font-ui,'Barlow SC',sans-serif);font-size:16.5px;caret-color:var(--ink,#a3bcff)}.ds-input::placeholder{color:var(--muted,#a9b3c8)}.ds-input:focus-visible{border-color:var(--ink,#a3bcff);outline:3px solid rgba(163,188,255,.35)}"
     },
     {
       "name": "Étiquette surlignée",
       "kind": "chip",
       "refersTo": "chip",
-      "description": "Statut court posé au surligneur : À faire, Séance en cours.",
+      "description": "Statut court au surligneur plein, texte encre sur surligneur : À faire, Séance en cours.",
       "html": "<span class=\"ds-chip\">Séance en cours</span>",
-      "css": ":root{--ink:#1c3ca3;--ink-deep:#142b78;--fluo:#f7ef3c;--fluo-soft:rgba(247,239,60,.55);--cover:#1b2a6e;--cover-text:#f3f5ff;--cover-muted:#c3caf0;--stroke:#c6d2df;--graphite:#23262d;--muted:#535a66;--surface-raised:#eef3f9;--font-ui:'Barlow SC',system-ui,sans-serif;--font-hand:'Kalam','Barlow SC',cursive}.ds-chip{display:inline-block;background:var(--fluo-soft,rgba(247,239,60,.55));color:var(--graphite,#23262d);border-radius:4px;padding:3px 8px;font-family:var(--font-ui,'Barlow SC',sans-serif);font-weight:700;font-size:13px}"
+      "css": ":root{color-scheme:dark;--paper:#121a2c;--ink:#a3bcff;--ink-deep:#c9d6ff;--ink-fill:#3455d1;--ink-fill-hover:#2a48bd;--fluo:#f7ef3c;--fluo-soft:rgba(247,239,60,.2);--on-fluo:#1a1c22;--cover:#0a1026;--cover-text:#eef1ff;--cover-muted:#aeb8e6;--sheet:#1a2439;--surface-raised:#233050;--stroke:#34425f;--rule:rgba(163,188,255,.22);--graphite:#e6eaf3;--muted:#a9b3c8;--font-ui:'Barlow SC',system-ui,sans-serif;--font-hand:'Kalam','Barlow SC',cursive}.ds-chip{display:inline-block;background:var(--fluo,#f7ef3c);color:var(--on-fluo,#1a1c22);border-radius:4px;padding:3px 8px;font-family:var(--font-ui,'Barlow SC',sans-serif);font-weight:700;font-size:13px}"
     },
     {
       "name": "Feuille",
       "kind": "card",
       "refersTo": "sheet",
-      "description": "Carte d'action posée sur le papier quadrillé.",
+      "description": "Carte d'action posée sur la page ardoise quadrillée.",
       "html": "<div class=\"ds-sheet\"><h3>Dos &amp; biceps</h3><p>4 séries enregistrées · dernière machine : Seated Row</p></div>",
-      "css": ":root{--ink:#1c3ca3;--ink-deep:#142b78;--fluo:#f7ef3c;--fluo-soft:rgba(247,239,60,.55);--cover:#1b2a6e;--cover-text:#f3f5ff;--cover-muted:#c3caf0;--stroke:#c6d2df;--graphite:#23262d;--muted:#535a66;--surface-raised:#eef3f9;--font-ui:'Barlow SC',system-ui,sans-serif;--font-hand:'Kalam','Barlow SC',cursive}.ds-sheet{background:#fff;border:1px solid var(--stroke,#c6d2df);border-radius:12px;padding:20px;box-shadow:0 1px 0 rgba(20,40,90,.06),0 8px 18px -12px rgba(20,40,90,.35);font-family:var(--font-ui,'Barlow SC',sans-serif);color:var(--graphite,#23262d)}.ds-sheet h3{margin:0 0 6px;font-weight:760;font-size:19px}.ds-sheet p{margin:0;color:var(--muted,#535a66);font-size:15px}"
+      "css": ":root{color-scheme:dark;--paper:#121a2c;--ink:#a3bcff;--ink-deep:#c9d6ff;--ink-fill:#3455d1;--ink-fill-hover:#2a48bd;--fluo:#f7ef3c;--fluo-soft:rgba(247,239,60,.2);--on-fluo:#1a1c22;--cover:#0a1026;--cover-text:#eef1ff;--cover-muted:#aeb8e6;--sheet:#1a2439;--surface-raised:#233050;--stroke:#34425f;--rule:rgba(163,188,255,.22);--graphite:#e6eaf3;--muted:#a9b3c8;--font-ui:'Barlow SC',system-ui,sans-serif;--font-hand:'Kalam','Barlow SC',cursive}.ds-sheet{background:var(--sheet,#1a2439);border:1px solid var(--stroke,#34425f);border-radius:12px;padding:20px;box-shadow:0 1px 0 rgba(0,0,0,.25),0 10px 20px -12px rgba(0,0,0,.7);font-family:var(--font-ui,'Barlow SC',sans-serif);color:var(--graphite,#e6eaf3)}.ds-sheet h3{margin:0 0 6px;font-weight:760;font-size:19px}.ds-sheet p{margin:0;color:var(--muted,#a9b3c8);font-size:15px}"
     },
     {
       "name": "Barre du bas couverture",
       "kind": "nav",
       "refersTo": "nav-tab-active",
-      "description": "Trois onglets sur la couverture, onglet actif au fluo.",
+      "description": "Trois onglets sur la couverture de nuit, onglet actif au fluo.",
       "html": "<nav class=\"ds-nav\"><button class=\"ds-nav-btn on\" aria-current=\"page\"><svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M3 11l9-7 9 7v9h-6v-6H9v6H3z\"/></svg>Accueil</button><button class=\"ds-nav-btn\"><svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M4 9v6M8 7v10M16 7v10M20 9v6M8 12h8\"/></svg>Programme</button><button class=\"ds-nav-btn\"><svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M3 17l6-6 4 4 8-8M15 7h6v6\"/></svg>Progression</button></nav>",
-      "css": ":root{--ink:#1c3ca3;--ink-deep:#142b78;--fluo:#f7ef3c;--fluo-soft:rgba(247,239,60,.55);--cover:#1b2a6e;--cover-text:#f3f5ff;--cover-muted:#c3caf0;--stroke:#c6d2df;--graphite:#23262d;--muted:#535a66;--surface-raised:#eef3f9;--font-ui:'Barlow SC',system-ui,sans-serif;--font-hand:'Kalam','Barlow SC',cursive}.ds-nav{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:var(--cover,#1b2a6e);padding:8px 10px;box-shadow:0 -8px 18px -12px rgba(20,30,80,.6)}.ds-nav-btn{display:flex;flex-direction:column;align-items:center;gap:4px;min-height:56px;border:0;border-radius:12px;background:transparent;color:var(--cover-muted,#c3caf0);font-family:var(--font-ui,'Barlow SC',sans-serif);font-size:12px;font-weight:650;cursor:pointer}.ds-nav-btn.on{background:var(--fluo,#f7ef3c);color:var(--graphite,#23262d)}.ds-nav-btn:hover:not(.on){color:var(--cover-text,#f3f5ff)}.ds-nav-btn:focus-visible{outline:3px solid var(--fluo,#f7ef3c)}"
+      "css": ":root{color-scheme:dark;--paper:#121a2c;--ink:#a3bcff;--ink-deep:#c9d6ff;--ink-fill:#3455d1;--ink-fill-hover:#2a48bd;--fluo:#f7ef3c;--fluo-soft:rgba(247,239,60,.2);--on-fluo:#1a1c22;--cover:#0a1026;--cover-text:#eef1ff;--cover-muted:#aeb8e6;--sheet:#1a2439;--surface-raised:#233050;--stroke:#34425f;--rule:rgba(163,188,255,.22);--graphite:#e6eaf3;--muted:#a9b3c8;--font-ui:'Barlow SC',system-ui,sans-serif;--font-hand:'Kalam','Barlow SC',cursive}.ds-nav{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:var(--cover,#0a1026);padding:8px 10px;box-shadow:0 -8px 18px -12px rgba(20,30,80,.6)}.ds-nav-btn{display:flex;flex-direction:column;align-items:center;gap:4px;min-height:56px;border:0;border-radius:12px;background:transparent;color:var(--cover-muted,#aeb8e6);font-family:var(--font-ui,'Barlow SC',sans-serif);font-size:12px;font-weight:650;cursor:pointer}.ds-nav-btn.on{background:var(--fluo,#f7ef3c);color:var(--on-fluo,#1a1c22)}.ds-nav-btn:hover:not(.on){color:var(--cover-text,#eef1ff)}.ds-nav-btn:focus-visible{outline:3px solid var(--fluo,#f7ef3c)}"
     },
     {
       "name": "Série en cours",
@@ -429,23 +504,24 @@
       "refersTo": "button-validate",
       "description": "Signature : la seule boîte de la séance, étiquette surlignée, − / + et Valider.",
       "html": "<div class=\"ds-set\"><span class=\"ds-set-tag\">Série en cours</span><div class=\"ds-set-row\"><button class=\"ds-step\" aria-label=\"moins\">−</button><span class=\"ds-set-val\">55</span><button class=\"ds-step\" aria-label=\"plus\">+</button></div><button class=\"ds-validate\">Valider la série 3</button></div>",
-      "css": ":root{--ink:#1c3ca3;--ink-deep:#142b78;--fluo:#f7ef3c;--fluo-soft:rgba(247,239,60,.55);--cover:#1b2a6e;--cover-text:#f3f5ff;--cover-muted:#c3caf0;--stroke:#c6d2df;--graphite:#23262d;--muted:#535a66;--surface-raised:#eef3f9;--font-ui:'Barlow SC',system-ui,sans-serif;--font-hand:'Kalam','Barlow SC',cursive}.ds-set{background:rgba(255,255,255,.86);border:1.5px solid var(--ink,#1c3ca3);border-radius:12px;padding:16px;font-family:var(--font-ui,'Barlow SC',sans-serif);box-shadow:0 1px 0 rgba(20,40,90,.06),0 8px 18px -12px rgba(20,40,90,.35)}.ds-set-tag{font-family:var(--font-hand,'Kalam',cursive);font-weight:700;font-size:19px;color:var(--graphite,#23262d);padding:0 4px;background:linear-gradient(100deg,transparent 2%,var(--fluo,#f7ef3c) 3% 96%,transparent 97%)}.ds-set-row{display:flex;align-items:center;gap:8px;margin:14px 0}.ds-step{width:44px;height:44px;border-radius:12px;background:#fff;border:1.5px solid var(--ink,#1c3ca3);color:var(--ink,#1c3ca3);font-size:22px;cursor:pointer}.ds-step:active{background:var(--surface-raised,#eef3f9)}.ds-step:focus-visible{outline:3px solid var(--ink,#1c3ca3);outline-offset:2px}.ds-set-val{min-width:52px;text-align:center;font-weight:760;font-size:24px;font-variant-numeric:tabular-nums;color:var(--graphite,#23262d)}.ds-validate{width:100%;min-height:64px;border:0;border-radius:12px;background:var(--ink,#1c3ca3);color:#fff;font-family:inherit;font-weight:760;font-size:18px;cursor:pointer;box-shadow:0 1px 0 rgba(10,20,60,.3),0 8px 16px -10px rgba(20,40,120,.8)}.ds-validate:hover{background:var(--ink-deep,#142b78)}.ds-validate:focus-visible{outline:3px solid var(--ink,#1c3ca3);outline-offset:2px}"
+      "css": ":root{color-scheme:dark;--paper:#121a2c;--ink:#a3bcff;--ink-deep:#c9d6ff;--ink-fill:#3455d1;--ink-fill-hover:#2a48bd;--fluo:#f7ef3c;--fluo-soft:rgba(247,239,60,.2);--on-fluo:#1a1c22;--cover:#0a1026;--cover-text:#eef1ff;--cover-muted:#aeb8e6;--sheet:#1a2439;--surface-raised:#233050;--stroke:#34425f;--rule:rgba(163,188,255,.22);--graphite:#e6eaf3;--muted:#a9b3c8;--font-ui:'Barlow SC',system-ui,sans-serif;--font-hand:'Kalam','Barlow SC',cursive}.ds-set{background:rgba(26,36,57,.9);border:1.5px solid var(--ink,#a3bcff);border-radius:12px;padding:16px;font-family:var(--font-ui,'Barlow SC',sans-serif);box-shadow:0 1px 0 rgba(0,0,0,.25),0 10px 20px -12px rgba(0,0,0,.7)}.ds-set-tag{font-family:var(--font-hand,'Kalam',cursive);font-weight:700;font-size:19px;color:var(--on-fluo,#1a1c22);padding:0 4px;background:linear-gradient(100deg,transparent 2%,var(--fluo,#f7ef3c) 3% 96%,transparent 97%)}.ds-set-row{display:flex;align-items:center;gap:8px;margin:14px 0}.ds-step{width:44px;height:44px;border-radius:12px;background:var(--sheet,#1a2439);border:1.5px solid var(--ink,#a3bcff);color:var(--ink,#a3bcff);font-size:22px;cursor:pointer}.ds-step:active{background:var(--surface-raised,#233050)}.ds-step:focus-visible{outline:3px solid var(--ink,#a3bcff);outline-offset:2px}.ds-set-val{min-width:52px;text-align:center;font-weight:760;font-size:24px;font-variant-numeric:tabular-nums;color:var(--graphite,#e6eaf3)}.ds-validate{width:100%;min-height:64px;border:0;border-radius:12px;background:var(--ink-fill,#3455d1);color:#fff;font-family:inherit;font-weight:760;font-size:18px;cursor:pointer;box-shadow:0 1px 0 rgba(10,20,60,.3),0 8px 16px -10px rgba(20,40,120,.8)}.ds-validate:hover{background:var(--ink-fill-hover,#2a48bd)}.ds-validate:focus-visible{outline:3px solid var(--ink,#a3bcff);outline-offset:2px}"
     },
     {
       "name": "Ligne de série validée",
       "kind": "custom",
       "refersTo": "",
-      "description": "Série écrite à l'encre manuscrite sur la réglure, coche tracée au stylo.",
+      "description": "Série écrite à l'encre claire manuscrite sur la réglure, coche tracée au stylo.",
       "html": "<div class=\"ds-line\"><span class=\"ds-tick\" aria-hidden=\"true\"></span><span>Série 2</span><strong>55 kg × 12</strong></div>",
-      "css": ":root{--ink:#1c3ca3;--ink-deep:#142b78;--fluo:#f7ef3c;--fluo-soft:rgba(247,239,60,.55);--cover:#1b2a6e;--cover-text:#f3f5ff;--cover-muted:#c3caf0;--stroke:#c6d2df;--graphite:#23262d;--muted:#535a66;--surface-raised:#eef3f9;--font-ui:'Barlow SC',system-ui,sans-serif;--font-hand:'Kalam','Barlow SC',cursive}.ds-line{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid #b9cfe2;font-family:var(--font-ui,'Barlow SC',sans-serif);color:var(--graphite,#23262d)}.ds-line strong{margin-left:auto;font-family:var(--font-hand,'Kalam',cursive);font-weight:700;color:var(--ink,#1c3ca3);font-size:18px}.ds-tick{width:26px;height:24px;background:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 24'%3E%3Cpath d='M3 13.5c2.6 1.6 4.4 3.6 6 6.4 3.4-7.1 7.6-12.6 14-17.2' fill='none' stroke='%231c3ca3' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\") center/contain no-repeat;animation:ds-pen .42s cubic-bezier(.2,.7,.2,1) both}.ds-line:hover .ds-tick{animation:ds-pen .42s cubic-bezier(.2,.7,.2,1) both}@keyframes ds-pen{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}@media (prefers-reduced-motion:reduce){.ds-tick{animation:none}}"
+      "css": ":root{color-scheme:dark;--paper:#121a2c;--ink:#a3bcff;--ink-deep:#c9d6ff;--ink-fill:#3455d1;--ink-fill-hover:#2a48bd;--fluo:#f7ef3c;--fluo-soft:rgba(247,239,60,.2);--on-fluo:#1a1c22;--cover:#0a1026;--cover-text:#eef1ff;--cover-muted:#aeb8e6;--sheet:#1a2439;--surface-raised:#233050;--stroke:#34425f;--rule:rgba(163,188,255,.22);--graphite:#e6eaf3;--muted:#a9b3c8;--font-ui:'Barlow SC',system-ui,sans-serif;--font-hand:'Kalam','Barlow SC',cursive}.ds-line{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--rule,rgba(163,188,255,.22));font-family:var(--font-ui,'Barlow SC',sans-serif);color:var(--graphite,#e6eaf3)}.ds-line strong{margin-left:auto;font-family:var(--font-hand,'Kalam',cursive);font-weight:700;color:var(--ink,#a3bcff);font-size:18px}.ds-tick{width:26px;height:24px;background:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 24'%3E%3Cpath d='M3 13.5c2.6 1.6 4.4 3.6 6 6.4 3.4-7.1 7.6-12.6 14-17.2' fill='none' stroke='%239db8ff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\") center/contain no-repeat;animation:ds-pen .42s cubic-bezier(.2,.7,.2,1) both}.ds-line:hover .ds-tick{animation:ds-pen .42s cubic-bezier(.2,.7,.2,1) both}@keyframes ds-pen{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}@media (prefers-reduced-motion:reduce){.ds-tick{animation:none}}"
     }
   ],
   "narrative": {
     "northStar": "Le Carnet d'entraînement",
-    "overview": "L'application est un cahier de salle qu'on tient d'une main entre deux séries. La page est une feuille blanche quadrillée bleu pâle (carreaux de 20 px), traversée à gauche par la marge rouge du cahier ; la coque (en-tête et barre du bas) a la couleur d'une couverture polypro bleu encre profond. Tout ce qui est écrit par l'utilisateur ou validé passe à l'encre bleue du stylo bille ; ce qui est « en cours » est surligné au fluo jaune. Les titres sont manuscrits (Kalam), l'interface et les chiffres de saisie sont en grotesque semi-condensée (Barlow Semi Condensed, chiffres tabulaires).\n\nLa densité est celle d'une feuille de carnet : les séries et les chiffres s'écrivent sur des lignes de réglure plutôt que dans des boîtes empilées, et une seule carte d'action principale porte la page. Le geste signature est l'écriture au stylo : valider une série fait passer la ligne à l'encre manuscrite et trace une coche de gauche à droite. Korv, la mascotte, est collé comme une photo scotchée, légèrement de travers.\n\nLe monde refuse l'appli fitness sombre néon (l'ancien ASCENT) et le tableau de bord gris à un seul accent : ici le fond est clair, lisible sous les néons d'une salle, et la couleur a un sens matériel (encre, surligneur, couverture, marge).",
+    "overview": "L'application est un cahier de salle qu'on tient d'une main entre deux séries, dans sa version de nuit, plus reposante sous les néons d'une salle. La page est une feuille bleu ardoise sombre, quadrillée d'un carreau bleu à peine visible (20 px), traversée à gauche par la marge rouge du cahier ; la coque (en-tête et barre du bas) a la couleur d'une couverture encore plus sombre, bleu nuit presque noir. Tout ce qui est écrit par l'utilisateur ou validé passe à l'encre bleue claire ; les actions principales sont des aplats d'encre bleue soutenue, texte blanc ; ce qui est « en cours » est surligné au fluo jaune, et tout texte posé sur le surligneur est écrit en encre sombre (on-fluo). Le texte courant est une craie claire. Les titres sont manuscrits (Kalam), l'interface et les chiffres de saisie sont en grotesque semi-condensée (Barlow Semi Condensed, chiffres tabulaires).\n\nLa densité est celle d'une feuille de carnet : les séries et les chiffres s'écrivent sur des lignes de réglure plutôt que dans des boîtes empilées, et une seule carte d'action principale porte la page. Le geste signature est l'écriture au stylo : valider une série fait passer la ligne à l'encre manuscrite et trace une coche de gauche à droite. Korv, la mascotte, est collé comme une photo scotchée, légèrement de travers.\n\nLe monde refuse l'appli fitness sombre néon (l'ancien ASCENT : noir charbon, menthe lumineuse, halos) et le tableau de bord gris à un seul accent : ici le sombre est celui d'un papier ardoise mat, sans lueur, et la couleur garde un sens matériel (encre, surligneur, couverture, marge).",
     "keyCharacteristics": [
-      "Feuille quadrillée claire, marge rouge, coque couverture bleu encre.",
-      "Encre bleue = action et valeur validée ; fluo jaune = en cours, sélection, XP.",
+      "Page ardoise sombre quadrillée, marge rouge, coque couverture bleu nuit plus sombre que la page.",
+      "Encre claire = valeur validée et trait d'action ; aplat d'encre = bouton principal ; fluo jaune = en cours, sélection, XP.",
+      "Texte sur fluo toujours en encre sombre (on-fluo), jamais en craie.",
       "Titres et chiffres validés manuscrits, saisie et interface en semi-condensée tabulaire.",
       "Listes et statistiques écrites sur des lignes de réglure, pas en tuiles.",
       "Korv en photo scotchée ; la coche manuscrite comme seul mouvement signature."
@@ -453,17 +529,22 @@
     "rules": [
       {
         "name": "The Ink Means Written Rule",
-        "body": "L'encre bleue désigne une action ou une valeur écrite et validée. Une valeur pas encore validée reste en graphite.",
+        "body": "L'encre claire désigne une valeur écrite et validée ou un trait d'action. Une valeur pas encore validée reste en craie.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink Fill Rule",
+        "body": "Sur la page sombre, l'action principale est un aplat d'encre soutenue (ink-fill) à texte blanc, jamais l'encre claire en fond : l'encre claire écrit, l'aplat appuie.",
         "section": "colors"
       },
       {
         "name": "The One Highlighter Rule",
-        "body": "Le fluo marque une seule chose « en cours » par zone : la série en cours, l'onglet actif, le niveau d'XP. Jamais comme fond de bouton d'action hors de la coque et du chrono.",
+        "body": "Le fluo marque une seule chose « en cours » ou sélectionnée par zone, et son texte est toujours en encre sur surligneur (on-fluo). Jamais comme fond de bouton d'action hors de la coque et du chrono.",
         "section": "colors"
       },
       {
         "name": "The Cover Frames Rule",
-        "body": "Le bleu couverture n'apparaît que sur la coque et les surcouches flottantes (chrono, toast) ; jamais en fond de carte sur la feuille.",
+        "body": "Le bleu couverture n'apparaît que sur la coque et les surcouches flottantes (chrono, toast) ; jamais en fond de carte sur la feuille. La couverture reste plus sombre que la page.",
         "section": "colors"
       },
       {
@@ -488,17 +569,18 @@
       }
     ],
     "dos": [
-      "**Do** garder la feuille quadrillée (20px, carreau #dbe8f3) et la marge rouge sur toutes les pages de l'application.",
-      "**Do** écrire en encre bleue toute valeur validée et toute action principale ; laisser en graphite ce qui n'est pas encore écrit.",
-      "**Do** réserver le fluo à l'état « en cours » ou sélectionné : série en cours, onglet actif, XP.",
-      "**Do** poser les listes et statistiques sur la réglure (1px #b9cfe2) au lieu de les empiler en tuiles.",
+      "**Do** garder la page ardoise quadrillée (20px, carreau bleu à 8,5 %) et la marge rouge sur toutes les pages de l'application.",
+      "**Do** écrire à l'encre claire toute valeur validée et tout trait d'action ; poser les actions principales en aplat d'encre à texte blanc ; laisser en craie ce qui n'est pas encore écrit.",
+      "**Do** réserver le fluo à l'état « en cours » ou sélectionné (série en cours, onglet actif, XP, étiquettes) et y écrire en on-fluo.",
+      "**Do** poser les listes et statistiques sur la réglure (1px, encre claire à 22 %) au lieu de les empiler en tuiles.",
       "**Do** utiliser Kalam pour les titres, la voix de Korv et les chiffres validés, Barlow à chiffres tabulaires pour tout le reste.",
       "**Do** tenir 44px minimum pour les cibles de séance et respecter « réduire les animations »."
     ],
     "donts": [
-      "**Don't** revenir au fond sombre néon de l'ancien univers ASCENT ni au tableau de bord gris à un accent.",
+      "**Don't** revenir au sombre néon de l'ancien univers ASCENT (charbon, menthe, halos lumineux) ni au tableau de bord gris à un accent : le sombre du carnet est un papier mat.",
+      "**Don't** écrire en craie ou en blanc sur le surligneur, ni utiliser l'encre claire comme fond de bouton.",
       "**Don't** mettre une carte dans une carte : en séance, seule la série en cours est encadrée.",
-      "**Don't** utiliser de filet de couleur épais à gauche des cartes ou encadrés (les notes reposent sur le papier teinté) ; la seule ligne verticale colorée est la marge du cahier.",
+      "**Don't** utiliser de filet de couleur épais à gauche des cartes ou encadrés (les notes reposent sur la feuille teintée) ; la seule ligne verticale colorée est la marge du cahier.",
       "**Don't** utiliser de libellés en capitales espacées ni de sur-titre au-dessus des titres.",
       "**Don't** utiliser Kalam dans les champs de saisie ou les boutons.",
       "**Don't** peindre une carte de la feuille en bleu couverture : la couverture encadre, elle ne remplit pas."
