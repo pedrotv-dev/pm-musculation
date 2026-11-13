@@ -14,6 +14,7 @@ import { recentProgress } from './stats.js';
 import { icon } from './icons.js';
 import { getSportProfile, missingEssentials } from './sport-profile.js';
 import { prepareWeek } from './coach-ui.js';
+import { weekFacts } from './program-engine.js';
 
 const root = document.documentElement;
 const page = document.querySelector('[data-page="accueil"]');
@@ -72,7 +73,7 @@ function progressSection(r) {
 const openLoads = () => emit('pm:open-declared-loads', { from: 'accueil' });
 /**
  * V2-UX-FINALISATION — premier accueil : 1. séance libre (tout de suite, performances réelles enregistrées),
- * 2. « Mes charges » (charges déjà connues, sans séance), 3. programme avec ChatGPT. Disparaît dès la première séance
+ * 2. « Mes charges » (charges déjà connues, sans séance), 3. programme calculé. Disparaît dès la première séance
  * terminée ou le premier programme ; les trois fonctions restent accessibles ailleurs (Accueil, Réglages, Programme).
  */
 function welcomeCard(profile) {
@@ -82,7 +83,30 @@ function welcomeCard(profile) {
     opt(1, 'Une séance libre', 'Entraîne-toi tout de suite : l’application retient tes charges réelles, séance après séance.',
       btn('Commencer une séance libre', 'pm-validate', () => emit('pm:start-workout', { profileId: profile, free: true }))),
     opt(2, 'Mes charges', 'Note les charges et répétitions que tu connais déjà, sans lancer de séance.', btn('Renseigner mes charges', 'pm-secondary', openLoads)),
-    opt(3, 'Mon programme', 'L’application prépare ta demande à ChatGPT d’après ton profil et tes performances.', btn('Préparer mon programme avec ChatGPT', 'pm-secondary', () => prepareWeek(mondayOf()))));
+    opt(3, 'Mon programme', 'L’application calcule ta semaine d’après ton profil et tes vraies charges, selon les recommandations publiées.', btn('Calculer mon programme', 'pm-secondary', () => prepareWeek(mondayOf()))));
+  return card;
+}
+/**
+ * V3 · « Ma semaine » : faits enregistrés cette semaine, comparés aux repères publiés (OMS 2020 : renforcement ≥ 2 jours
+ * et 150 min d'activité modérée ; Schoenfeld 2017 : ≈ 10 séries par muscle et par semaine en prise de muscle).
+ */
+function weekCard(sessions, catalogList, sport) {
+  const f = weekFacts(sessions, catalogList, mondayOf());
+  const card = el('article', 'panel pm-week-card');
+  const bar = (label, value, target, unit) => {
+    const pct = Math.min(100, Math.round(value / target * 100));
+    const row = add(el('div', 'pm-week-row'), add(el('div', 'pm-week-head'), el('span', '', label), el('strong', '', value + ' / ' + target + ' ' + unit)));
+    const track = el('div', 'pm-week-track'); const fill = el('span', value >= target ? 'pm-week-fill pm-week-ok' : 'pm-week-fill'); fill.style.width = pct + '%';
+    track.append(fill); row.append(track); return row;
+  };
+  add(card, el('h3', '', 'Ma semaine'),
+    bar('Jours de renforcement', f.strengthDays, 2, 'j'),
+    bar('Cardio enregistré à la salle', f.cardioMinutes, 150, 'min'));
+  if (sport?.mainGoal === 'Prise de muscle') {
+    const names = { legs: 'Jambes', push: 'Poussée', pull: 'Tirage' };
+    for (const k of ['legs', 'push', 'pull']) card.append(bar('Séries · ' + names[k], f.volume[k], 10, 'séries'));
+  }
+  card.append(el('p', 'pm-week-src', 'Repères : OMS 2020 (renforcement ≥ 2 jours, 150 min d’activité modérée par semaine, marche et vélo compris)' + (sport?.mainGoal === 'Prise de muscle' ? ' ; Schoenfeld 2017 (≈ 10 séries par muscle et par semaine).' : '.')));
   return card;
 }
 /** Séance libre (V2) : sans programme, machines ajoutées pendant la séance. */
@@ -107,7 +131,7 @@ async function renderHome() {
   const slot = el('div', 'pm-home-main');
   page.append(homeHero(game, { name: getProfileInfo(profile).name, seed: profile + localISODate(), demo: profile === 'demo' }), slot);
   const closedCount = sessions.filter(s => s.status === 'completed' || s.status === 'partial').length;
-  const extras = () => { page.append(levelStrip(game)); if (closedCount) page.append(progressSection(recentProgress(sessions, localISODate(), 30))); };
+  const extras = () => { page.append(levelStrip(game)); if (closedCount) page.append(weekCard(sessions, catalog.list, sport), progressSection(recentProgress(sessions, localISODate(), 30))); };
 
   if (resumable) {
     const last = resumable.activities.find(a => a.key === resumable.cursor) || resumable.activities.find(a => a.status === 'pending');
@@ -128,7 +152,7 @@ async function renderHome() {
     slot.append(welcomeCard(profile));
   } else if (!program) {
     slot.append(add(el('article', 'panel'), el('h3', '', 'Aucun programme cette semaine'),
-      el('p', 'pm-muted', incomplete ? 'Complète d’abord ton profil sportif (Réglages ⚙︎), puis prépare ta semaine avec ChatGPT. Ou fais une séance libre.' : 'Prépare-la avec ChatGPT en 3 étapes (copier, coller, importer), ou fais une séance libre.'),
+      el('p', 'pm-muted', incomplete ? 'Complète d’abord ton profil sportif (Réglages ⚙︎), puis calcule ta semaine. Ou fais une séance libre.' : 'Calcule-la en un appui : l’appli construit ta semaine à partir de ton profil et de tes vraies charges.'),
       btn('Préparer ma semaine', 'pm-validate', () => prepareWeek(mondayOf())),
       btn('Renseigner mes charges', 'pm-link', () => openLoads()),
       freeButton(profile)));
@@ -175,7 +199,7 @@ async function renderHome() {
       const next = new Date(program.weekStart + 'T12:00:00'); next.setDate(next.getDate() + 7);
       const week = localISODate(next);
       slot.append(add(el('article', 'panel pm-home-card pm-next-week'), el('h3', '', 'Préparer la semaine prochaine'),
-        el('p', 'pm-muted', 'La demande reprend tes séances, charges et ressentis de cette semaine. Copie-la dans ChatGPT, colle sa réponse : c’est importé.'),
+        el('p', 'pm-muted', 'Le calcul reprend tes séances, charges et ressentis de cette semaine.'),
         btn('Préparer la semaine du ' + longDate(week), 'pm-secondary', () => prepareWeek(week))));
     }
   }

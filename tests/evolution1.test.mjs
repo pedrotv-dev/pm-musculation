@@ -13,7 +13,6 @@ const S = await import('../storage.js');
 const SP = await import('../js/sport-profile.js');
 const G = await import('../js/gamification.js');
 const PR = await import('../js/programs.js');
-const { buildCoachPrompt } = await import('../js/coach.js');
 
 const lift = { type: 'strength', machineId: 'leg-press', shared: false, restSeconds: 90, sets: [{ kg: 30, reps: 12 }, { kg: 45, reps: 12 }] };
 const cardio = { type: 'cardio', name: 'Rameur', durationMinutes: 12 };
@@ -102,41 +101,6 @@ test('jeu : séances importées d’avant le 9 novembre 2026 sans XP ni succès 
 });
 
 const base = { gym: SP.sanitizeGym({}), catalog: [{ id: 'leg-press', name: 'Leg Press', kind: 'strength' }, { id: 'rowing-machine', name: 'Rameur', kind: 'cardio' }], targetWeek: '2026-11-16', today: '2026-11-12' };
-test('demande ChatGPT : charges historiques importées utilisées et signalées', async () => {
-  const sport = SP.sanitizeSport({ mainGoal: 'Prise de muscle', level: 'debutant', frequency: 3, days: ['lundi', 'mercredi', 'vendredi'], durationMin: 60, intensity: 'elevee' });
-  const t = buildCoachPrompt({ ...base, profileId: pierre2, name: 'Pierre2', sport, sessions: await W.listWorkouts(pierre2), weights: await WT.listBodyWeights(pierre2) });
-  assert.match(t, /Leg Press \(leg-press\) : dernière fois/);
-  assert.match(t, /85 kg/);
-  assert.match(t, /importées d’un ancien profil\. Charges et répétitions des séries validées : CONFIRMÉES/);
-});
-
-test('débutant + Hard RPE 8–9 : séries de travail exigeantes, pas de baisse automatique, aucune performance inventée, récupération', () => {
-  const sport = SP.sanitizeSport({ mainGoal: 'Prise de muscle', level: 'debutant', frequency: 5, days: ['mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'], durationMin: 60, intensity: 'elevee' });
-  const t = buildCoachPrompt({ ...base, profileId: 'x', name: 'X', sport });
-  assert.match(t, /Intensité choisie : HARD — RPE 8 à 9/);
-  assert.match(t, /environ 1 à 2 répétitions en réserve/);
-  assert.match(t, /Ne réduis PAS toutes les charges sous prétexte que je suis débutant\(e\)/);
-  assert.match(t, /N’invente aucune performance/);
-  assert.match(t, /distingue les séances de musculation intenses des journées de cardio ou de récupération active/);
-  assert.match(t, /le niveau d’expérience détermine la complexité des exercices, la technique à maîtriser et la prudence de progression/);
-  assert.match(t, /Débutant : .*Le niveau ne diminue PAS l’intensité choisie/);
-  assert.match(SP.INTENSITIES.find(([k]) => k === 'elevee')[1], /^Hard/);
-});
-
-test('fréquence stricte : 5 séances sur mardi → samedi exigées ; exemple JSON à 5 jours ; type et volume libres', () => {
-  const sport = SP.sanitizeSport({ mainGoal: 'Remise en forme', level: 'intermediaire', frequency: 5, days: ['mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'], durationMin: 75, intensity: 'soutenue' });
-  const t = buildCoachPrompt({ ...base, profileId: 'm2', name: 'M', sport });
-  assert.match(t, /Prépare EXACTEMENT 5 séances, une sur chacun de ces jours : mardi, mercredi, jeudi, vendredi, samedi/);
-  assert.match(t, /days : EXACTEMENT 5 jour\(s\) \(mardi, mercredi, jeudi, vendredi, samedi\)/);
-  assert.match(t, /le TYPE et le VOLUME de chaque séance restent ton choix/);
-  assert.equal(/pas une obligation/.test(t), false, 'la fréquence n’est plus une simple possibilité');
-  const example = JSON.parse(t.slice(t.lastIndexOf('{\n  "schemaVersion"')));
-  assert.deepEqual(example.programs.m2.days.map(d => d.id), ['mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']);
-  assert.deepEqual(Object.keys(example), ['schemaVersion', 'weekStart', 'programs']);
-  const pick = buildCoachPrompt({ ...base, profileId: 'm3', name: 'M', sport: SP.sanitizeSport({ ...sport, frequency: 3 }) });
-  assert.match(pick, /Prépare EXACTEMENT 3 séances, sur 3 jours choisis parmi mes jours disponibles : mardi, mercredi, jeudi, vendredi, samedi/);
-});
-
 test('validation d’import : 1 séance au lieu de 5 signalée ; jours manquants ; anciennes semaines non concernées', () => {
   const sport = SP.sanitizeSport({ frequency: 5, days: ['mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'] });
   const one = SP.frequencyIssues(['mardi'], sport, { weekStart: '2026-11-16', currentMonday: '2026-11-09' });

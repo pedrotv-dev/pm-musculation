@@ -1,5 +1,5 @@
 // V2-COMPLETE — recette globale sur téléphone (Chromium 390 px puis 320 px, vraie base IndexedDB, données FICTIVES) :
-// premier lancement → création d'un profil → profil sportif → machines → demande pour ChatGPT → import d'un JSON
+// premier lancement → création d'un profil → profil sportif → machines → semaine calculée → import d'un JSON
 // fictif valide (vérifié, avec avertissements) → séance → séries → fin de séance → historique → nouveau bilan →
 // modification du programme (remplacement confirmé) → export → suppression → restauration → rechargement →
 // vérification de toutes les données ; second profil indépendant ; séance libre ; démo inchangée.
@@ -19,7 +19,7 @@ const db = (fn, arg) => page.evaluate(fn, arg);
 const active = () => page.evaluate(() => document.documentElement.dataset.pmProfile);
 const noOverflow = () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
 const openFold = async title => { const d = page.locator('details.pm-fold', { has: page.locator('summary', { hasText: new RegExp('^' + title + '$') }) }); if (!(await d.evaluate(x => x.open))) await d.locator('summary').click(); return d; };
-// LOT 1 : profil sportif et machines dans Réglages (⚙︎) ; « Préparer mon programme avec ChatGPT » dans l'onglet Programme
+// Profil sportif et machines dans Réglages (⚙︎) ; « Préparer ma semaine » (calcul) dans l'onglet Programme
 const goProfil = async () => { await page.click('.pm-settings-btn[data-go="profil"]'); await page.waitForSelector('[data-page="profil"] .pm-sport-fold'); };
 const goCoach = async () => { await page.click('.nav-btn[data-go="programme"]'); await page.waitForSelector('[data-page="programme"] h3:has-text("Préparer ma semaine")'); };
 const toSelect = async () => { await page.click('#switch-profile'); await page.waitForSelector('#screen-select:not([hidden])'); };
@@ -91,28 +91,26 @@ await step('4 · machines : Leg Press indisponible, Calf Press à éviter', asyn
   assert.deepEqual(g.avoid, ['calf-press']);
 });
 
-await step('5 · demande pour ChatGPT : profil, machines, disponibilités, format JSON ; aucune donnée inventée', async () => {
+await step('5 · semaine calculée : jours, machines dispo (Leg Press indisponible, Calf Press à éviter), un seul profil ; rien d’importé sans appui', async () => {
   await goCoach();
   await page.getByLabel('Semaine à préparer').selectOption(week);
-  await page.click('button:has-text("Copier ma demande")');
-  await page.waitForSelector('.pm-coach-out:not([hidden])');
-  const t = await page.inputValue('.pm-coach-out');
-  for (const want of ['Pour : Alex fictif', 'identifiant dans l’application : ' + alex, 'weekStart = "' + week + '"', 'Objectif principal : Prise de muscle', 'Objectifs secondaires : Force', 'Jours disponibles : lundi, mercredi, vendredi',
-    'Durée maximale par séance : 60 min', 'Mouvements ou exercices à éviter : Flexions profondes du genou (fictif)', 'Machines à éviter : Calf Press (calf-press)', 'tour de taille 82,5 cm',
-    'Poids : non renseigné', 'Santé : non communiquée', 'programs contient UNE seule clé : "' + alex + '"', 'aucun programme importé']) assert.ok(t.includes(want), 'attendu : ' + want);
-  assert.equal(/^- leg-press — /m.test(t), false, 'machine indisponible absente de la liste utilisable');
-  assert.equal(t.includes('entorse'), false, 'santé non partagée');
-  await page.click('button:has-text("Copier")');
-  await page.waitForSelector('.pm-coach-status:has-text("Copi")');
+  await page.click('button:has-text("Calculer ma semaine")');
+  await page.waitForSelector('.pm-action-save:not([disabled])');
+  const ex = JSON.parse(await page.inputValue('.pm-textarea'));
+  assert.deepEqual(Object.keys(ex.programs), [alex]);
+  assert.equal(ex.weekStart, week);
+  const ids = ex.programs[alex].days.flatMap(d => d.activities.map(a => a.machineId).filter(Boolean));
+  assert.ok(ids.length > 0);
+  assert.ok(!ids.includes('leg-press') && !ids.includes('calf-press'), 'machine indisponible et machine à éviter exclues');
+  assert.equal(await db(async ([id, w]) => !!(await (await import('./storage.js')).getProgram(id, w)), [alex, week]), false);
 });
 
 await step('6-7 · import du JSON fictif : vérifié, avertissement (Leg Press indisponible), puis enregistré', async () => {
   const dayId = DAYS[(new Date().getDay() + 6) % 7];
   programJson = program(alex, week, dayId);
-  await page.click('button:has-text("Coller la réponse de ChatGPT")');
+  await page.evaluate(t => document.dispatchEvent(new CustomEvent('pm:import-text', { detail: { text: t } })), JSON.stringify(programJson)); // fichier JSON fictif collé
   await page.waitForSelector('.pm-import[open]');
-  await page.fill('.pm-textarea', JSON.stringify(programJson));
-  await page.click('.pm-action-verify');
+  await page.waitForFunction(() => /Leg Press/.test(document.querySelector('#pm-import-feedback')?.innerText || ''));
   await page.waitForSelector('.pm-action-save:not([disabled])');
   assert.match(await page.locator('#pm-import-feedback').innerText(), /Leg Press n’est pas dans tes machines disponibles/);
   assert.match(await page.locator('#pm-import-feedback').innerText(), /contient 1 séance alors que ton profil sportif en demande 3/);
@@ -154,15 +152,14 @@ await step('11 · historique : la séance apparaît', async () => {
   assert.match(await page.locator('.pm-history-card').first().innerText(), /Haut du corps fictif/);
 });
 
-await step('12 · nouveau bilan : la séance, la charge et le ressenti réels sont repris', async () => {
+await step('12 · semaine suivante calculée : la charge réelle de la séance (Chest Press 32,5 kg × 10) sert de référence', async () => {
   await goCoach();
   await page.getByLabel('Semaine à préparer').selectOption(await db(async w => (await import('./js/stats.js')).addDays(w, 7), week));
-  await page.click('button:has-text("Copier ma demande")');
-  await page.waitForSelector('.pm-coach-out:not([hidden])');
-  const t = await page.inputValue('.pm-coach-out');
-  assert.match(t, /Chest Press \(chest-press\) : dernière fois .* 32,5 kg × 10/);
-  assert.match(t, /1 faite\(s\) \(0 complète\(s\), 1 partielle\(s\)\)/);
-  assert.match(t, /ressenti moyen 4\/5/);
+  await page.click('button:has-text("Calculer ma semaine")');
+  await page.waitForSelector('.pm-engine-out:not([hidden])');
+  const r = await db(async id => { const W = await import('./js/workouts.js'); const St = await import('./js/stats.js'); const E = await import('./js/program-engine.js');
+    return E.proposeLoad('chest-press', { sessions: (await W.listWorkouts(id)).filter(St.isClosed), low: 8, high: 12 }); }, alex);
+  assert.deepEqual([r.kg, r.reason], [32.5, 'same'], '10 répétitions < 12 : même charge (double progression)');
 });
 
 await step('13 · modification du programme de la semaine : remplacement seulement après confirmation', async () => {
@@ -170,6 +167,7 @@ await step('13 · modification du programme de la semaine : remplacement seuleme
   const updated = program(alex, week, dayId, { dayName: 'Haut du corps modifié', withUnavailable: false });
   await page.click('.nav-btn[data-go="programme"]');
   if (!(await page.locator('.pm-import[open]').count())) await page.click('.pm-import summary');
+  if (await page.locator('.pm-import-manual').isVisible()) await page.click('.pm-import-manual'); // après un calcul : saisie manuelle d'un appui
   await page.fill('.pm-textarea', JSON.stringify(updated));
   await page.click('.pm-action-verify');
   await page.waitForSelector('.pm-action-save:not([disabled])');
@@ -258,8 +256,8 @@ await step('démo : fonctionne, rien en base ; profil sportif Démo en mémoire 
   await page.evaluate(() => document.dispatchEvent(new CustomEvent('pm:select-profile', { detail: { profile: 'demo' } })));
   await page.waitForFunction(() => document.documentElement.dataset.pmProfile === 'demo');
   await goCoach();
-  await page.click('button:has-text("Copier ma demande")');
-  await page.waitForSelector('.pm-coach-out:not([hidden])');
+  await page.click('button:has-text("Calculer ma semaine")');
+  await page.waitForSelector('.pm-engine-out:not([hidden])');
   assert.equal(await db(async () => (await import('./storage.js')).countProfileRows(['demo'])), 0);
 });
 

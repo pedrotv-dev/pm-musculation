@@ -327,7 +327,7 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-coach-checks { display:flex; flex-wrap:wrap; gap:0 16px; }
 .pm-coach-checks .pm-check { min-height:44px; }
 .pm-coach-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:0 10px; }
-.pm-coach-warning { font-size:13px; border-left:3px solid var(--turq); padding-left:10px; }
+.pm-coach-warning { font-size:13px; padding:9px 11px; border-radius:10px; background:rgba(var(--accent-rgb), .07); border:1px solid var(--ascent-rim, var(--stroke)); }
 .pm-coach-status { min-height:20px; font-size:14px; margin:8px 0 0; }
 .pm-coach-status[data-state="ok"] { color:var(--turq); }
 .pm-coach-status[data-state="error"] { color:#ff8a8a; }
@@ -417,3 +417,30 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-coach-section .pm-row-actions .pm-coach-copy { margin-top:0; min-height:56px; font-size:16.5px; }
 .pm-coach-section .pm-row-actions .pm-coach-open { min-height:56px; white-space:nowrap; }
 .pm-select { text-overflow:ellipsis; }
+
+/* V3 · semaine calculée par le moteur */
+.pm-engine-calc { margin-top:10px; }
+.pm-engine-out { margin-top:12px; padding:12px 14px; border-radius:var(--radius-12, 12px); background:var(--surface-raised); border:1px solid var(--ascent-rim, var(--stroke)); }
+.pm-engine-sum { font-weight:780; margin:0 0 6px; }
+.pm-engine-notes { margin:8px 0 0; padding-left:18px; font-size:13px; color:var(--muted); }
+.pm-engine-notes li { margin:4px 0; }
+.pm-coach-or { margin:22px 0 4px; font-size:14px; font-weight:780; color:var(--muted); }
+
+/* V3 · Accueil « Ma semaine » : faits enregistrés vs repères publiés */
+.pm-week-card h3 { margin-bottom:10px; }
+.pm-week-row { margin:10px 0; }
+.pm-week-head { display:flex; justify-content:space-between; gap:10px; font-size:14px; margin-bottom:5px; }
+.pm-week-head strong { font-variant-numeric:tabular-nums; }
+.pm-week-track { height:8px; border-radius:99px; background:var(--surface-raised); overflow:hidden; border:1px solid var(--ascent-rim, var(--stroke)); }
+.pm-week-fill { display:block; height:100%; border-radius:inherit; background:var(--turq); }
+.pm-week-ok { background:var(--ok); }
+.pm-week-src { margin-top:12px; font-size:12px; color:var(--muted); }
+
+/* V3 · semaine calculée : l'import n'affiche que l'aperçu et « Importer » (saisie fichier / JSON masquée) */
+.pm-import[data-source="engine"] .pm-input-grid, .pm-import[data-source="engine"] .pm-info { display:none; }
+/* V3 · une seule action principale dans « Préparer ma semaine » : Calculer ; ChatGPT en secondaire */
+.pm-coach-section .pm-coach-copy, .pm-coach-section .pm-coach-paste {
+  background:var(--surface-raised); color:var(--text); border:1px solid var(--ascent-rim, var(--stroke)); box-shadow:none; font-size:16px; min-height:52px;
+}
+.pm-import-manual { display:none; margin:0 0 10px; }
+.pm-import[data-source="engine"] .pm-import-manual { display:inline-block; }

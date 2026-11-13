@@ -105,7 +105,7 @@ export function estimateDayMinutes(day) {
 // ---------------------------------------------------------------- lecture de la source
 
 /**
- * Réponse complète de ChatGPT (justification courte + UN bloc de code JSON) : texte du bloc JSON, ou null.
+ * Texte libre + UN bloc de code JSON (ancien format de réponse, toujours accepté) : texte du bloc JSON, ou null.
  * Seul un bloc de code (```json … ``` ou ``` … ```) dont le contenu est un objet est retenu ; s'il y en a plusieurs,
  * rien n'est choisi au hasard (null → erreur explicite).
  */
@@ -113,7 +113,7 @@ export function extractJsonBlock(text) {
   const blocks = [...String(text).matchAll(/```[a-zA-Z]*[ \t]*\r?\n([\s\S]*?)```/g)].map(m => m[1].trim()).filter(b => b.startsWith('{'));
   return blocks.length === 1 ? blocks[0] : null;
 }
-/** Texte JSON (colle ou fichier) -> objet. Tolere un BOM et la réponse complète de ChatGPT (texte + un bloc JSON). */
+/** Texte JSON (colle ou fichier) -> objet. Tolere un BOM et un texte contenant un bloc JSON. */
 export function parseProgramJson(text) {
   if (typeof text !== 'string') throw new ProgramImportError('Le contenu doit etre du texte JSON.');
   const clean = text.replace(/^\uFEFF/, '').trim();
