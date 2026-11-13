@@ -38,6 +38,12 @@ const SLOTS = Object.freeze({
   core: [['abdominal', 'rotary-torso']]
 });
 
+/** Exercices polyarticulaires (gros exercices) : repos plus long ; les autres sont des accessoires. */
+const COMPOUND = new Set(['chest-press', 'converging-chest-press', 'shoulder-press', 'converging-shoulder-press', 'lat-pulldown',
+  'diverging-lat-pulldown', 'seated-row', 'diverging-seated-row', 'leg-press', 'dip-chin-assist', 'seated-dip']);
+/** Machines interchangeables (même emplacement) : point de départ quand l'une n'a pas encore d'historique. */
+export const siblingsOf = id => (Object.values(SLOTS).flat().find(alts => alts.includes(id)) || []).filter(x => x !== id);
+
 /** Séances type : liste de [rôle, nombre d'emplacements]. */
 const TEMPLATES = Object.freeze({
   full: { name: 'Corps entier', blocks: [['legs', 2], ['push', 2], ['pull', 2], ['core', 1]] },
@@ -103,7 +109,13 @@ const weekParity = weekStart => Math.floor(Date.parse(weekStart + 'T00:00:00Z') 
 /** Charge proposée : dernière performance réelle (ou déclarée) + double progression. */
 export function proposeLoad(machineId, { sessions = [], declared = null, low, high }) {
   const ref = currentReference(sessions, declared, machineId);
-  if (!ref) return { kg: 0, reason: 'unknown' };
+  if (!ref) {
+    for (const sib of siblingsOf(machineId)) { // machine sœur déjà pratiquée : même charge de départ
+      const r = currentReference(sessions, declared, sib);
+      if (r) return { kg: r.kg, reason: 'sibling', from: r.kg, sibling: sib };
+    }
+    return { kg: 0, reason: 'unknown' };
+  }
   const known = knownLoads(sessions, machineId);
   const feel = lastFeel(sessions, machineId);
   const assisted = isAssisted(machineId);
@@ -155,46 +167,55 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
   const warm = cardio.find(m => m.id === 'recumbent-bike') || cardio.find(m => m.id === 'elliptical') || cardio[0] || null;
   const finisher = cardio.find(m => m.id === 'rowing-machine') || cardio.find(m => m.id === 'treadmill') || warm;
   const plan = [];
+  let trimmed = 0;
 
   const out = days.map((day, i) => {
     const key = split[i];
     const t = TEMPLATES[key];
     const occ = seen.get(key) || 0; seen.set(key, occ + 1);
     const variant = (occ + parity) % 2; // A / B
-    const picks = [];
-    for (const [role, count] of t.blocks) {
+    // candidats : rôle par rôle, rang = importance dans le rôle (0 = exercice principal)
+    const cands = [];
+    t.blocks.forEach(([role, count], b) => {
       const slots = SLOTS[role].map(alts => {
         const ok = alts.filter(id => byId.has(id));
         return ok.length ? ok[variant % ok.length] : null;
       }).filter(Boolean);
       // machines du rôle hors liste connue (nouvelles fiches du catalogue) : à la suite
       const extra = strength.filter(m => roleOf(m) === role && !SLOTS[role].flat().includes(m.id)).map(m => m.id);
-      for (const id of [...slots, ...extra].slice(0, count)) if (!picks.includes(id)) picks.push(id);
-    }
-    const acts = [];
-    let minutes = 0;
-    if (warm) { acts.push({ type: 'warmup', name: warm.name, durationMinutes: 5 }); minutes += 5; }
-    const strengthActs = picks.map((id, n) => {
-      const main = n < 2; // les deux premiers exercices : un peu plus de volume si intensité élevée
-      const sets = main ? dose.sets : Math.max(2, Math.min(dose.sets, 3));
-      const load = proposeLoad(id, { sessions, declared, low: dose.low, high: dose.high });
-      const reps = load.reason === 'progression' ? dose.low : dose.high;
-      plan.push({ day, machineId: id, sets, reps, kg: load.kg, reason: load.reason, from: load.from ?? null });
-      return { type: 'strength', machineId: id, shared: false, restSeconds: dose.rest, sets: Array.from({ length: sets }, () => ({ kg: load.kg, reps })) };
+      [...slots, ...extra].slice(0, count).forEach((id, rank) => { if (!cands.some(c => c.id === id)) cands.push({ id, rank, b }); });
     });
-    // durée maximale : on garde l'ordre (exercices principaux d'abord) et on retire les accessoires en trop
-    const cardioMin = finisher && dose.cardio ? dose.cardio : 0;
-    for (const a of strengthActs) {
-      const m = strengthMinutes(a.sets.length, a.restSeconds);
-      if (minutes + m + cardioMin > maxMin && acts.some(x => x.type === 'strength')) { notes.push(`${dayLabel(day)} : ${byId.get(a.machineId)?.name || a.machineId} retiré pour tenir en ${maxMin} min.`); continue; }
-      acts.push(a); minutes += m;
+    for (const c of cands) {
+      c.sets = c.rank === 0 ? dose.sets : Math.max(2, Math.min(dose.sets, 3));
+      c.rest = COMPOUND.has(c.id) ? Math.min(180, dose.rest + 30) : Math.max(45, dose.rest - 30);
+      c.min = strengthMinutes(c.sets, c.rest);
     }
-    if (cardioMin && minutes + cardioMin <= maxMin + 2) { acts.push({ type: 'cardio', name: finisher.name, durationMinutes: cardioMin }); minutes += cardioMin; }
+    // durée maximale : on garde d'abord le premier exercice de chaque groupe, puis le deuxième… jusqu'au budget
+    const cardioMin = finisher && dose.cardio ? dose.cardio : 0;
+    let budget = maxMin - (warm ? 5 : 0) - cardioMin;
+    const keep = new Set();
+    for (const c of [...cands].sort((x, y) => x.rank - y.rank || x.b - y.b)) {
+      if (keep.size && c.min > budget) continue;
+      keep.add(c); budget -= c.min;
+    }
+    trimmed += cands.length - keep.size;
+    const acts = [];
+    if (warm) acts.push({ type: 'warmup', name: warm.name, durationMinutes: 5 });
+    for (const c of cands.filter(x => keep.has(x))) {
+      const load = proposeLoad(c.id, { sessions, declared, low: dose.low, high: dose.high });
+      const reps = load.reason === 'progression' ? dose.low : dose.high;
+      plan.push({ day, machineId: c.id, sets: c.sets, reps, kg: load.kg, reason: load.reason, from: load.from ?? null, sibling: load.sibling || null });
+      acts.push({ type: 'strength', machineId: c.id, shared: false, restSeconds: c.rest, sets: Array.from({ length: c.sets }, () => ({ kg: load.kg, reps })) });
+    }
+    if (cardioMin && budget >= -2) acts.push({ type: 'cardio', name: finisher.name, durationMinutes: cardioMin });
     return { id: day, name: t.name + (seen.get(key) > 1 || split.filter(s => s === key).length > 1 ? (variant ? ' B' : ' A') : ''), activities: acts };
   });
 
+  if (trimmed) notes.push(`Séances de ${maxMin} min : ${trimmed} exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps.`);
   const unknown = plan.filter(p => p.reason === 'unknown').map(p => byId.get(p.machineId)?.name || p.machineId);
   if (unknown.length) notes.push('Charge à trouver à la première séance (aucun historique) : ' + [...new Set(unknown)].join(', ') + '.');
+  const sib = plan.filter(p => p.reason === 'sibling');
+  if (sib.length) notes.push('Charge de départ reprise d’une machine équivalente : ' + [...new Set(sib.map(p => (byId.get(p.machineId)?.name || p.machineId) + ' (comme ' + (byId.get(p.sibling)?.name || p.sibling) + ')'))].join(', ') + '.');
   if (!strength.length) notes.push('Aucune machine de musculation disponible : vérifie « Mes machines ».');
   return {
     program: { schemaVersion: 1, weekStart, generatedBy: 'engine-v' + ENGINE_VERSION, programs: { [profileId]: { days: out } } },

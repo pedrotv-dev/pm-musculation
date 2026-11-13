@@ -85,3 +85,30 @@ test('import réel : le programme du moteur s\'importe et devient le programme d
   const day = program.programs[profileId].days[0];
   assert.equal(day.activities.at(-1).type, 'cardio', 'perte de graisse : cardio en fin de séance');
 });
+
+test('machine sœur : Converging Chest Press sans historique part de la charge de la Chest Press', () => {
+  const sessions = [session('c', '2026-11-09', [done('chest-press', 40, 10)])];
+  const r = E.proposeLoad('converging-chest-press', { sessions, low: 8, high: 12 });
+  assert.deepEqual([r.kg, r.reason, r.sibling], [40, 'sibling', 'chest-press']);
+});
+
+test('séance courte (45 min) : un exercice par groupe gardé en priorité, une seule remarque', () => {
+  const sport = { mainGoal: 'Perte de graisse', level: 'debutant', frequency: 3, days: ['lundi', 'mercredi', 'vendredi'], durationMin: 45 };
+  const { program, notes } = E.generateWeek({ profileId, weekStart: '2026-11-16', sport, gym: {}, catalog });
+  for (const d of program.programs[profileId].days) {
+    const ids = d.activities.filter(a => a.type === 'strength').map(a => a.machineId);
+    assert.ok(ids.some(id => ['leg-press'].includes(id)), 'jambes');
+    assert.ok(ids.some(id => /chest-press/.test(id)), 'poussée');
+    assert.ok(ids.some(id => /lat-pulldown/.test(id)), 'tirage');
+    assert.ok(PR.estimateDayMinutes(d) <= 47, PR.estimateDayMinutes(d) + ' min');
+  }
+  assert.equal(notes.filter(n => /en moins/.test(n)).length, 1);
+});
+
+test('repos : plus long sur les gros exercices, plus court sur les accessoires', () => {
+  const sport = { mainGoal: 'Prise de muscle', level: 'confirme', frequency: 3, days: ['lundi', 'mercredi', 'vendredi'], durationMin: 90 };
+  const acts = E.generateWeek({ profileId, weekStart: '2026-11-16', sport, gym: {}, catalog }).program.programs[profileId].days.flatMap(d => d.activities);
+  const rest = id => acts.find(a => a.machineId === id)?.restSeconds;
+  assert.equal(rest('chest-press') ?? rest('converging-chest-press'), 120);
+  assert.equal(rest('arm-curl'), 60);
+});
