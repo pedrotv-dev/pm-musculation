@@ -262,7 +262,7 @@ async function displayProgram() {
   if (!week) {
     const blank = node('div', 'pm-empty');
     add(blank, node('strong', '', 'Aucun programme importé'),
-      node('p', '', 'Prépare-le juste en dessous avec « Préparer ma semaine » (3 étapes), ou importe un fichier.'));
+      node('p', '', 'Calcule-le juste en dessous avec « Préparer ma semaine », ou importe un fichier.'));
     historyView.append(blank);
     return;
   }

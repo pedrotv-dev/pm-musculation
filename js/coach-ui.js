@@ -260,7 +260,7 @@ if (typeof document !== 'undefined') document.addEventListener('pm:coach-changed
  */
 export function coachSection(profile) {
   if (C.profile !== profile) { C.text = ''; C.week = null; C.profile = profile; }
-  const box = panel('Préparer ma semaine', 'Trois étapes, sans rien écrire : ① copie ta demande et ouvre ChatGPT, ② colle sa réponse, ③ vérifie et importe. La demande reprend ton profil sportif, tes machines, tes jours et tes dernières séances.');
+  const box = panel('Préparer ma semaine', 'Appuie sur « Calculer ma semaine » : l’appli construit ta semaine à partir de ton profil sportif, de tes machines et de tes vraies charges, selon les recommandations publiées. ChatGPT reste possible en dessous.');
   box.classList.add('pm-coach-section');
   const body = el('div', 'pm-coach-body');
   box.append(body);
