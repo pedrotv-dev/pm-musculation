@@ -128,7 +128,7 @@ const paste = node('textarea', 'pm-textarea');
 const save = btn('Importer ce programme', 'pm-action-save', saveImport);
 const verify = btn('Vérifier et prévisualiser', 'pm-action-verify', previewImport);
 const fileName = node('span', 'pm-file-choice', 'Aucun fichier sélectionné');
-const tip = node('p', 'pm-info', 'Les programmes viennent de ChatGPT. Tu peux importer un fichier, coller son JSON, ou coller sa réponse entière (justification + un bloc JSON) : seul le bloc JSON est lu.');
+const tip = node('p', 'pm-info', 'Programme calculé par l’appli, fichier ou réponse de ChatGPT. Tu peux importer un fichier, coller son JSON, ou coller sa réponse entière (justification + un bloc JSON) : seul le bloc JSON est lu.');
 const importContent = node('div', 'pm-import-content');
 const inputArea = node('div', 'pm-input-grid');
 const actionArea = node('div', 'pm-actions');
@@ -352,7 +352,7 @@ function drawReplacements(preview) {
 function drawPreview(preview) {
   wipe(previewView);
   add(previewView, node('h3', 'pm-preview-title', 'Aperçu · semaine du ' + preview.weekStart),
-    node('p', 'pm-preview-sub', preview.program.days.length + ' jour(s) prévu(s) pour ' + state.profile));
+    node('p', 'pm-preview-sub', preview.program.days.length + ' jour(s) prévu(s) pour ' + (getProfileInfo(state.profile)?.name || state.profile)));
   for (const day of preview.program.days) {
     const block = node('div', 'pm-preview-day');
     block.append(node('h4', '', day.id[0].toUpperCase() + day.id.slice(1) + (day.name ? ' · ' + day.name : '')),
@@ -545,6 +545,7 @@ document.addEventListener('pm:import-text', event => {
   if (importCard.hidden) return;
   const text = String(event.detail?.text || '');
   importCard.open = true;
+  importCard.dataset.source = event.detail?.source === 'engine' && text ? 'engine' : '';
   if (!text) { paste.focus(); paste.scrollIntoView({ block: 'center' }); return; }
   paste.value = text; state.source = null; fileInput.value = ''; fileName.textContent = 'Aucun fichier sélectionné';
   resetPreview();

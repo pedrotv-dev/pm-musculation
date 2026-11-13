@@ -342,14 +342,14 @@ function generator(profile) {
         ...(advice ? [el('p', 'pm-muted', advice)] : []),
         add(el('ul', 'pm-engine-notes'), ...w.notes.map(n => el('li', '', n))));
       engineOut.hidden = false;
-      document.dispatchEvent(new CustomEvent('pm:import-text', { detail: { text: JSON.stringify(program) } }));
+      document.dispatchEvent(new CustomEvent('pm:import-text', { detail: { text: JSON.stringify(program), source: 'engine' } }));
       say(engineSt, 'Semaine calculée ✓ Vérifie l’aperçu ci-dessous puis « Importer ce programme ».', 'ok');
     } catch (e) { say(engineSt, 'Calcul impossible : ' + (e.message || e), 'error'); }
     finally { calc.disabled = false; }
   });
-  const engineBlock = [step('1', 'Calcule ta semaine : l’appli applique les recommandations publiées à ton profil et à tes vraies charges.'), aiLabel, calc, engineSt, engineOut,
-    el('p', 'pm-coach-or', 'Ou, comme avant, avec ChatGPT :')];
-  return [field('Semaine à préparer', week), ...engineBlock, step('1', 'Copie ta demande, puis colle-la dans ChatGPT.'), add(el('div', 'pm-row-actions'), gen, open), out,
-    step('2', 'Copie la réponse complète de ChatGPT, puis :'), toImport,
-    step('3', 'Vérifie l’aperçu et appuie sur « Importer ce programme ».'), st, share];
+  const engineBlock = [aiLabel, calc, engineSt, engineOut,
+    el('p', 'pm-coach-or', 'Ou, comme avant, avec ChatGPT (3 étapes) :')];
+  return [field('Semaine à préparer', week), ...engineBlock, step('A', 'Copie ta demande, puis colle-la dans ChatGPT.'), add(el('div', 'pm-row-actions'), gen, open), out,
+    step('B', 'Copie la réponse complète de ChatGPT, puis :'), toImport,
+    step('C', 'Vérifie l’aperçu et appuie sur « Importer ce programme ».'), st, share];
 }

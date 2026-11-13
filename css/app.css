@@ -327,7 +327,7 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-coach-checks { display:flex; flex-wrap:wrap; gap:0 16px; }
 .pm-coach-checks .pm-check { min-height:44px; }
 .pm-coach-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:0 10px; }
-.pm-coach-warning { font-size:13px; border-left:3px solid var(--turq); padding-left:10px; }
+.pm-coach-warning { font-size:13px; padding:9px 11px; border-radius:10px; background:rgba(var(--accent-rgb), .07); border:1px solid var(--ascent-rim, var(--stroke)); }
 .pm-coach-status { min-height:20px; font-size:14px; margin:8px 0 0; }
 .pm-coach-status[data-state="ok"] { color:var(--turq); }
 .pm-coach-status[data-state="error"] { color:#ff8a8a; }
@@ -435,3 +435,10 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-week-fill { display:block; height:100%; border-radius:inherit; background:var(--turq); }
 .pm-week-ok { background:var(--ok); }
 .pm-week-src { margin-top:12px; font-size:12px; color:var(--muted); }
+
+/* V3 · semaine calculée : l'import n'affiche que l'aperçu et « Importer » (saisie fichier / JSON masquée) */
+.pm-import[data-source="engine"] .pm-input-grid, .pm-import[data-source="engine"] .pm-info { display:none; }
+/* V3 · une seule action principale dans « Préparer ma semaine » : Calculer ; ChatGPT en secondaire */
+.pm-coach-section .pm-coach-copy, .pm-coach-section .pm-coach-paste {
+  background:var(--surface-raised); color:var(--text); border:1px solid var(--ascent-rim, var(--stroke)); box-shadow:none; font-size:16px; min-height:52px;
+}
