@@ -14,6 +14,10 @@ import { mondayOf } from './programs.js';
 import { addDays } from './stats.js';
 import { runBackup, saveTextFile } from './backup.js';
 import { getDeclaredLoads } from './declared-loads.js';
+import { generateWeek } from './program-engine.js';
+import { buildAiRequest, askCoach, applyAiAdjustments } from './coach-ai.js';
+import { aiTransport, AI_MODE } from './ai-config.js';
+import { isClosed } from './stats.js';
 
 const panel = (title, intro) => { const box = el('article', 'panel pm-profile-section'); box.append(el('h3', '', title)); if (intro) box.append(el('p', 'pm-muted', intro)); return box; };
 /** Section repliable (un seul niveau) : titre toujours visible, contenu à l'ouverture. */
@@ -314,7 +318,38 @@ function generator(profile) {
     document.dispatchEvent(new CustomEvent('pm:import-text', { detail: { text: text.trim() } }));
     say(st, text.trim() ? 'Réponse collée : vérification ci-dessous.' : 'Colle la réponse de ChatGPT dans le cadre ci-dessous, puis « Vérifier ».', 'ok');
   });
-  return [field('Semaine à préparer', week), step('1', 'Copie ta demande, puis colle-la dans ChatGPT.'), add(el('div', 'pm-row-actions'), gen, open), out,
+  // V3 : la semaine est CALCULÉE par le code (règles sourcées, docs/v3-sources.md), puis ajustée par l'IA si demandé
+  const engineOut = el('div', 'pm-engine-out'); engineOut.hidden = true;
+  const useAi = el('input'); useAi.type = 'checkbox'; useAi.checked = true; useAi.id = 'pm-engine-ai';
+  const aiLabel = add(el('label', 'pm-check'), useAi, document.createTextNode(AI_MODE === 'gemini' ? ' Ajuster avec Gemini (selon ce que tu as écrit dans ton profil)' : ' Ajuster avec l’IA — simulation locale (Gemini pas encore branché)'));
+  const engineSt = status();
+  const calc = btn('Calculer ma semaine', 'pm-validate pm-engine-calc', async () => {
+    calc.disabled = true; engineOut.hidden = true;
+    try {
+      const inp = await coachInput(profile, C.week);
+      const sessions = (inp.sessions || []).filter(isClosed);
+      const w = generateWeek({ profileId: profile, weekStart: C.week, sport: inp.sport, gym: inp.gym, catalog: inp.catalog, sessions, declared: inp.declared });
+      let program = w.program, advice = '', changes = [];
+      if (useAi.checked) {
+        const r = await askCoach(buildAiRequest({ sport: inp.sport, plan: w.plan, program, profileId: profile, sessions, catalog: inp.catalog, gym: inp.gym }), { transport: aiTransport() });
+        if (r.ok) { const a = applyAiAdjustments(program, r.response, { profileId: profile, catalog: inp.catalog, gym: inp.gym }); program = a.program; advice = a.advice; changes = a.applied; }
+        else advice = 'IA indisponible : plan calculé conservé.';
+      }
+      const days = program.programs[profile].days;
+      engineOut.replaceChildren(
+        el('p', 'pm-engine-sum', days.length + ' séance(s) : ' + days.map(d => d.id.charAt(0).toUpperCase() + d.id.slice(1, 3) + '. ' + d.name).join(' · ')),
+        ...(changes.length ? [el('p', 'pm-muted', 'Ajustements IA : ' + changes.map(c => c.reason).join(' '))] : []),
+        ...(advice ? [el('p', 'pm-muted', advice)] : []),
+        add(el('ul', 'pm-engine-notes'), ...w.notes.map(n => el('li', '', n))));
+      engineOut.hidden = false;
+      document.dispatchEvent(new CustomEvent('pm:import-text', { detail: { text: JSON.stringify(program) } }));
+      say(engineSt, 'Semaine calculée ✓ Vérifie l’aperçu ci-dessous puis « Importer ce programme ».', 'ok');
+    } catch (e) { say(engineSt, 'Calcul impossible : ' + (e.message || e), 'error'); }
+    finally { calc.disabled = false; }
+  });
+  const engineBlock = [step('1', 'Calcule ta semaine : l’appli applique les recommandations publiées à ton profil et à tes vraies charges.'), aiLabel, calc, engineSt, engineOut,
+    el('p', 'pm-coach-or', 'Ou, comme avant, avec ChatGPT :')];
+  return [field('Semaine à préparer', week), ...engineBlock, step('1', 'Copie ta demande, puis colle-la dans ChatGPT.'), add(el('div', 'pm-row-actions'), gen, open), out,
     step('2', 'Copie la réponse complète de ChatGPT, puis :'), toImport,
     step('3', 'Vérifie l’aperçu et appuie sur « Importer ce programme ».'), st, share];
 }
