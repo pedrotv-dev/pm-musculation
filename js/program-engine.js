@@ -186,7 +186,7 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
       [...slots, ...extra].slice(0, count).forEach((id, rank) => { if (!cands.some(c => c.id === id)) cands.push({ id, rank, b }); });
     });
     for (const c of cands) {
-      c.sets = c.rank === 0 ? dose.sets : Math.max(2, Math.min(dose.sets, 3));
+      c.sets = c.rank === 0 && COMPOUND.has(c.id) ? dose.sets : Math.max(2, Math.min(dose.sets, 3)); // volume plein : gros exercices seulement
       c.rest = COMPOUND.has(c.id) ? Math.min(180, dose.rest + 30) : Math.max(45, dose.rest - 30);
       c.min = strengthMinutes(c.sets, c.rest);
     }
