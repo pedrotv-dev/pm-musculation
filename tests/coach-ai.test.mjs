@@ -43,6 +43,15 @@ test('faux Gemini : agit SEULEMENT sur ce que l’utilisateur a écrit (Leg Exte
   assert.ok(week.program.programs[profileId].days.flatMap(d => d.activities).some(a => a.machineId === 'leg-extension'), 'plan d’origine intact');
 });
 
+test('faux Gemini : « éviter le Shoulder Press » couvre aussi le Converging Shoulder Press (jamais remplacé par un équivalent)', async () => {
+  const sp = { mainGoal: 'Prise de muscle', level: 'intermediaire', frequency: 3, days: ['lundi', 'mercredi', 'vendredi'], durationMin: 70, constraints: 'Je veux éviter le Shoulder Press' };
+  const w = E.generateWeek({ profileId, weekStart: '2026-11-16', sport: sp, gym: {}, catalog });
+  const r = await A.askCoach(A.buildAiRequest({ sport: sp, plan: w.plan, program: w.program, profileId, catalog }), { transport: A.mockGemini });
+  const res = A.applyAiAdjustments(w.program, r.response, { profileId, catalog });
+  const ids = res.program.programs[profileId].days.flatMap(d => d.activities.map(a => a.machineId));
+  assert.ok(!ids.some(id => /shoulder-press/.test(id || '')), ids.join());
+});
+
 test('faux Gemini : profil sans contrainte écrite → aucun ajustement', async () => {
   const w = E.generateWeek({ profileId, weekStart: '2026-11-16', sport: { mainGoal: 'Force', frequency: 3, days: ['lundi', 'mercredi', 'vendredi'] }, gym: {}, catalog });
   const r = await A.askCoach(A.buildAiRequest({ sport: { mainGoal: 'Force' }, plan: w.plan, program: w.program, profileId, catalog }), { transport: A.mockGemini });

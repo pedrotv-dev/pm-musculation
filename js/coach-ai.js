@@ -134,12 +134,16 @@ export async function mockGemini(request) {
   const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const said = norm((p.contraintes || '') + ' ' + (p.eviter || '') + ' ' + (p.preferences || ''));
   const names = request.names || {};
-  // seul cas traité : une machine NOMMÉE par l'utilisateur comme à éviter → remplacée par une machine voisine
-  // disponible, sinon retirée (jamais de règle inventée sur la fatigue, les articulations, etc.)
+  // seul cas traité : une machine NOMMÉE par l'utilisateur comme à éviter. Toute machine dont le nom la contient est
+  // aussi évitée (« Shoulder Press » couvre « Converging Shoulder Press ») ; remplacement par une voisine NON évitée,
+  // sinon retrait. Jamais de règle inventée (fatigue, articulations…).
+  const allIds = [...new Set([...data.machines, ...data.plan.flatMap(d => d.ex.map(([id]) => id))])];
+  const nameOf = id => norm(names[id] || id.replace(/-/g, ' '));
+  const named = allIds.map(nameOf).filter(n => said.includes(n));
+  const avoided = id => named.some(n => nameOf(id).includes(n));
   for (const d of data.plan) for (const [id] of d.ex) {
-    const n = norm(names[id] || id.replace(/-/g, ' '));
-    if (!said.includes(n)) continue;
-    const alt = siblingsOf(id).find(x => data.machines.includes(x) && !d.ex.some(([y]) => y === x));
+    if (!avoided(id)) continue;
+    const alt = siblingsOf(id).find(x => data.machines.includes(x) && !avoided(x) && !d.ex.some(([y]) => y === x));
     adj.push(alt ? { day: d.jour, machineId: id, action: 'replace', replaceWith: alt, reason: 'Tu as indiqué vouloir éviter ' + (names[id] || id) + ' : machine voisine à la place.' }
       : { day: d.jour, machineId: id, action: 'remove', reason: 'Tu as indiqué vouloir éviter ' + (names[id] || id) + '.' });
   }
