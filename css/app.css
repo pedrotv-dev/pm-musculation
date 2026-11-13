@@ -425,3 +425,13 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-engine-notes { margin:8px 0 0; padding-left:18px; font-size:13px; color:var(--muted); }
 .pm-engine-notes li { margin:4px 0; }
 .pm-coach-or { margin:22px 0 4px; font-size:14px; font-weight:780; color:var(--muted); }
+
+/* V3 · Accueil « Ma semaine » : faits enregistrés vs repères publiés */
+.pm-week-card h3 { margin-bottom:10px; }
+.pm-week-row { margin:10px 0; }
+.pm-week-head { display:flex; justify-content:space-between; gap:10px; font-size:14px; margin-bottom:5px; }
+.pm-week-head strong { font-variant-numeric:tabular-nums; }
+.pm-week-track { height:8px; border-radius:99px; background:var(--surface-raised); overflow:hidden; border:1px solid var(--ascent-rim, var(--stroke)); }
+.pm-week-fill { display:block; height:100%; border-radius:inherit; background:var(--turq); }
+.pm-week-ok { background:var(--ok); }
+.pm-week-src { margin-top:12px; font-size:12px; color:var(--muted); }

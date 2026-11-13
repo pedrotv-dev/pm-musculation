@@ -273,3 +273,30 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
 }
 
 const dayLabel = d => d.charAt(0).toUpperCase() + d.slice(1);
+
+/**
+ * Faits de la semaine (séances closes, du lundi au dimanche) comparés aux repères sourcés :
+ * jours de renforcement (≥ 2, [WHO20]), séries faites par groupe ([SCH17v], ≈ 10 en prise de muscle),
+ * minutes de cardio faites à la salle (150 min/sem en tout, [WHO20]). Aucune estimation : seulement ce qui est enregistré.
+ */
+export function weekFacts(sessions, catalog, weekStart) {
+  const end = new Date(weekStart + 'T12:00:00Z'); end.setUTCDate(end.getUTCDate() + 7);
+  const last = end.toISOString().slice(0, 10);
+  const byId = new Map((catalog || []).map(m => [m.id, m]));
+  const volume = { legs: 0, push: 0, pull: 0, core: 0 };
+  const days = new Set();
+  let cardio = 0;
+  for (const s of sessions || []) {
+    if (!(s.status === 'completed' || s.status === 'partial') || !s.date || s.date < weekStart || s.date >= last) continue;
+    for (const a of s.activities || []) {
+      if (a.type === 'strength') {
+        const n = (a.sets || []).filter(x => x.done).length;
+        if (!n) continue;
+        days.add(s.date);
+        const r = roleOf(byId.get(a.machineId) || { id: a.machineId });
+        if (r) volume[r] += n;
+      } else if (a.type === 'cardio' && a.status === 'done') cardio += a.actual?.durationMinutes ?? a.planned?.durationMinutes ?? 0;
+    }
+  }
+  return { strengthDays: days.size, volume, cardioMinutes: cardio };
+}

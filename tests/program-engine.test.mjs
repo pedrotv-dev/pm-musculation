@@ -119,3 +119,15 @@ test('repos (ACSM 2009, Singer 2024) : 120 s gros exercices, 90 s accessoires en
   assert.equal(rest('chest-press') ?? rest('converging-chest-press'), 120);
   assert.equal(rest('seated-leg-curl') ?? rest('prone-leg-curl'), 90);
 });
+
+test('faits de la semaine : seulement le lundi → dimanche, séries validées par groupe, cardio fait, jours de renforcement', () => {
+  const s = (id, date, acts, status = 'completed') => ({ id, date, status, activities: acts });
+  const sessions = [
+    s('1', '2026-11-16', [done('leg-press', 80, 10), done('chest-press', 40, 10), { type: 'cardio', status: 'done', name: 'Rameur', planned: { durationMinutes: 15 }, actual: { durationMinutes: 12 } }]),
+    s('2', '2026-11-18', [done('lat-pulldown', 45, 10)]),
+    s('3', '2026-11-23', [done('leg-press', 80, 10)]), // semaine suivante : ignorée
+    s('4', '2026-11-19', [done('arm-curl', 20, 10)], 'in_progress') // non close : ignorée
+  ];
+  const f = E.weekFacts(sessions, catalog, '2026-11-16');
+  assert.deepEqual(f, { strengthDays: 2, volume: { legs: 3, push: 3, pull: 3, core: 0 }, cardioMinutes: 12 });
+});
