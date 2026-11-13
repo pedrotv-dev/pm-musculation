@@ -128,8 +128,10 @@ const paste = node('textarea', 'pm-textarea');
 const save = btn('Importer ce programme', 'pm-action-save', saveImport);
 const verify = btn('Vérifier et prévisualiser', 'pm-action-verify', previewImport);
 const fileName = node('span', 'pm-file-choice', 'Aucun fichier sélectionné');
-const tip = node('p', 'pm-info', 'Les programmes viennent de ChatGPT. Tu peux importer un fichier, coller son JSON, ou coller sa réponse entière (justification + un bloc JSON) : seul le bloc JSON est lu.');
+const tip = node('p', 'pm-info', 'Programme calculé par l’appli ou fichier de programme (JSON) : seul le bloc JSON est lu.');
 const importContent = node('div', 'pm-import-content');
+// semaine calculée : saisie manuelle masquée, mais toujours accessible d'un appui
+const manualBtn = btn('Importer un fichier ou un JSON à la place', 'pm-link pm-import-manual', () => { importCard.dataset.source = ''; resetPreview(); paste.focus(); });
 const inputArea = node('div', 'pm-input-grid');
 const actionArea = node('div', 'pm-actions');
 
@@ -159,7 +161,7 @@ const previewHeading = node('h3', 'pm-preview-title', 'Aperçu avant importation
 add(previewView, previewHeading);
 previewView.hidden = true;
 replacementsView.hidden = true;
-add(importContent, inputArea, tip, actionArea, feedbackArea, replacementsView, previewView);
+add(importContent, manualBtn, inputArea, tip, actionArea, feedbackArea, replacementsView, previewView);
 add(importCard, node('summary', '', 'Importer un programme hebdomadaire'), importContent);
 const weekHeader = node('div', 'pm-program-header');
 const weekInfo = node('div');
@@ -177,7 +179,7 @@ select.addEventListener('change', () => {
 weekField.append(select);
 add(weekHeader, weekInfo, weekField);
 add(infoCard, weekHeader, historyView);
-// LOT 1 : « Préparer mon programme avec ChatGPT » (auparavant dans Profil) est ici, juste au-dessus de l'import :
+// « Préparer ma semaine » est ici, juste au-dessus de l'import :
 // préparer, copier, coller et importer se font dans le même onglet.
 const coachSlot = node('div', 'pm-coach-slot');
 const drawCoach = () => { coachSlot.replaceChildren(...(isKnownProfile(state.profile) ? [coachSection(state.profile)] : [])); };
@@ -262,7 +264,7 @@ async function displayProgram() {
   if (!week) {
     const blank = node('div', 'pm-empty');
     add(blank, node('strong', '', 'Aucun programme importé'),
-      node('p', '', 'Prépare-le juste en dessous avec « Préparer ma semaine » (3 étapes), ou importe un fichier.'));
+      node('p', '', 'Calcule-le juste en dessous avec « Préparer ma semaine », ou importe un fichier.'));
     historyView.append(blank);
     return;
   }
@@ -352,7 +354,7 @@ function drawReplacements(preview) {
 function drawPreview(preview) {
   wipe(previewView);
   add(previewView, node('h3', 'pm-preview-title', 'Aperçu · semaine du ' + preview.weekStart),
-    node('p', 'pm-preview-sub', preview.program.days.length + ' jour(s) prévu(s) pour ' + state.profile));
+    node('p', 'pm-preview-sub', preview.program.days.length + ' jour(s) prévu(s) pour ' + (getProfileInfo(state.profile)?.name || state.profile)));
   for (const day of preview.program.days) {
     const block = node('div', 'pm-preview-day');
     block.append(node('h4', '', day.id[0].toUpperCase() + day.id.slice(1) + (day.name ? ' · ' + day.name : '')),
@@ -447,8 +449,8 @@ async function saveImport() {
     const sport = await getSportProfile(profile).catch(() => null);
     const issues = sport ? frequencyIssues(state.preview.program.days.map(d => d.id), sport, { weekStart, currentMonday: mondayOf() }) : [];
     if (!sameProfile(profile, generation) || !state.preview) return;
-    if (issues.length && !(await confirmDialog(issues.join(' ') + ' Le programme ne respecte pas ta fréquence. Refuser (et demander à ChatGPT un programme complet), ou l’importer quand même à titre d’exception ?', { title: 'Programme incomplet', ok: 'Importer quand même (exception)', cancel: 'Refuser ce programme' }))) {
-      notify('Import refusé : programme incomplet. Demande à ChatGPT les ' + sport.frequency + ' séances prévues.', 'info'); return;
+    if (issues.length && !(await confirmDialog(issues.join(' ') + ' Le programme ne respecte pas ta fréquence. Refuser (et recalculer un programme complet), ou l’importer quand même à titre d’exception ?', { title: 'Programme incomplet', ok: 'Importer quand même (exception)', cancel: 'Refuser ce programme' }))) {
+      notify('Import refusé : programme incomplet. Recalcule ta semaine avec les ' + sport.frequency + ' séances prévues.', 'info'); return;
     }
     if (!sameProfile(profile, generation) || !state.preview) return;
   }
@@ -538,13 +540,14 @@ document.addEventListener('pm:profile-changed', event => {
   const started = state.profileVersion + 1;
   setProfile(profile).catch(error => handleProfileError(error, profile, started));
 });
-// LOT 2 : assistant « Préparer ma semaine » → « Coller la réponse de ChatGPT » : texte du presse-papiers (ou rien : cadre
+// « Préparer ma semaine » → semaine calculée (JSON) envoyée ici (ou rien : cadre
 // ouvert pour coller à la main) ; vérification lancée tout de suite, aperçu et bouton « Importer ce programme » visibles.
 document.addEventListener('pm:import-text', event => {
   if (!isRealProfile(state.profile) && state.profile !== 'demo') return;
   if (importCard.hidden) return;
   const text = String(event.detail?.text || '');
   importCard.open = true;
+  importCard.dataset.source = event.detail?.source === 'engine' && text ? 'engine' : '';
   if (!text) { paste.focus(); paste.scrollIntoView({ block: 'center' }); return; }
   paste.value = text; state.source = null; fileInput.value = ''; fileName.textContent = 'Aucun fichier sélectionné';
   resetPreview();

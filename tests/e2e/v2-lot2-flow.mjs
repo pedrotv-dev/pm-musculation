@@ -1,6 +1,6 @@
 // V2-UX LOT 2 — premier lancement et assistant « Préparer ma semaine » (Chromium 390 px, horloge simulée, données FICTIVES) :
 // David (nouvel utilisateur qui connaît la musculation) : création → « Ta semaine en 30 secondes » (5 choix) → Accueil
-// « Préparer ma semaine » → ① Copier ma demande → ② Coller la réponse (presse-papiers) → ③ aperçu → Importer → séance du jour.
+// « Préparer ma semaine » → « Calculer ma semaine » (moteur + IA simulée) → aperçu ; programme fictif importé → séance du jour.
 // Puis : semaine bientôt finie → « Préparer la semaine prochaine ». Aucune requête externe ; Pierre et Manon jamais touchés.
 // node tests/e2e/v2-lot2-flow.mjs
 import assert from 'node:assert/strict';
@@ -20,7 +20,7 @@ const qs = home + ' .pm-quick-start';
 const noOverflow = () => db(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
 const setting = (id, k) => db(async ([id, k]) => (await import('./storage.js')).getSetting(id, k, null), [id, k]);
 const chip = (legend, label) => page.locator(qs + ' fieldset', { has: page.locator('legend', { hasText: legend }) }).locator('label.pm-qs-chip', { hasText: new RegExp('^\\s*' + label + '\\s*$') });
-let david, prompt;
+let david;
 
 const reply = (id, weekStart, days) => 'Voici ton programme : 2 séances complètes, charges réelles.\nProgression prudente.\n\n```json\n' + JSON.stringify({ schemaVersion: 1, weekStart, programs: { [id]: { days: days.map(d => ({ id: d, name: 'Séance ' + d + ' fictive', activities: [
   { type: 'warmup', name: 'Vélo assis', durationMinutes: 5 },
@@ -107,47 +107,38 @@ await step('dernière étape FACULTATIVE : poids et contrainte renseignés → �
   assert.equal(await page.locator('#screen-onboarding').isVisible(), false);
 });
 
-await step('premier Accueil : trois possibilités DANS L’ORDRE (séance libre, mes charges, programme ChatGPT), visibles sans défiler', async () => {
+await step('premier Accueil : trois possibilités DANS L’ORDRE (séance libre, mes charges, programme calculé), visibles sans défiler', async () => {
   const opts = (await page.locator(home + ' .pm-welcome-card .pm-welcome-opt strong').allInnerTexts());
   assert.deepEqual(opts, ['Une séance libre', 'Mes charges', 'Mon programme']);
   const btns = await page.locator(home + ' .pm-welcome-card button').allInnerTexts();
-  assert.deepEqual(btns, ['Commencer une séance libre', 'Renseigner mes charges', 'Préparer mon programme avec ChatGPT']);
+  assert.deepEqual(btns, ['Commencer une séance libre', 'Renseigner mes charges', 'Calculer mon programme']);
   assert.ok((await page.locator(home + ' .pm-welcome-card').boundingBox()).y < 844);
   assert.equal(await page.locator(home + ' .pm-progress-home').count(), 0, 'pas de chiffres à zéro pour un nouveau profil');
   await page.reload(); await page.waitForSelector(home + ' .pm-welcome-card');
   assert.equal(await page.locator('#screen-onboarding').isVisible(), false, 'jamais redemandé après la fin');
 });
 
-await step('« Préparer mon programme avec ChatGPT » : assistant en 3 étapes, semaine EN COURS proposée (aucun programme)', async () => {
-  await page.click(home + ' .pm-welcome-card button:has-text("Préparer mon programme avec ChatGPT")');
-  await page.waitForSelector(coach + ' button:has-text("Copier ma demande")');
+await step('« Calculer mon programme » : semaine EN COURS proposée, plus aucun ChatGPT ; calcul → 2 séances (mardi, jeudi), aperçu prêt', async () => {
+  await page.click(home + ' .pm-welcome-card button:has-text("Calculer mon programme")');
+  await page.waitForSelector(coach + ' button:has-text("Calculer ma semaine")');
   assert.equal(await page.inputValue(coach + ' select'), '2026-11-09', 'semaine en cours sans programme');
-  const t = await page.locator(coach).innerText();
-  for (const want of ['Préparer ma semaine', 'Copie ta demande', 'Ouvrir ChatGPT', 'Coller la réponse de ChatGPT', 'Importer ce programme']) assert.ok(t.includes(want), want);
-  assert.equal(await page.getAttribute(coach + ' a.pm-coach-open', 'href'), 'https://chatgpt.com/');
-  assert.equal(await page.getAttribute(coach + ' a.pm-coach-open', 'target'), '_blank');
-});
-
-await step('① « Copier ma demande » : rédigée ET copiée en un appui (profil, Hard RPE 8-9, 2 séances exigées)', async () => {
-  await page.click(coach + ' button:has-text("Copier ma demande")');
-  await page.waitForSelector(coach + ' .pm-coach-status:has-text("Demande copiée")');
-  prompt = await page.inputValue('.pm-coach-out');
-  assert.equal(await db(() => navigator.clipboard.readText()), prompt, 'demande dans le presse-papiers');
-  for (const want of ['Objectif principal : Force', 'Ancienneté en musculation : Moins de 3 mois', 'HARD — RPE 8 à 9', 'Ne réduis PAS toutes les charges', 'Prépare EXACTEMENT 2 séances', 'mardi, jeudi', '75 min', 'Épaule droite fragile (fictif)', '"weekStart": "2026-11-09"']) assert.ok(prompt.includes(want), want);
-});
-
-await step('② « Coller » avec la demande encore copiée : refus clair, cadre d’import ouvert, rien d’importé', async () => {
-  await page.click(coach + ' button:has-text("Coller la réponse de ChatGPT")');
-  await page.waitForSelector(coach + ' .pm-coach-status:has-text("contient encore ta demande")');
-  assert.equal(await page.locator('.pm-import').evaluate(d => d.open), true);
-  assert.equal(await page.inputValue('.pm-textarea'), '');
-});
-
-await step('② réponse de ChatGPT copiée → « Coller » : vérifiée automatiquement ; ③ « Importer ce programme » → séance du jour', async () => {
-  await db(t => navigator.clipboard.writeText(t), reply(david, '2026-11-09', ['mardi', 'jeudi']));
-  await page.click(coach + ' button:has-text("Coller la réponse de ChatGPT")');
+  assert.doesNotMatch(await page.locator('[data-page="programme"]').innerText(), /ChatGPT/);
+  await page.click(coach + ' button:has-text("Calculer ma semaine")');
+  await page.waitForSelector(coach + ' .pm-engine-out:not([hidden])');
+  const t = await page.locator(coach + ' .pm-engine-out').innerText();
+  assert.match(t, /2 séance\(s\) : Mar\. .* · Jeu\./);
   await page.waitForSelector('.pm-action-save:not([disabled])');
-  assert.match(await page.locator('#pm-import-feedback').innerText(), /Programme vérifié/);
+  assert.equal(await db(async id => (await (await import('./storage.js')).listPrograms(id)).length, david), 0, 'rien importé sans appui');
+});
+
+
+
+
+
+await step('programme fictif (fichier JSON) collé dans l’import : vérifié ; « Importer ce programme » → séance du jour', async () => {
+  await db(t => document.dispatchEvent(new CustomEvent('pm:import-text', { detail: { text: t } })), reply(david, '2026-11-09', ['mardi', 'jeudi']));
+  await page.waitForFunction(() => /Programme vérifié/.test(document.querySelector('#pm-import-feedback')?.innerText || ''));
+  await page.waitForSelector('.pm-action-save:not([disabled])');
   await page.click('.pm-action-save');
   await page.waitForFunction(async id => !!(await (await import('./storage.js')).getProgram(id, '2026-11-09')), david);
   await page.click('.nav-btn[data-go="accueil"]');
@@ -174,16 +165,18 @@ await step('séance faite avec les charges du programme, puis Progression affich
   await page.waitForSelector(home + ' .pm-progress-home');
 });
 
-await step('samedi 14 novembre : « Préparer la semaine prochaine » → assistant sur la semaine du 16 novembre', async () => {
+await step('samedi 14 novembre : « Préparer la semaine du 16 novembre » → semaine calculée avec la vraie charge (Leg Press 70 kg)', async () => {
   await page.clock.setFixedTime(new Date(2026, 10, 14, 10, 0, 0));
   await page.reload(); await page.waitForSelector(home + ' .pm-next-week');
   await page.click(home + ' .pm-next-week button:has-text("Préparer la semaine du 16 novembre")');
-  await page.waitForSelector(coach + ' button:has-text("Copier ma demande")');
+  await page.waitForSelector(coach + ' button:has-text("Calculer ma semaine")');
   assert.equal(await page.inputValue(coach + ' select'), '2026-11-16');
-  await page.click(coach + ' button:has-text("Copier ma demande")');
-  await page.waitForSelector(coach + ' .pm-coach-status:has-text("Demande copiée")');
-  const t = await page.inputValue('.pm-coach-out');
-  assert.ok(t.includes('"weekStart": "2026-11-16"') && t.includes('Leg Press'), 'semaine suivante et dernières charges');
+  await page.click(coach + ' button:has-text("Calculer ma semaine")');
+  await page.waitForSelector('.pm-action-save:not([disabled])');
+  const json = JSON.parse(await page.inputValue('.pm-textarea'));
+  assert.equal(json.weekStart, '2026-11-16');
+  const lp = json.programs[david].days.flatMap(d => d.activities).find(a => a.machineId === 'leg-press');
+  assert.ok(lp && lp.sets[0].kg >= 70, 'dernière charge réelle reprise (ou palier suivant)');
 });
 
 await step('Réglages : le profil sportif contient les choix rapides ; « Préparer ma semaine → » ramène à l’assistant', async () => {
@@ -192,7 +185,7 @@ await step('Réglages : le profil sportif contient les choix rapides ; « Prépa
   assert.equal(await page.inputValue('#pm-sport-mainGoal'), 'Force');
   assert.equal(await page.inputValue('#pm-sport-seniority'), 'lt3m', 'ancienneté modifiable dans Réglages');
   await f.locator('.pm-to-coach').click();
-  await page.waitForSelector(coach + ' button:has-text("Copier ma demande")');
+  await page.waitForSelector(coach + ' button:has-text("Calculer ma semaine")');
 });
 
 await step('second profil : étape facultative PASSÉE (rien de bloquant) → premier Accueil ; séance libre immédiatement possible', async () => {

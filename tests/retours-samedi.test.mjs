@@ -10,7 +10,6 @@ import {
 } from '../js/workouts.js';
 import { PER_SIDE_MACHINES, isPerSide, expandSides, nextSide, plannedIndex } from '../js/machine-rules.js';
 import { metricsText, metricError, CARDIO_METRICS } from '../js/cardio.js';
-import { buildBilan } from '../js/bilan.js';
 import { resultsCsv } from '../js/backup.js';
 
 const idb = installFakeIndexedDB();
@@ -117,16 +116,13 @@ test('cardio : réglages enregistrés dans la séance, effaçables, corrigeables
   assert.equal(metricError(CARDIO_METRICS[2], 1.5) !== null, true);
 });
 
-test('bilan et CSV : côté de chaque série, « par côté », réglages de cardio', async () => {
+test('CSV : côté de chaque série, « par côté », réglages de cardio', async () => {
   await setup([lift('rotary-hip', 2, 40), { type: 'cardio', name: 'Tapis de course', durationMinutes: 10 }]);
   let s = await startWorkout('pierre', { now: NOW });
   for (let i = 1; i <= 4; i++) s = await logSet('pierre', s.id, 'a1', 's' + i, { kg: 40 + i, reps: 12 }, { now: at(i) });
   s = await completeActivity('pierre', s.id, 'a2', { actual: { durationMinutes: 10, incline: 3, speed: 6 } });
   s = await finishWorkout('pierre', s.id, 'completed', { now: at(40) });
   const names = new Map([['rotary-hip', 'Rotary Hip']]);
-  const text = buildBilan({ weekStart: '2026-11-02', machineNames: names, people: [{ profileId: 'pierre', name: 'Pierre', goal: 'x', sessions: [s], program: prog([]).programs.pierre, weights: [] }] });
-  assert.match(text, /Rotary Hip : 1 série = 1 côté — G 41 kg × 12 \/ D 42 kg × 12 \/ G 43 kg × 12 \/ D 44 kg × 12 \(prévu 2 × 12 à 40 kg par côté\)/);
-  assert.match(text, /Tapis de course : 10 min.*inclinaison 3 % · vitesse 6 km\/h/);
   const csv = resultsCsv([s], names).split('\n');
   assert.match(csv[0], /cote;inclinaison;vitesse;niveau$/);
   assert.match(csv[1], /;gauche;;;$/); assert.match(csv[2], /;droite;;;$/);
@@ -185,7 +181,7 @@ test('ancien programme avec « hip-abduction » : l\'import propose de choisir l
   assert.equal(fixed.program.days[0].activities[0].machineId, 'hip-abduction-close-open');
 });
 
-test('réglages par machine : Vélo assis et Escalier = niveau, tapis = inclinaison + vitesse, les autres = les trois ; l\'exemple ChatGPT les respecte', async () => {
+test('réglages par machine : Vélo assis et Escalier = niveau, tapis = inclinaison + vitesse, les autres = les trois ', async () => {
   const { metricsFor } = await import('../js/cardio.js');
   const by = Object.fromEntries(catalog.map(m => [m.name, m]));
   assert.deepEqual(metricsFor(by['Vélo assis']).map(m => m.key), ['level']);
@@ -193,13 +189,6 @@ test('réglages par machine : Vélo assis et Escalier = niveau, tapis = inclinai
   assert.deepEqual(metricsFor(by['Escalier']).map(m => m.key), ['level']);
   assert.deepEqual(metricsFor(by['Rameur']).map(m => m.key), ['incline', 'speed', 'level']); // pas encore tranché : les trois
   assert.deepEqual(metricsFor(undefined).map(m => m.key), ['incline', 'speed', 'level']);
-  const ref = JSON.parse(fs.readFileSync(new URL('../docs/reference-programme-chatgpt.json', import.meta.url), 'utf8'));
-  const allowed = Object.fromEntries(ref._catalogue_machines.machines.filter(m => m.kind === 'cardio').map(m => [m.name, m.reglages_possibles]));
-  assert.deepEqual(allowed['Vélo assis'], ['level']);
-  for (const who of ['pierre', 'manon']) for (const d of ref.programs[who].days) for (const a of d.activities) {
-    if (a.type === 'strength') continue;
-    for (const k of ['incline', 'speed', 'level']) if (k in a) assert.ok(allowed[a.name].includes(k), a.name + ' ' + k);
-  }
 });
 
 test('mascotte : le stade demandé d\'abord, sinon le dernier stade existant, sinon le personnage de repli', async () => {

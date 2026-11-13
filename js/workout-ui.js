@@ -989,7 +989,7 @@ function renderMachine(a) {
 
 /**
  * LOT 3 · ressenti FACULTATIF d'une machine terminée : un appui (Trop facile / Adapté / Trop difficile), un second appui
- * l'efface. Ne valide rien et ne change aucune charge : il sert aux propositions de la prochaine séance et à ChatGPT.
+ * l'efface. Ne valide rien et ne change aucune charge : il sert aux propositions de la prochaine séance et à la requête IA.
  */
 function feelRow(a) {
   const T = targetNow();

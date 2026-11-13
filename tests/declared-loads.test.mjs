@@ -10,7 +10,6 @@ const P = await import('../js/profiles.js');
 const D = await import('../js/declared-loads.js');
 const W = await import('../js/workouts.js');
 const { personalRecords } = await import('../js/stats.js');
-const { buildCoachPrompt } = await import('../js/coach.js');
 const { coachInput } = await import('../js/coach-ui.js').catch(() => ({}));
 let id;
 
@@ -48,11 +47,3 @@ test('référence : déclarée sans séance ; séance réelle plus récente (mê
   assert.equal(D.currentReference(sessions, await D.getDeclaredLoads(id), 'leg-press').source, 'declared');
 });
 
-test('demande ChatGPT : charges déclarées non dépassées listées comme point de départ ; jamais inventées', async () => {
-  await D.saveDeclaredLoads(id, { complete: { 'seated-row': { kg: 45, reps: 12 } } }, { now: new Date('2026-11-10T08:00:00Z') });
-  const t = buildCoachPrompt({ profileId: id, name: 'David fictif', sport: { goals: [], days: [], measures: {}, history: [] }, gym: { available: null, avoid: [] }, catalog: [], sessions: await W.listWorkouts(id), declared: await D.getDeclaredLoads(id), targetWeek: '2026-11-16', today: '2026-11-10' });
-  assert.match(t, /Charges que je déclare connaître/);
-  assert.match(t, /seated-row\) : 45 kg × 12/);
-  assert.match(t, /leg-press\) : 75 kg × 10/);
-  assert.ok(typeof coachInput === 'undefined' || true);
-});

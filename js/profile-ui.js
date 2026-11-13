@@ -1,15 +1,11 @@
 /**
  * PM Musculation — Réglages (icône ⚙︎, page « profil ») : mon profil, séance et chrono, profils, données, à propos.
- * LOT 1 : les sections existantes sont regroupées en 5 rubriques ; « Préparer mon programme avec ChatGPT » est dans Programme.
+ * LOT 1 : les sections existantes sont regroupées en 5 rubriques ; « Préparer ma semaine » est dans Programme.
  */
 import { getRestConfig, setRestConfig, stopRest } from './rest-timer.js';
-import { listWorkouts, resetDemoWorkouts, getDemoProgram } from './workouts.js';
-import { getProgram } from '../storage.js';
-import { listBodyWeights, resetDemoWeights } from './weights.js';
-import { createBackupFile, parseBackupText, describeBackup, restoreBackup, clearProfileData, backupToPerson, resultsCsv, saveTextFile, getBackupStatus, runBackup } from './backup.js';
-import { buildBilan } from './bilan.js';
-import { mondayOf } from './programs.js';
-import { addDays } from './stats.js';
+import { listWorkouts, resetDemoWorkouts } from './workouts.js';
+import { resetDemoWeights } from './weights.js';
+import { createBackupFile, parseBackupText, describeBackup, restoreBackup, clearProfileData, resultsCsv, saveTextFile, getBackupStatus, runBackup } from './backup.js';
 import { loadCatalog } from './catalog.js';
 import { demoToolsSection } from './demo-tools.js';
 import { korvGuide } from './jeu-ui.js';
@@ -23,15 +19,14 @@ import { el, btn, clear, add, dialog, confirmDialog, toast, fmtNum, parseNum, fo
 
 const root = document.documentElement;
 const page = document.querySelector('[data-page="profil"]');
-// Nom et objectif d'un profil (registre V2-PROF1 ; Pierre et Manon : textes historiques). Objectif en minuscules : utilisé
-// dans le texte du bilan. Profil inconnu sur cet appareil (sauvegarde d'un autre appareil) : son identifiant comme nom.
+// Nom et objectif d'un profil (registre V2-PROF1 ; Pierre et Manon : textes historiques). Profil inconnu sur cet appareil (sauvegarde d'un autre appareil) : son identifiant comme nom.
 function person(id) {
   if (id === 'demo') return { name: 'Démo', goal: '' };
   const info = getProfileInfo(id);
   if (!info) return { name: String(id), goal: '' };
   return { name: info.name, goal: String(info.goal || '').replace(/^./, c => c.toLowerCase()) };
 }
-const S = { other: null, week: null, bilan: '', notice: '', rev: 0 };
+const S = { notice: '', rev: 0 };
 const emitData = profile => document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile } }));
 
 function section(title, intro, ...children) {
@@ -49,10 +44,6 @@ function readFile(input) {
     r.onload = () => resolve(String(r.result)); r.onerror = () => reject(new Error('Lecture du fichier impossible.'));
     r.readAsText(f);
   });
-}
-async function copyText(text, area) {
-  try { await navigator.clipboard.writeText(text); return true; } catch (_) { /* repli */ }
-  try { area.focus(); area.select(); return document.execCommand('copy'); } catch (_) { return false; }
 }
 
 function chronoSection(profile, config) {
@@ -170,69 +161,6 @@ function backupSection(profile) {
     last, dl, add(el('div', 'pm-row-actions'), csv), fileLine, status);
 }
 
-async function bilanSection(profile) {
-  const monday = mondayOf();
-  const weeks = Array.from({ length: 8 }, (_, i) => addDays(monday, -7 * i));
-  if (!S.week || !weeks.includes(S.week)) S.week = weeks[0];
-  const select = el('select', 'pm-select'); select.setAttribute('aria-label', 'Semaine du bilan');
-  weeks.forEach((w, i) => { const o = document.createElement('option'); o.value = w; o.textContent = 'Semaine du ' + formatDateFr(w) + (i === 0 ? ' (en cours)' : ''); select.append(o); });
-  select.value = S.week;
-  select.addEventListener('change', () => { S.week = select.value; S.bilan = ''; draw(); });
-  const out = el('textarea', 'pm-bilan'); out.readOnly = true; out.setAttribute('aria-label', 'Bilan à copier'); out.value = S.bilan; out.hidden = !S.bilan;
-  const info = el('p', 'pm-muted');
-  const other = S.other;
-  const draw = () => { out.value = S.bilan; out.hidden = !S.bilan; };
-  const generate = btn('Générer le bilan', 'pm-validate', async () => {
-    try {
-      const [cat, sessions, weights] = await Promise.all([loadCatalog(), listWorkouts(profile), listBodyWeights(profile)]);
-      const program = profile === 'demo' ? await getDemoProgram().catch(() => null) : await getProgram(profile, S.week).catch(() => null);
-      const names = new Map([...cat.byId].map(([id, m]) => [id, m.name]));
-      const people = [{ profileId: profile, name: person(profile).name, goal: person(profile).goal, sessions, weights, program: program && program.weekStart === S.week ? program : null }];
-      if (S.other) {
-        const prog = S.other.programs.find(p => p.weekStart === S.week) || null;
-        people.push({ profileId: S.other.profileId, name: person(S.other.profileId).name, goal: person(S.other.profileId).goal, sessions: S.other.sessions, weights: S.other.weights, program: prog });
-        people.sort((a, b) => (a.profileId === 'pierre' ? 0 : 1) - (b.profileId === 'pierre' ? 0 : 1));
-      }
-      S.bilan = buildBilan({ weekStart: S.week, people, machineNames: names });
-      draw(); out.scrollIntoView({ block: 'nearest' });
-    } catch (e) { toast(e.message || 'Bilan impossible.'); }
-  });
-  const copy = btn('Copier le bilan', 'pm-secondary', async () => {
-    if (!S.bilan) { toast('Génère d’abord le bilan.'); return; }
-    toast((await copyText(S.bilan, out)) ? 'Bilan copié : colle-le dans ChatGPT.' : 'Copie impossible : sélectionne le texte à la main.');
-  });
-  const share = btn('Partager bilan + sauvegarde', 'pm-secondary', async () => {
-    if (!S.bilan) { toast('Génère d’abord le bilan.'); return; }
-    try {
-      const extra = [{ filename: 'bilan-' + S.week + '.txt', text: S.bilan, mime: 'text/plain' }];
-      if (real(profile)) { const r = await runBackup(profile, { extraFiles: extra }); toast(r.how === 'cancelled' ? 'Partage annulé.' : 'Bilan et sauvegarde partagés ✓'); }
-      else await saveTextFile(extra[0].filename, extra[0].text, 'text/plain');
-    } catch (e) { toast(e.message || 'Partage impossible.'); }
-  });
-  // données de l'autre profil, en memoire seulement
-  const otherId = profile === 'pierre' ? 'manon' : profile === 'manon' ? 'pierre' : null;
-  const wrap = section('Bilan hebdomadaire', 'Texte à copier dans ChatGPT pour préparer la semaine suivante. Pour un bilan commun, ajoute le fichier de sauvegarde de l’autre personne (il reste en mémoire et n’écrase rien).', select);
-  if (otherId) {
-    const file = el('input'); file.type = 'file'; file.accept = '.json,application/json'; file.setAttribute('aria-label', 'Sauvegarde de ' + person(otherId).name);
-    const line = el('div', 'pm-file-line');
-    const load = btn('Ajouter les données de ' + person(otherId).name, 'pm-secondary', async () => {
-      try {
-        const b = parseBackupText(await readFile(file));
-        if (b.profileId !== otherId) throw new Error('Ce fichier est la sauvegarde de ' + person(b.profileId).name + ', pas celle de ' + person(otherId).name + '.');
-        S.other = backupToPerson(b); S.bilan = '';
-        info.textContent = 'Données de ' + person(otherId).name + ' chargées en mémoire : ' + S.other.sessions.length + ' séance(s).';
-        toast('Données chargées (temporaires)'); draw();
-      } catch (e) { info.textContent = e.message || String(e); }
-    });
-    add(line, file, load);
-    if (other) add(line, btn('Retirer', 'pm-secondary', () => { S.other = null; S.bilan = ''; info.textContent = 'Données retirées.'; draw(); }));
-    wrap.append(line);
-    if (other) info.textContent = 'Données de ' + person(other.profileId).name + ' chargées en mémoire : ' + other.sessions.length + ' séance(s).';
-  }
-  wrap.append(info, generate, add(el('div', 'pm-row-actions'), copy, share), out);
-  return wrap;
-}
-
 function localDataSection(profile) {
   const info = el('p', 'pm-muted', 'Vérification du stockage…');
   (async () => {
@@ -281,7 +209,6 @@ async function render() {
   if (!isKnownProfile(profile)) return;
   const config = await getRestConfig(profile);
   const ui = await getUiSettings(profile);
-  const bilan = await bilanSection(profile);
   const [sport, gym] = await Promise.all([sportSection(profile), gymSection(profile)]); // V2 : profil sportif et salle
   const [manage, transfer] = profile === 'demo' ? [null, null] : await Promise.all([manageProfilesSection(profile), historyImportSection(profile)]); // V2-EVOLUTION-1
   if (mine !== S.rev || root.dataset.pmProfile !== profile) return;
@@ -297,7 +224,7 @@ async function render() {
       btn('Modifier mes charges', 'pm-secondary', () => document.dispatchEvent(new CustomEvent('pm:open-declared-loads', { detail: { from: 'profil' } }))))),
     group('Séance et chrono', chronoSection(profile, config), usageSection(profile, ui), effectsSection(profile, ui)),
     ...(manage || transfer ? [group('Profils', manage, transfer)] : []),
-    group('Données', backupSection(profile), bilan, localDataSection(profile), demoSection(profile)),
+    group('Données', backupSection(profile), localDataSection(profile), demoSection(profile)),
     group('À propos', korvGuide(profile), about));
   const update = btn('Rechercher une mise à jour', 'pm-secondary', async () => {
     try {
@@ -315,7 +242,7 @@ async function render() {
 // Optimisation : l'onglet masqué ne se reconstruit pas ; il se met à jour à l'ouverture (clic sur son onglet)
 const refresh = () => render().catch(console.error);
 const reload = () => { if (!page.hidden) refresh(); };
-document.addEventListener('pm:profile-changed', () => { S.other = null; S.bilan = ''; S.notice = ''; reload(); });
-document.addEventListener('pm:data-changed', e => { S.bilan = ''; if (e.detail?.source !== 'profiles-ui') reload(); });
+document.addEventListener('pm:profile-changed', () => { S.notice = ''; reload(); });
+document.addEventListener('pm:data-changed', e => { if (e.detail?.source !== 'profiles-ui') reload(); });
 document.addEventListener('pm:profiles-changed', e => { if (e.detail?.id === root.dataset.pmProfile && e.detail?.reason === 'updated') reload(); });
 document.addEventListener('click', e => { if (e.target.closest?.('[data-go="profil"]')) refresh(); });

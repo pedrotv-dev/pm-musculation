@@ -5,7 +5,7 @@
  * - Salle : machines disponibles (null = toutes celles du catalogue) et machines à éviter.
  * Stockage : réglages du profil (`coach.profile`, `coach.gym`) → inclus dans les sauvegardes du profil, restaurables.
  * Démo : mémoire seulement. Chaque modification ajoute une entrée datée à `history` (changements d'objectifs, de
- * disponibilités…) : rien n'est effacé, le bilan pour ChatGPT peut citer les changements récents.
+ * disponibilités…) : rien n'est effacé, l’historique des changements reste disponible.
  */
 import { saveSetting, getSetting } from '../storage.js';
 import { isRealProfile } from './profiles.js';
@@ -37,7 +37,7 @@ export const EMPTY_SPORT = Object.freeze({
 export const EMPTY_GYM = Object.freeze({ available: null, avoid: [], note: '', updatedAt: null, history: [] });
 
 const memory = new Map(); // démo (et repli) : profil -> { sport, gym }
-/** Profil sportif FICTIF du mode Démo (mémoire seulement) : complet, pour essayer la demande ChatGPT. */
+/** Profil sportif FICTIF du mode Démo (mémoire seulement) : complet, pour essayer le calcul de la semaine. */
 const DEMO_SPORT = Object.freeze({ mainGoal: 'Remise en forme', goals: ['Renforcement'], level: 'intermediaire', frequency: 3, days: ['lundi', 'mercredi', 'vendredi'], durationMin: 60 });
 const clone = v => JSON.parse(JSON.stringify(v));
 const text = (v, field) => {

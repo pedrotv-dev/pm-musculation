@@ -1,6 +1,6 @@
 // V2-UX LOT 1 — navigation simplifiée (Chromium 390 px, horloge simulée, données FICTIVES uniquement) :
-// 3 onglets (Accueil, Programme, Progression) + Réglages ⚙︎ en haut ; historique dans Progression ; demande ChatGPT dans
-// Programme, juste au-dessus de l'import. Parcours d'un nouvel utilisateur puis d'un utilisateur ayant déjà des séances ;
+// 3 onglets (Accueil, Programme, Progression) + Réglages ⚙︎ en haut ; historique dans Progression ; préparation de la semaine dans
+// Programme (semaine calculée), juste au-dessus de l'import. Parcours d'un nouvel utilisateur puis d'un utilisateur ayant déjà des séances ;
 // séance en cours conservée pendant la navigation. Aucune donnée réelle (Pierre, Manon) n'est touchée.
 // node tests/e2e/v2-nav-lot1-flow.mjs
 import assert from 'node:assert/strict';
@@ -35,11 +35,11 @@ await step('nouvel utilisateur : création du profil → 3 onglets (Accueil, Pro
   assert.equal(await noOverflow(), true);
 });
 
-await step('premier accueil (aucun programme, aucune séance) : 3 choix ; « Préparer mon programme avec ChatGPT » → Programme', async () => {
+await step('premier accueil (aucun programme, aucune séance) : 3 choix ; « Calculer mon programme » → Programme', async () => {
   await page.waitForSelector(home + ' .pm-welcome-card h3:has-text("Par quoi veux-tu commencer")');
   assert.equal(await page.locator(home + ' .pm-welcome-opt').count(), 3);
   assert.equal(await page.locator(home + ' .pm-validate').count(), 1, 'une seule action principale');
-  await page.click(home + ' .pm-welcome-card button:has-text("Préparer mon programme avec ChatGPT")');
+  await page.click(home + ' .pm-welcome-card button:has-text("Calculer mon programme")');
   assert.equal(await visiblePage(), 'programme');
   await page.waitForSelector(coach + ' .pm-coach-missing');
   const order = await db(() => [...document.querySelectorAll('[data-page="programme"] .pm-coach-section, [data-page="programme"] .pm-import')].map(x => x.classList.contains('pm-import') ? 'import' : 'demande'));
@@ -61,16 +61,16 @@ await step('« Compléter : niveau » ouvre Réglages sur le champ ; enregistrer
   await f.locator('.pm-coach-status[data-state="ok"]').waitFor();
   await f.locator('.pm-to-coach').click();
   assert.equal(await visiblePage(), 'programme');
-  await page.waitForSelector(coach + ' button:has-text("Copier ma demande")');
+  await page.waitForSelector(coach + ' button:has-text("Calculer ma semaine")');
 });
 
-await step('Réglages : 5 rubriques, plus de demande ChatGPT ; fonctions avancées toujours présentes', async () => {
+await step('Réglages : 5 rubriques, aucune préparation de semaine ; fonctions avancées toujours présentes', async () => {
   await page.click('#open-settings');
   await page.waitForSelector('[data-page="profil"] h2:has-text("Réglages")');
   const groups = (await page.locator('[data-page="profil"] .pm-settings-group-title').allTextContents()).map(t => t.trim());
   assert.deepEqual(groups, ['Mon profil', 'Séance et chrono', 'Profils', 'Données', 'À propos']);
   const t = await page.locator('[data-page="profil"]').innerText();
-  for (const want of ['Mon profil sportif', 'Mes machines', 'Chronomètre', 'Pendant une séance', 'Gérer mes profils', 'Importer l’historique d’un autre profil', 'Sauvegarder maintenant', 'Bilan', 'Données locales', 'Mode démo', 'Rechercher une mise à jour'])
+  for (const want of ['Mon profil sportif', 'Mes machines', 'Chronomètre', 'Pendant une séance', 'Gérer mes profils', 'Importer l’historique d’un autre profil', 'Sauvegarder maintenant', 'Données locales', 'Mode démo', 'Rechercher une mise à jour'])
     assert.ok(t.includes(want), 'présent : ' + want);
   assert.equal(await page.locator('[data-page="profil"] .pm-coach-section').count(), 0);
   assert.equal(await noOverflow(), true);

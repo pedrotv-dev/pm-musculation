@@ -1,4 +1,4 @@
-// Sauvegarde, restauration, bilan, progrès, deux onglets, réparation de base : node tests/e2e/data-flow.mjs
+// Sauvegarde, restauration, progrès, deux onglets, réparation de base : node tests/e2e/data-flow.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -107,21 +107,12 @@ await step('restaurer par fusion : aucun doublon', async () => {
   await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
   assert.equal(await page.locator('.pm-history-card').count(), 1);
 });
-await step('bilan texte de la semaine', async () => {
-  await openProfile(page);
-  await page.click('button:has-text("Générer le bilan")');
-  await page.waitForFunction(() => document.querySelector('.pm-bilan') && !document.querySelector('.pm-bilan').hidden);
-  const bilan = await page.locator('.pm-bilan').inputValue();
-  assert.match(bilan, /BILAN HEBDOMADAIRE — PM Musculation/);
-  assert.match(bilan, /=== PIERRE/);
-  assert.match(bilan, /Chest Press/);
-  assert.match(bilan, /PARTIELLE/);
-});
 await step('réglages du chronomètre propres au profil', async () => {
+  await openProfile(page);
   await page.selectOption('select[aria-label="Mode du chronomètre"]', 'manual');
   await page.waitForTimeout(300);
 });
-await step('Manon : espace séparé, bilan commun avec le fichier de Pierre (en mémoire)', async () => {
+await step('Manon : espace séparé ; la sauvegarde de Pierre ne peut pas être restaurée chez Manon', async () => {
   await page.click('#switch-profile');
   await page.click('[data-select-profile="manon"]');
   await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
@@ -132,14 +123,6 @@ await step('Manon : espace séparé, bilan commun avec le fichier de Pierre (en 
   await page.setInputFiles('input[aria-label="Fichier de sauvegarde à restaurer"]', path.join(tmp, 'pierre.json'));
   await page.click('button:has-text("Restaurer ce fichier")');
   await page.waitForFunction(() => /ne peut pas être restaurée/.test(document.body.innerText));
-  // mais il peut alimenter le bilan commun
-  await page.setInputFiles('input[aria-label="Sauvegarde de Pierre"]', path.join(tmp, 'pierre.json'));
-  await page.click('button:has-text("Ajouter les données de Pierre")');
-  await page.waitForFunction(() => /chargées en mémoire : 1 séance/.test(document.body.innerText));
-  await page.click('button:has-text("Générer le bilan")');
-  await page.waitForFunction(() => document.querySelector('.pm-bilan') && document.querySelector('.pm-bilan').value.length > 50);
-  const bilan = await page.locator('.pm-bilan').inputValue();
-  assert.match(bilan, /=== PIERRE/); assert.match(bilan, /=== MANON/);
   await page.click('.nav-btn[data-go="progres"]'); await page.click('.pm-subtab[data-go="historique"]');
   assert.match(await text('[data-page="historique"]'), /Aucune séance/); // rien n'a été écrit pour Manon
 });

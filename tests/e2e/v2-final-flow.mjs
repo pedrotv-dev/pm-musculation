@@ -127,7 +127,7 @@ await step('B3 · séance libre : « Charge déclarée : 73 kg × 12 » préremp
   await page.locator('.pm-levelup-overlay .pm-primary').click({ timeout: 1500 }).catch(() => {});
 });
 
-await step('B4 · après la séance : la performance RÉELLE (70 kg, plus récente) devient la référence ; record séparé ; ChatGPT', async () => {
+await step('B4 · après la séance : la performance RÉELLE (70 kg, plus récente) devient la référence ; record séparé ; requête IA', async () => {
   const r = await db(async () => {
     const D = await import('./js/declared-loads.js'); const W = await import('./js/workouts.js'); const St = await import('./js/stats.js');
     const sessions = (await W.listWorkouts('pierre')).filter(St.isClosed);
@@ -135,9 +135,14 @@ await step('B4 · après la séance : la performance RÉELLE (70 kg, plus récen
   });
   assert.deepEqual([r.ref.source, r.ref.kg], ['real', 70]);
   assert.equal(r.rec, 70);
-  const t = await db(async () => { const C = await import('./js/coach.js'); const U = await import('./js/coach-ui.js'); return C.buildCoachPrompt(await U.coachInput('pierre', '2026-11-16')); });
-  assert.match(t, /Leg Press \(leg-press\) : dernière fois .* 70 kg/);
-  assert.doesNotMatch(t, /leg-press\) : 73 kg × 12/, 'déclaration plus ancienne non reprise');
+  const req = await db(async () => {
+    const W = await import('./js/workouts.js'); const St = await import('./js/stats.js'); const E = await import('./js/program-engine.js'); const A = await import('./js/coach-ai.js'); const U = await import('./js/coach-ui.js');
+    const inp = await U.coachInput('pierre', '2026-11-16'); const sessions = (await W.listWorkouts('pierre')).filter(St.isClosed);
+    const w = E.generateWeek({ profileId: 'pierre', weekStart: '2026-11-16', sport: inp.sport, gym: inp.gym, catalog: inp.catalog, sessions, declared: inp.declared });
+    return A.buildAiRequest({ sport: inp.sport, plan: w.plan, program: w.program, profileId: 'pierre', sessions, catalog: inp.catalog }).prompt;
+  });
+  assert.match(req, /"leg-press":\{"kg":70/, 'performance réelle transmise à l’IA');
+  assert.doesNotMatch(req, /"leg-press":\{"kg":73/, 'déclaration plus ancienne non reprise');
 });
 
 await step('mode Démo intact ; aucune erreur JavaScript', async () => {
