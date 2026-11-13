@@ -129,15 +129,16 @@ await step('fréquence : profil 5 séances (mardi → samedi), JSON d’UNE séa
   await page.waitForFunction(async id => !!(await (await import('./storage.js')).getProgram(id, '2026-11-16')), pierre2);
 });
 
-await step('demande ChatGPT de Pierre2 : 5 séances exigées, Hard RPE 8–9, charges importées utilisées (82,5 kg)', async () => {
-  await page.click('.nav-btn[data-go="programme"]'); await page.waitForSelector('[data-page="programme"] .pm-coach-section h3'); // LOT 1 : demande dans Programme
+await step('semaine calculée de Pierre2 : 5 séances (mardi → samedi), charges importées utilisées (82,5 kg)', async () => {
+  await page.click('.nav-btn[data-go="programme"]'); await page.waitForSelector('[data-page="programme"] .pm-coach-section h3');
   await page.getByLabel('Semaine à préparer').selectOption('2026-11-23');
-  await page.click('.pm-coach-section button:has-text("Copier ma demande")');
-  await page.waitForSelector('.pm-coach-out:not([hidden])');
-  const t = await page.inputValue('.pm-coach-out');
-  for (const want of ['Prépare EXACTEMENT 5 séances, une sur chacun de ces jours : mardi, mercredi, jeudi, vendredi, samedi', 'Intensité choisie : HARD — RPE 8 à 9', 'Ne réduis PAS toutes les charges sous prétexte que je suis débutant(e)', 'Leg Press (leg-press) : dernière fois', '82,5 kg', 'importées d’un ancien profil']) assert.ok(t.includes(want), want);
-  const ex = JSON.parse(t.slice(t.lastIndexOf('{\n  "schemaVersion"')));
-  assert.equal(ex.programs[pierre2].days.length, 5);
+  await page.click('.pm-coach-section button:has-text("Calculer ma semaine")');
+  await page.waitForSelector('.pm-action-save:not([disabled])');
+  const ex = JSON.parse(await page.inputValue('.pm-textarea'));
+  const days = ex.programs[pierre2].days;
+  assert.deepEqual(days.map(d => d.id), ['mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']);
+  const lp = days.flatMap(d => d.activities).find(a => a.machineId === 'leg-press');
+  assert.ok(lp && lp.sets[0].kg >= 82.5, 'charge importée 82,5 kg reprise (ou palier suivant)');
 });
 
 await step('aucune erreur JavaScript', async () => { assert.deepEqual(errors, []); });

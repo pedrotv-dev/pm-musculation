@@ -1,7 +1,7 @@
 // V2-RECETTE-1 — utilisation quotidienne, uniquement par l'interface (Chromium, téléphone 390 px, horloge simulée,
 // données FICTIVES) : première utilisation → séance réelle (plusieurs machines, cardio, repos, machine occupée, reprise
 // après fermeture, fin partielle) → vendredi (dernières charges) → semaine suivante → séance libre → deuxième profil
-// orienté endurance → sauvegardes individuelles → hors connexion → bilan et programme suivant.
+// orienté endurance → sauvegardes individuelles → hors connexion → semaine suivante calculée.
 // node tests/e2e/v2-recette-flow.mjs
 import assert from 'node:assert/strict';
 import { serve, launch, watch, step, summary, createProfileApi } from './lib.mjs';
@@ -19,7 +19,7 @@ const db = (fn, arg) => page.evaluate(fn, arg);
 const text = sel => page.locator(sel).innerText();
 const coach = '.pm-coach-section';
 const openFold = async title => { const d = page.locator('details.pm-fold', { has: page.locator('summary', { hasText: new RegExp('^' + title + '$') }) }); if (!(await d.evaluate(x => x.open))) await d.locator('summary').click(); return d; };
-// LOT 1 : profil sportif et machines dans Réglages (⚙︎) ; « Préparer mon programme avec ChatGPT » dans l'onglet Programme
+// Profil sportif et machines dans Réglages (⚙︎) ; « Préparer ma semaine » (calcul) dans l'onglet Programme
 const goProfil = async () => { await page.click('.pm-settings-btn[data-go="profil"]'); await page.waitForSelector('[data-page="profil"] .pm-sport-fold'); };
 const goCoach = async () => { await page.click('.nav-btn[data-go="programme"]'); await page.waitForSelector('[data-page="programme"] ' + coach + ' h3'); };
 const saveSport = async f => { await f.locator('.pm-coach-status').first().evaluate(p => { p.dataset.state = ''; p.textContent = ''; }); await f.locator('button:has-text("Enregistrer mon profil sportif")').click(); await f.locator('.pm-coach-status[data-state="ok"]').first().waitFor(); };
@@ -36,7 +36,7 @@ const networkCut = async fn => { const n = errors.length; try { await fn(); } fi
 const title = () => page.locator(screen + ' h2').first().innerText();
 let alex, sam, programAlex, mondayId;
 
-// Programme fictif réaliste (lundi / mercredi / vendredi), au format exact demandé à ChatGPT.
+// Programme fictif réaliste (lundi / mercredi / vendredi), au format d'import (fichier JSON).
 const weekA = (id, weekStart) => ({ schemaVersion: 1, weekStart, programs: { [id]: { days: [
   { id: 'lundi', name: 'Bas du corps', activities: [
     { type: 'warmup', name: 'Vélo assis', durationMinutes: 5, level: 6 },
@@ -54,6 +54,7 @@ const reply = p => 'Programme centré sur la prise de muscle, 3 séances sous 60
 const importReply = async text => {
   await page.click('.nav-btn[data-go="programme"]');
   if (!(await page.locator('.pm-import').evaluate(d => d.open))) await page.click('.pm-import summary');
+  if (await page.locator('.pm-import-manual').isVisible()) await page.click('.pm-import-manual');
   await page.fill('.pm-textarea', text);
   await page.click('.pm-action-verify');
   await page.waitForSelector('.pm-action-save:not([disabled])');
@@ -92,10 +93,10 @@ await step('1.1 lundi 9 novembre : création du profil « Alex fictif » depuis 
   await page.waitForSelector(home + ' h3:has-text("Aucun programme cette semaine"), ' + home + ' h3:has-text("Par quoi veux-tu commencer")');
 });
 
-await step('1.2 profil sportif incomplet : la génération ChatGPT n’apparaît pas, ce qui manque est listé', async () => {
+await step('1.2 profil sportif incomplet : le calcul n’apparaît pas, ce qui manque est listé', async () => {
   await goCoach();
   await page.waitForSelector(coach + ' .pm-coach-missing');
-  assert.equal(await page.locator(coach + ' button:has-text("Copier ma demande")').count(), 0);
+  assert.equal(await page.locator(coach + ' button:has-text("Calculer ma semaine")').count(), 0);
   await goProfil();
 });
 
@@ -120,23 +121,22 @@ await step('1.3 profil sportif, poids actuel et poids cible ; machines de la sal
   assert.equal(await noOverflow(), true);
 });
 
-await step('1.4 « Copier ma demande » apparaît ; génération et copie', async () => {
+await step('1.4 « Calculer ma semaine » apparaît ; semaine calculée (60 min max, Calf Press à éviter exclue)', async () => {
   await goCoach();
-  await page.waitForSelector(coach + ' button:has-text("Copier ma demande")');
-  await context.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
+  await page.waitForSelector(coach + ' button:has-text("Calculer ma semaine")');
   await page.getByLabel('Semaine à préparer').selectOption('2026-11-09');
-  await page.click(coach + ' button:has-text("Copier ma demande")');
-  await page.waitForSelector('.pm-coach-out:not([hidden])');
-  const t = await page.inputValue('.pm-coach-out');
-  for (const want of ['Objectif principal : Prise de muscle', 'Poids : 78,6 kg', 'Poids cible', 'Durée MAXIMALE disponible par séance : 60 min', 'Machines à éviter : Calf Press']) assert.ok(t.includes(want), want);
-  await page.click(coach + ' button:has-text("Copier")');
-  await page.waitForSelector('.pm-coach-status:has-text("Cop")');
+  await page.click(coach + ' button:has-text("Calculer ma semaine")');
+  await page.waitForSelector('.pm-action-save:not([disabled])');
+  const ex = JSON.parse(await page.inputValue('.pm-textarea'));
+  const ids = Object.values(ex.programs)[0].days.flatMap(d => d.activities.map(a => a.machineId).filter(Boolean));
+  assert.ok(ids.length && !ids.includes('calf-press'));
+  for (const d of Object.values(ex.programs)[0].days) assert.ok(await db(d => import('./js/programs.js').then(P => P.estimateDayMinutes(d)), d) <= 62, d.id);
 });
 
-await step('1.5 import de la réponse complète (semaine en cours) → accueil : « Séance du jour »', async () => {
+await step('1.5 import d’un fichier de programme (semaine en cours) → accueil : « Séance du jour »', async () => {
   programAlex = weekA(alex, '2026-11-09');
-  await page.click(coach + ' button:has-text("Coller la réponse de ChatGPT")');
   await page.waitForSelector('.pm-import[open]');
+  await page.click('.pm-import-manual'); // fichier de programme fictif à la place de la semaine calculée
   await page.fill('.pm-textarea', reply(programAlex));
   await page.click('.pm-action-verify');
   await page.waitForSelector('.pm-action-save:not([disabled])');
@@ -356,7 +356,7 @@ await step('4.1 deuxième profil « Sam fictif » (endurance, perte de graisse) 
   await f.locator('#pm-sport-weight').fill('64,2');
   await saveSport(f);
   await goCoach();
-  await page.waitForSelector(coach + ' button:has-text("Copier ma demande")');
+  await page.waitForSelector(coach + ' button:has-text("Calculer ma semaine")');
 });
 
 await step('4.2 Sam : programme différent, séance faite ; aucune référence de charge venant d’Alex', async () => {
@@ -476,39 +476,36 @@ await step('5.4 mise à jour PWA pendant la séance : jamais proposée en séanc
   assert.equal(last.activities[0].sets.filter(x => x.done).length, 3);
 });
 
-// ------------------------------------------------------------------ 6. bilan et programme suivant
-await step('6.1 Alex : demande pour la semaine du 23 novembre — performances, ressentis, séance manquée, fatigue, poids, jours, durée', async () => {
-  await goProfil();
-  const f = await openFold('Mon profil sportif');
-  await f.getByLabel('Fatigue actuelle').selectOption('4');
-  await saveSport(f);
+// ------------------------------------------------------------------ 6. programme suivant calculé
+await step('6.1 Alex : semaine du 23 novembre calculée — Leg Press depuis la vraie charge (82,5 kg), jours et durée respectés, importable', async () => {
   await goCoach();
   await page.getByLabel('Semaine à préparer').selectOption('2026-11-23');
-  await page.click(coach + ' button:has-text("Copier ma demande")');
-  await page.waitForSelector('.pm-coach-out:not([hidden])');
-  const t = await page.inputValue('.pm-coach-out');
-  for (const want of ['Leg Press (leg-press) : dernière fois', '82,5 kg', 'séries validées la dernière fois', 'non faites : mercredi', 'SEMAINE INCOMPLÈTE', 'ressenti moyen',
-    'Fatigue actuelle : Fatigué(e)', 'fatigue : Normale → Fatigué(e)', 'Poids : 78,6 kg', 'Poids cible', '82 kg', 'Jours disponibles : lundi, mercredi, vendredi',
-    'Durée MAXIMALE disponible par séance : 60 min', 'Objectif principal : Prise de muscle', 'N’invente JAMAIS de référence', 'PAS une grille',
-    'Rameur', 'Fatigue en fin de séance (fictif)']) assert.ok(t.includes(want), 'attendu : ' + want);
-  const example = JSON.parse(t.slice(t.lastIndexOf('{\n  "schemaVersion"')));
-  assert.equal(example.weekStart, '2026-11-23');
-  const ok = await db(async ([id, ex]) => { const P = await import('./js/programs.js'); return (await P.prepareProgramImport(id, JSON.stringify(ex), { knownMachineIds: (await (await import('./js/catalog.js')).loadCatalog()).list.map(m => m.id) })).weekStart; }, [alex, example]);
-  assert.equal(ok, '2026-11-23', 'le format demandé est importable tel quel');
+  await page.click(coach + ' button:has-text("Calculer ma semaine")');
+  await page.waitForSelector('.pm-action-save:not([disabled])');
+  const ex = JSON.parse(await page.inputValue('.pm-textarea'));
+  assert.equal(ex.weekStart, '2026-11-23');
+  const days = ex.programs[alex].days;
+  assert.deepEqual(days.map(d => d.id), ['lundi', 'mercredi', 'vendredi']);
+  const lp = days.flatMap(d => d.activities).find(a => a.machineId === 'leg-press');
+  assert.ok(lp && lp.sets[0].kg >= 82.5, 'dernière charge réelle 82,5 kg (ou palier suivant)');
+  const ok = await db(async ([id, ex]) => { const P = await import('./js/programs.js'); return (await P.prepareProgramImport(id, JSON.stringify(ex), { knownMachineIds: (await (await import('./js/catalog.js')).loadCatalog()).list.map(m => m.id) })).weekStart; }, [alex, ex]);
+  assert.equal(ok, '2026-11-23', 'importable tel quel');
 });
 
-await step('6.2 Sam (endurance) : orientation différente, alimentation, durée 45 min, aucun poids cible inventé', async () => {
+await step('6.2 Sam (endurance) : 2 séances lundi + jeudi, 15-20 répétitions (ACSM), 45 min max ; aucune donnée d’Alex', async () => {
   await page.evaluate(id => document.dispatchEvent(new CustomEvent('pm:select-profile', { detail: { profile: id } })), sam);
   await page.waitForFunction(id => document.documentElement.dataset.pmProfile === id, sam);
   await goCoach();
   await page.getByLabel('Semaine à préparer').selectOption('2026-11-23');
-  await page.click(coach + ' button:has-text("Copier ma demande")');
-  await page.waitForSelector('.pm-coach-out:not([hidden])');
-  const t = await page.inputValue('.pm-coach-out');
-  for (const want of ['Objectif principal : Endurance — priorité à la capacité cardio-respiratoire', 'Objectif secondaire : Perte de graisse', 'levier principal est l’alimentation',
-    'Durée MAXIMALE disponible par séance : 45 min', 'Jours disponibles : lundi, jeudi', 'Poids : 64,2 kg', 'Fatigue actuelle : Fatigué(e)', 'Rameur : 16 novembre 2026 — 25 min']) assert.ok(t.includes(want), 'attendu : ' + want);
-  assert.equal(t.includes('Poids cible'), false);
-  assert.equal(t.includes('Alex fictif') || t.includes(alex), false, 'aucune donnée d’Alex dans la demande de Sam');
+  await page.click(coach + ' button:has-text("Calculer ma semaine")');
+  await page.waitForSelector('.pm-action-save:not([disabled])');
+  const ex = JSON.parse(await page.inputValue('.pm-textarea'));
+  assert.deepEqual(Object.keys(ex.programs), [sam], 'aucune donnée d’Alex');
+  const days = ex.programs[sam].days;
+  assert.deepEqual(days.map(d => d.id), ['lundi', 'jeudi']);
+  const strength = days.flatMap(d => d.activities.filter(a => a.type === 'strength'));
+  assert.ok(strength.length && strength.every(a => a.sets.every(x => x.reps >= 15 && x.reps <= 20)), 'endurance : 15-20 répétitions');
+  for (const d of days) assert.ok(await db(d => import('./js/programs.js').then(P => P.estimateDayMinutes(d)), d) <= 47, d.id);
 });
 
 await step('aucune requête vers l’extérieur (aucun transfert de données) ; aucune erreur JavaScript', async () => {

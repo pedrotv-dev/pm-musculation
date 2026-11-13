@@ -1,7 +1,7 @@
 // V2-UX LOT 3 — séance : ressenti facultatif par machine et calibrage d'un cran (Chromium 390 px, données FICTIVES).
 // Séance 1 : Leg Press 60 kg validée, ressenti « Trop facile » (un appui, effaçable). Séance 2 : charges préremplies à 60 kg
 // (rien de validé), proposition « Essayer +2,5 kg » : appliquée SEULEMENT sur appui, aux séries non validées, corrigible
-// avec − ; jamais proposée une 2e fois. « Machine occupée », Valider, − / + toujours visibles. Demande ChatGPT : ressenti repris.
+// avec − ; jamais proposée une 2e fois. « Machine occupée », Valider, − / + toujours visibles. Requête IA : ressenti repris.
 // node tests/e2e/v2-lot3-flow.mjs
 import assert from 'node:assert/strict';
 import { serve, launch, watch, step, summary, createProfileApi } from './lib.mjs';
@@ -95,10 +95,15 @@ await step('appui sur « Essayer +2,5 kg » → 62,5 kg sur les 2 séries non va
   assert.deepEqual(s.activities[0].sets.map(x => [x.kg, x.done]), [[60, true], [62.5, false]]);
 });
 
-await step('demande ChatGPT : ressenti noté repris pour la Leg Press', async () => {
+await step('requête IA : ressenti noté repris pour la Leg Press', async () => {
   await page.click(screen + ' .pm-footer button:has-text("Pause")').catch(() => {});
-  const t = await db(async id => { const C = await import('./js/coach.js'); const U = await import('./js/coach-ui.js'); return C.buildCoachPrompt(await U.coachInput(id, '2026-11-16')); }, alex);
-  assert.match(t, /Leg Press \(leg-press\) : dernière fois .* ressenti noté : TROP FACILE/);
+  const req = await db(async id => {
+    const W = await import('./js/workouts.js'); const St = await import('./js/stats.js'); const E = await import('./js/program-engine.js'); const A = await import('./js/coach-ai.js'); const U = await import('./js/coach-ui.js');
+    const inp = await U.coachInput(id, '2026-11-16'); const sessions = (await W.listWorkouts(id)).filter(St.isClosed);
+    const w = E.generateWeek({ profileId: id, weekStart: '2026-11-16', sport: inp.sport, gym: inp.gym, catalog: inp.catalog, sessions, declared: inp.declared });
+    return A.buildAiRequest({ sport: inp.sport, plan: w.plan, program: w.program, profileId: id, sessions, catalog: inp.catalog }).prompt;
+  }, alex);
+  assert.match(req, /"leg-press":\{[^}]*"feel":"easy"/);
 });
 
 await step('Pierre et Manon jamais touchés ; aucune erreur JavaScript', async () => {

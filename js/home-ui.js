@@ -73,7 +73,7 @@ function progressSection(r) {
 const openLoads = () => emit('pm:open-declared-loads', { from: 'accueil' });
 /**
  * V2-UX-FINALISATION — premier accueil : 1. séance libre (tout de suite, performances réelles enregistrées),
- * 2. « Mes charges » (charges déjà connues, sans séance), 3. programme avec ChatGPT. Disparaît dès la première séance
+ * 2. « Mes charges » (charges déjà connues, sans séance), 3. programme calculé. Disparaît dès la première séance
  * terminée ou le premier programme ; les trois fonctions restent accessibles ailleurs (Accueil, Réglages, Programme).
  */
 function welcomeCard(profile) {
@@ -83,7 +83,7 @@ function welcomeCard(profile) {
     opt(1, 'Une séance libre', 'Entraîne-toi tout de suite : l’application retient tes charges réelles, séance après séance.',
       btn('Commencer une séance libre', 'pm-validate', () => emit('pm:start-workout', { profileId: profile, free: true }))),
     opt(2, 'Mes charges', 'Note les charges et répétitions que tu connais déjà, sans lancer de séance.', btn('Renseigner mes charges', 'pm-secondary', openLoads)),
-    opt(3, 'Mon programme', 'L’application prépare ta demande à ChatGPT d’après ton profil et tes performances.', btn('Préparer mon programme avec ChatGPT', 'pm-secondary', () => prepareWeek(mondayOf()))));
+    opt(3, 'Mon programme', 'L’application calcule ta semaine d’après ton profil et tes vraies charges, selon les recommandations publiées.', btn('Calculer mon programme', 'pm-secondary', () => prepareWeek(mondayOf()))));
   return card;
 }
 /**
@@ -199,7 +199,7 @@ async function renderHome() {
       const next = new Date(program.weekStart + 'T12:00:00'); next.setDate(next.getDate() + 7);
       const week = localISODate(next);
       slot.append(add(el('article', 'panel pm-home-card pm-next-week'), el('h3', '', 'Préparer la semaine prochaine'),
-        el('p', 'pm-muted', 'La demande reprend tes séances, charges et ressentis de cette semaine. Copie-la dans ChatGPT, colle sa réponse : c’est importé.'),
+        el('p', 'pm-muted', 'Le calcul reprend tes séances, charges et ressentis de cette semaine.'),
         btn('Préparer la semaine du ' + longDate(week), 'pm-secondary', () => prepareWeek(week))));
     }
   }

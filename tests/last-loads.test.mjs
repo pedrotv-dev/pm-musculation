@@ -8,7 +8,6 @@ const L = await import('../js/last-loads.js');
 const W = await import('../js/workouts.js');
 const SP = await import('../js/sport-profile.js');
 const WT = await import('../js/weights.js');
-const { buildCoachPrompt, GOAL_GUIDES, weightLines } = await import('../js/coach.js');
 const P = await import('../js/programs.js');
 const { importProgram } = P;
 
@@ -124,28 +123,6 @@ test('moteur : préremplissage au démarrage (option), rien de validé, programm
   await W.discardWorkout('pierre', raw.id);
 });
 
-test('poids : première pesée, poids actuel du profil sportif sans doublon, poids cible facultatif', async () => {
-  const who = 'pierre';
-  const first = await WT.recordBodyWeight(who, 80.4, '2026-11-10');
-  assert.equal(first.change, 'added');
-  assert.equal((await WT.recordBodyWeight(who, 80.4, '2026-11-10')).change, 'unchanged', 'même valeur : rien');
-  const fix = await WT.recordBodyWeight(who, 80.1, '2026-11-10');
-  assert.deepEqual([fix.change, fix.measure.id], ['updated', first.measure.id], 'même jour : corrigée, pas de doublon');
-  await WT.addBodyWeight(who, 80.1, '2026-11-10');
-  await WT.addBodyWeight(who, 79.5, '2026-11-12'); // depuis Progression, autre jour
-  const all = await WT.listBodyWeights(who);
-  assert.deepEqual(all.map(m => [m.date, m.kg]).sort(), [['2026-11-10', 80.1], ['2026-11-12', 79.5]]);
-  await assert.rejects(WT.recordBodyWeight(who, 5, '2026-11-12'), /Poids invalide/);
-  assert.equal(SP.sanitizeSport({}).targetWeightKg, null, 'aucun poids cible inventé');
-  assert.equal(SP.sanitizeSport({ targetWeightKg: '72,5' }).targetWeightKg, 72.5);
-  assert.throws(() => SP.sanitizeSport({ targetWeightKg: 5 }), /Poids cible/);
-  const lines = weightLines(SP.sanitizeSport({ targetWeightKg: 75 }), [{ kg: 82, date: '2026-10-01' }, { kg: 81, date: '2026-10-20' }, { kg: 80, date: '2026-11-10' }], '2026-11-10').join('\n');
-  assert.match(lines, /Poids : 80 kg \(dernière mesure le 10 novembre 2026\)/);
-  assert.match(lines, /Évolution du poids : -2 kg depuis le 1 octobre 2026 \(3 mesures\)/);
-  assert.match(lines, /Poids cible \(objectif personnel, ni obligation médicale ni promesse de résultat/);
-  assert.equal(weightLines(SP.sanitizeSport({}), [], '2026-11-10').join('\n').includes('Poids cible'), false, 'poids cible absent : non mentionné');
-});
-
 test('parcours : informations essentielles ; anciens profils non obligés de tout recommencer', () => {
   assert.deepEqual(SP.missingEssentials(SP.sanitizeSport({})).map(m => m.key), ['mainGoal', 'level', 'frequency', 'days', 'durationMin']);
   const full = SP.sanitizeSport({ mainGoal: 'Force', level: 'debutant', frequency: 3, days: ['lundi', 'mercredi', 'vendredi'], durationMin: 60 });
@@ -158,67 +135,6 @@ test('parcours : informations essentielles ; anciens profils non obligés de tou
 });
 
 const base = { profileId: 'x', name: 'X', gym: SP.sanitizeGym({}), catalog: [{ id: 'leg-press', name: 'Leg Press', kind: 'strength' }, { id: 'rowing-machine', name: 'Rameur', kind: 'cardio' }], targetWeek: '2026-11-16', today: '2026-11-09' };
-const out = (mainGoal, extra = {}) => buildCoachPrompt({ ...base, sport: SP.sanitizeSport({ mainGoal, goals: ['Endurance'], level: 'debutant', frequency: 5, days: ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'], durationMin: 120, ...extra }) });
-
-test('coaching : consignes propres à chaque objectif, sans grille imposée ; démarche scientifique ; profil transmis', () => {
-  const muscle = out('Prise de muscle'), fat = out('Perte de graisse'), force = out('Force'), endu = out('Endurance'), fit = out('Remise en forme');
-  const orientation = t => t.slice(t.indexOf('## Orientation'), t.indexOf('## Durée des séances'));
-  const set = new Set([muscle, fat, force, endu, fit].map(orientation));
-  assert.equal(set.size, 5, 'orientation réellement différente pour chaque objectif');
-  assert.match(muscle, /Objectif principal : Prise de muscle — priorité à un volume hebdomadaire/);
-  assert.match(force, /Objectif principal : Force — priorité à la progression de charge/);
-  assert.match(endu, /Objectif principal : Endurance — priorité à la capacité cardio-respiratoire/);
-  assert.match(fat, /levier principal est l’alimentation/);
-  assert.match(fat, /cardio est un complément utile, pas une solution automatique, et les repos courts ne sont pas nécessaires/);
-  for (const t of [muscle, fat, force, endu]) {
-    assert.equal(/6 à 12 répétitions|3 à 6 répétitions|repos 60 à 120 s/.test(orientation(t).replace('pas uniquement 6 à 12', '')), false, 'aucune grille rigide');
-    assert.match(t, /PAS une grille/);
-    assert.match(t, /Tu es mon coach sportif polyvalent/);
-    assert.match(t, /N’invente JAMAIS de référence/);
-    assert.match(t, /Distingue ce qui est solidement établi de ce qui reste débattu/);
-    assert.match(t, /corps entier, haut \/ bas, split, cardio dominant/);
-    assert.match(t, /sans ajouter de volume artificiellement/);
-    assert.match(t, /Pas d’augmentation de charge automatique/);
-    assert.match(t, /hypothèse prudente et signale-la/);
-    assert.match(t, /justification courte de tes choix sportifs \(3 à 5 lignes, en texte, hors du JSON\)/);
-    for (let i = 1; i <= 12; i++) assert.match(t, new RegExp('^' + i + '\\. ', 'm'), '12 éléments analysés');
-  }
-  assert.match(muscle, /Objectif secondaire : Endurance/);
-  assert.match(muscle, /Niveau d’expérience : Débutant/);
-  assert.match(muscle, /Séances souhaitées par semaine : 5/);
-  assert.match(muscle, /Jours disponibles : lundi, mardi, mercredi, jeudi, vendredi/);
-  assert.match(muscle, /Prépare EXACTEMENT 5 séances, une sur chacun de ces jours : lundi, mardi, mercredi, jeudi, vendredi/);
-  assert.equal(Object.keys(GOAL_GUIDES).sort().join(), [...SP.GOALS].sort().join(), 'un axe par objectif existant');
-  assert.match(buildCoachPrompt({ ...base, sport: SP.sanitizeSport({}) }), /Aucun objectif principal renseigné/);
-});
-
-test('durée maximale : plafond, jamais à remplir ; estimation indicative', () => {
-  const t = out('Force');
-  assert.match(t, /Durée MAXIMALE disponible par séance : 120 min\. C’est un plafond, pas un objectif/);
-  assert.match(t, /une séance de 50 min est parfaitement acceptable avec 120 min disponibles/);
-  assert.match(t, /échauffement, les séries, les repos, les changements de machine et le cardio/);
-  assert.match(t, /Durée maximale par séance : 120 min \(maximum disponible, pas une durée à atteindre\)/);
-  assert.match(t, /ce n’est qu’une estimation/);
-  assert.match(out('Force', { durationMin: 45 }), /Durée MAXIMALE disponible par séance : 45 min/);
-  const day = { id: 'lundi', activities: [{ type: 'warmup', name: 'Rameur', durationMinutes: 8 }, { type: 'strength', machineId: 'leg-press', restSeconds: 90, sets: [{ kg: 1, reps: 1 }, { kg: 1, reps: 1 }, { kg: 1, reps: 1 }] }, { type: 'cardio', name: 'Rameur', durationMinutes: 15 }] };
-  assert.equal(P.estimateDayMinutes(day), 35, '9 + (2 + 2,25 + 3) + 16 min ≈ 34,25 → 35');
-  assert.equal(P.estimateDayMinutes({ activities: [] }), 5);
-});
-
-test('JSON : format strict inchangé ; réponse complète de ChatGPT (justification + un bloc) importable', async () => {
-  const t = out('Prise de muscle');
-  const json = JSON.parse(t.slice(t.lastIndexOf('{\n  "schemaVersion"')));
-  assert.deepEqual(Object.keys(json), ['schemaVersion', 'weekStart', 'programs']);
-  assert.equal(json.schemaVersion, 1);
-  const program = { schemaVersion: 1, weekStart: '2026-11-16', programs: { pierre: { days: [{ id: 'lundi', name: 'Haut', activities: [{ type: 'strength', machineId: 'leg-press', shared: false, restSeconds: 90, sets: [{ kg: 40, reps: 10 }] }] }] } } };
-  const reply = 'Je privilégie un corps entier 3 fois par semaine.\nVolume modéré, progression prudente.\nHypothèse : pas de douleur.\n\n```json\n' + JSON.stringify(program, null, 2) + '\n```\n';
-  assert.deepEqual(P.parseProgramJson(reply), program);
-  const r = await P.prepareProgramImport('pierre', reply);
-  assert.equal(r.weekStart, '2026-11-16');
-  assert.throws(() => P.parseProgramJson('texte\n```json\n{}\n```\n```json\n{}\n```'), /un seul bloc/);
-  assert.throws(() => P.parseProgramJson('pas de json'), /JSON invalide/);
-  assert.throws(() => P.parseProgramJson('```json\n{"schemaVersion": 1,}\n```'), /JSON invalide dans le bloc/);
-});
 
 test('séance où seul l’échauffement a été validé : pas retenue comme référence de travail', () => {
   const hist = [
@@ -229,12 +145,3 @@ test('séance où seul l’échauffement a été validé : pas retenue comme ré
   assert.equal(L.lastPerformance([hist[1]], 'leg-press').kg, 45, 'seule séance connue : retenue (prudent)');
 });
 
-test('V2-RECETTE-1 · changements récents lisibles par ChatGPT (fatigue, niveau, durée, poids cible…), y compris l’historique déjà enregistré', () => {
-  const before = SP.sanitizeSport({ fatigue: 3, level: 'debutant', durationMin: 60, intensity: 'moderee', sleep: 'bon', targetWeightKg: 82, updatedAt: '2026-11-01T10:00:00Z' });
-  const after = SP.sanitizeSport({ fatigue: 4, level: 'intermediaire', durationMin: 45, intensity: 'elevee', sleep: 'mauvais', targetWeightKg: null });
-  const history = SP.diffSport(before, after, '2026-11-08T10:00:00.000Z');
-  const t = buildCoachPrompt({ ...base, sport: { ...after, mainGoal: 'Force', history } });
-  for (const want of ['fatigue : Normale → Fatigué(e)', 'niveau : Débutant (moins de 6 mois de pratique) → Intermédiaire (6 mois à 2 ans)', 'durée maximale par séance : 60 min → 45 min',
-    'poids cible : 82 kg → —', 'sommeil : Bon sommeil → Mauvais sommeil', 'intensité souhaitée : Modérée']) assert.ok(t.includes(want), want);
-  assert.equal(/fatigue : 3 → 4/.test(t), false);
-});

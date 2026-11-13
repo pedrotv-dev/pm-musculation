@@ -599,7 +599,7 @@ export function completeActivity(profileId, sessionId, activityKey, { done = tru
 
 /**
  * V2-UX LOT 3 : ressenti facultatif d'une machine ('easy' trop facile, 'ok' adapté, 'hard' trop difficile, null = effacé).
- * Aucun effet sur les séries ni le statut ; sert aux propositions de charge suivantes et à la demande ChatGPT.
+ * Aucun effet sur les séries ni le statut ; sert aux propositions de charge suivantes et à la requête IA.
  */
 export function setActivityFeel(profileId, sessionId, activityKey, feel, options) {
   return mutate(profileId, sessionId, s => {
