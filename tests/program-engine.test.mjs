@@ -23,18 +23,24 @@ test('jours : fréquence 3 parmi 5 jours → bien espacés', () => {
   assert.equal(E.pickDays(['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'], 7).length, 7);
 });
 
-test('découpage : débutant corps entier ; 4 séances haut/bas ; 7 jours possible', () => {
+test('découpage : chaque muscle ≥ 2 fois/semaine (Schoenfeld 2016) ; 4 séances haut/bas ; 7 jours possible', () => {
   assert.deepEqual(E.splitFor(3, 'debutant'), ['full', 'full', 'full']);
-  assert.deepEqual(E.splitFor(3, 'confirme'), ['push', 'pull', 'legs']);
+  assert.deepEqual(E.splitFor(3, 'confirme'), ['full', 'full', 'full'], 'poussée/tirage/jambes = 1 fois/muscle : refusé');
+  assert.deepEqual(E.splitFor(2, 'confirme'), ['full', 'full']);
   assert.deepEqual(E.splitFor(4, 'intermediaire'), ['upper', 'lower', 'upper', 'lower']);
   assert.equal(E.splitFor(7, 'confirme').length, 7);
 });
 
-test('dosage : force 4×4-6 ; débutant ≤ 3 séries ; hard +1 série ; fatigue −1', () => {
-  assert.deepEqual([E.dosage({ mainGoal: 'Force' }).sets, E.dosage({ mainGoal: 'Force' }).low], [4, 4]);
-  assert.equal(E.dosage({ mainGoal: 'Force', level: 'debutant' }).sets, 3);
-  assert.equal(E.dosage({ mainGoal: 'Prise de muscle', intensity: 'elevee', level: 'confirme' }).sets, 4);
-  assert.equal(E.dosage({ mainGoal: 'Prise de muscle', fatigue: 5 }).sets, 2);
+test('dosage (ACSM 2009, Singer 2024) : force lourd 3 min ; débutant 8-12 RM ≤ 3 séries ; repos ≥ 90 s en hypertrophie ; intensité sans effet sur le volume', () => {
+  const f = E.dosage({ mainGoal: 'Force' });
+  assert.deepEqual([f.sets, f.low, f.high, f.restMain], [4, 4, 6, 180]);
+  const b = E.dosage({ mainGoal: 'Force', level: 'debutant' });
+  assert.deepEqual([b.sets, b.low, b.high], [3, 8, 12]);
+  const h = E.dosage({ mainGoal: 'Prise de muscle' });
+  assert.ok(h.restAcc >= 90 && h.restMain >= 90);
+  assert.equal(E.dosage({ mainGoal: 'Prise de muscle', intensity: 'elevee', level: 'confirme' }).sets, h.sets);
+  assert.equal(E.dosage({ mainGoal: 'Prise de muscle', fatigue: 5 }).sets, h.sets, 'aucune règle non sourcée');
+  assert.equal(E.dosage({ mainGoal: 'Perte de graisse' }).weeklyCardio, 150, 'OMS 2020');
 });
 
 test('semaine complète valide (format d\'import), machines « à éviter » et indisponibles exclues, durée respectée', () => {
@@ -86,10 +92,10 @@ test('import réel : le programme du moteur s\'importe et devient le programme d
   assert.equal(day.activities.at(-1).type, 'cardio', 'perte de graisse : cardio en fin de séance');
 });
 
-test('machine sœur : Converging Chest Press sans historique part de la charge de la Chest Press', () => {
+test('machine voisine : repère affiché, AUCUNE charge transposée (bras de levier différents)', () => {
   const sessions = [session('c', '2026-11-09', [done('chest-press', 40, 10)])];
   const r = E.proposeLoad('converging-chest-press', { sessions, low: 8, high: 12 });
-  assert.deepEqual([r.kg, r.reason, r.sibling], [40, 'sibling', 'chest-press']);
+  assert.deepEqual([r.kg, r.reason, r.sibling, r.from], [0, 'sibling', 'chest-press', 40]);
 });
 
 test('séance courte (45 min) : un exercice par groupe gardé en priorité, une seule remarque', () => {
@@ -102,13 +108,14 @@ test('séance courte (45 min) : un exercice par groupe gardé en priorité, une 
     assert.ok(ids.some(id => /lat-pulldown/.test(id)), 'tirage');
     assert.ok(PR.estimateDayMinutes(d) <= 47, PR.estimateDayMinutes(d) + ' min');
   }
-  assert.equal(notes.filter(n => /en moins/.test(n)).length, 1);
+  assert.ok(notes.filter(n => /en moins/.test(n)).length <= 1);
+  assert.ok(notes.some(n => /OMS/.test(n)), 'cardio hebdo comparé à l’OMS');
 });
 
-test('repos : plus long sur les gros exercices, plus court sur les accessoires', () => {
+test('repos (ACSM 2009, Singer 2024) : 120 s gros exercices, 90 s accessoires en prise de muscle', () => {
   const sport = { mainGoal: 'Prise de muscle', level: 'confirme', frequency: 3, days: ['lundi', 'mercredi', 'vendredi'], durationMin: 90 };
   const acts = E.generateWeek({ profileId, weekStart: '2026-11-16', sport, gym: {}, catalog }).program.programs[profileId].days.flatMap(d => d.activities);
   const rest = id => acts.find(a => a.machineId === id)?.restSeconds;
   assert.equal(rest('chest-press') ?? rest('converging-chest-press'), 120);
-  assert.equal(rest('arm-curl'), 60);
+  assert.equal(rest('seated-leg-curl') ?? rest('prone-leg-curl'), 90);
 });
