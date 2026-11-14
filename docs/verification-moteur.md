@@ -1,20 +1,19 @@
 # Vérification du moteur de programme — profils fictifs simulés
 
-Généré le 2026-11-14 par `node tools/simulate-profiles.mjs` avec le moteur de l'application (version 2026.11.14-a1252aa7).
+Généré le 2026-11-14 par `node tools/simulate-profiles.mjs` avec le moteur de l'application (version 2026.11.14-9765ab88).
 Toutes les personnes sont **fictives**. Chaque semaine est calculée par le moteur, puis « faite » par un athlète simulé ; la semaine suivante est recalculée à partir des séances réelles enregistrées.
 
 ## Contrôles automatiques
 
 - Séances générées : 138
 - Séances au-dessus de la durée maximale : 0
-- Hausses de charge de plus de 10 % : 7
+- Hausses de charge de plus de 10 % : 6
   - Léa (fictive) 2026-10-26 Diverging Lat Pulldown : 20 → 22,5 kg (+13 %)
   - Léa (fictive) 2026-11-02 Lat Pull : 22,5 → 25 kg (+11 %)
-  - Léa (fictive) 2026-11-16 Seated Leg Curl : 25 → 27,5 kg (+10 %)
+  - Léa (fictive) 2026-11-09 Abdominal : 12,5 → 15 kg (+20 %)
+  - Léa (fictive) 2026-11-16 Rotary Torso : 15 → 17,5 kg (+17 %)
   - Léa (fictive) 2026-11-16 Lat Pull : 25 → 27,5 kg (+10 %)
   - Sam (fictif) 2026-10-26 Seated Dip : 25 → 27,5 kg (+10 %)
-  - Hugo (fictif) 2026-10-26 Calf Press : 20 → 22,5 kg (+13 %)
-  - Hugo (fictif) 2026-10-26 Calf Press : 20 → 22,5 kg (+13 %)
 - Meilleure série sous le bas de la fourchette (charge connue) : 0
 - Machines exclues présentes : 0
 
@@ -54,6 +53,11 @@ Ne propose que des corrections appuyées par une source publiée. Réponds en fr
 | Effort : jamais déduit du nombre de répétitions ; seul le ressenti noté (« trop difficile ») bloque une hausse | [HEL16] |
 | Force : lourd (4-6) sur le gros exercice de chaque groupe ; assistance (isolation, abdos) en 8-12 | [ACSM09] |
 | Cardio : objectif 150 min d'activité modérée par semaine (salle + hors salle) ; renforcement ≥ 2 jours par semaine | [WHO20] |
+| Semaine : la répartition (renforcement, mixte, cardio dédié) est choisie AVANT de remplir les journées ; jours et durée = contraintes ; renforcement ≥ 2 j/sem quand c'est possible | [WHO20] |
+| Perte de graisse : séances cardio dédiées dès 3 jours (ex. 5 j → 3 renforcement + 2 cardio) ; « Plus de cardio » = un jour cardio de plus ; « Cardio seul » = cardio tous les jours demandés | [DON09], [WIL12] |
+| Endurance : 2 séances avec endurance musculaire (2×15-20) + cardio, les autres en cardio dédié | [ACSM09], [WHO20] |
+| Durée de cardio de départ : avec historique, durée habituelle (médiane des 5 dernières) + 5 min ; sans historique, tout le créneau, affiché comme point de départ modifiable | progression de la durée de 5 à 10 min toutes les 1 à 2 semaines (ACSM, Guidelines for Exercise Testing and Prescription) |
+| Créneau court : gros exercices d'abord, 2 séries au lieu de 3 avant d'en retirer un ; séance mixte courte : cardio en début de séance, ses 5 premières minutes servant d'échauffement | [KRI10] ; échauffement = 5-10 min d'aérobie légère [ACSM09] |
 | Perte de graisse : le cardio a la plus grande part du temps ; repère dès 150 min/sem, vers 250 min pour une perte plus nette (objectif progressif, pas un quota) ; musculation avant le cardio, un exercice par groupe (ischios et abdos en alternance), 2 séries | [DON09], [WIL12], [WHO20] |
 | Cardio de fin de séance : la machine de cardio la plus faite dans tes séances (sinon rameur, tapis) | préférence de l'utilisateur (pas une règle d'entraînement) |
 | Trajet à pied ou à vélo : affiché comme trajet actif ; compté dans les 150 min SEULEMENT si l'allure est confirmée au moins modérée (« parler mais pas chanter ») | [WHO20] |
@@ -375,37 +379,34 @@ Femme, débute, objectif perte de graisse, vient à vélo (15 min). Niveau : deb
 | Rotary Torso | 2 × 12 @ à trouver · repos 60 s | charge à trouver (1re fois) | 13/12 reps @ 15 kg |
 | Cardio · Rameur | 30 min | — | 30 min |
 
-**mercredi — Cardio + corps entier A** (durée estimée 57 min)
+**mercredi — Cardio** (durée estimée 57 min)
+
+| Activité | Prévu | Raison de la charge | Fait (simulé) |
+|---|---|---|---|
+| Échauffement · Vélo assis | 5 min | — | 5 min |
+| Cardio · Rameur | 50 min | — | 50 min |
+
+**vendredi — Cardio + corps entier A** (durée estimée 57 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
 | Leg Press | 2 × 12 @ à trouver · repos 90 s | charge à trouver (1re fois) | 12/11 reps @ 35 kg |
-| Seated Leg Curl | 2 × 12 @ à trouver · repos 60 s | charge à trouver (1re fois) | 12/11 reps @ 25 kg |
 | Chest Press | 2 × 12 @ à trouver · repos 90 s | charge à trouver (1re fois) | 11/10 reps @ 15 kg |
 | Lat Pull | 2 × 12 @ à trouver · repos 90 s | charge à trouver (1re fois) | 13/12 reps @ 22,5 kg |
+| Abdominal | 2 × 12 @ à trouver · repos 60 s | charge à trouver (1re fois) | 15/14 reps @ 12,5 kg |
 | Cardio · Rameur | 30 min | — | 30 min |
 
-**vendredi — Cardio + corps entier B** (durée estimée 57 min)
-
-| Activité | Prévu | Raison de la charge | Fait (simulé) |
-|---|---|---|---|
-| Échauffement · Vélo assis | 5 min | — | 5 min |
-| Leg Press | 2 × 12 @ à trouver · repos 90 s | charge à trouver (1re fois) | 12/11 reps @ 35 kg |
-| Converging Chest Press | 2 × 12 @ à trouver · repos 90 s | charge à trouver (1re fois) | 11/10 reps @ 15 kg |
-| Diverging Lat Pulldown | 2 × 12 @ à trouver · repos 90 s | charge à trouver (1re fois) | 14/13 reps @ 20 kg |
-| Rotary Torso | 2 × 12 @ à trouver · repos 60 s | charge à trouver (1re fois) | 13/12 reps @ 15 kg |
-| Cardio · Rameur | 30 min | — | 30 min |
-
-Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Quadriceps 6, Fessiers 0 (+6 ind.), Ischios 2 (+6 ind.), Pectoraux 6, Épaules 0 (+6 ind.), Triceps 0 (+6 ind.), Dos 6, Biceps 0 (+6 ind.), Abdominaux 4 ; cardio à la salle 90 min ; trajet actif 90 min (compté : 0).
+Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Quadriceps 4, Fessiers 0 (+4 ind.), Ischios 0 (+4 ind.), Pectoraux 4, Épaules 0 (+4 ind.), Triceps 0 (+4 ind.), Dos 4, Biceps 0 (+4 ind.), Abdominaux 4 ; cardio à la salle 110 min ; trajet actif 90 min (compté : 0).
 
 Remarques affichées à l'utilisateur :
 - Effort visé à chaque série : RPE 6-7 (3 à 4 répétitions en réserve). La charge pourra augmenter au prochain calcul du programme, quand toutes tes séries atteignent le haut de la fourchette.
 - Trajet actif à vélo : 90 min par semaine (aller-retour). Elles comptent dans le repère de l’OMS si ton allure est au moins modérée (tu peux parler mais pas chanter) : à confirmer dans ton profil.
-- Perte de graisse : le cardio a la plus grande part du temps de séance ; la musculation (un exercice par groupe, 2 séries) se fait avant, pour garder ton muscle.
-- Cardio à la salle : 90 min cette semaine. Repère : dès 150 min par semaine, et vers 250 min pour une perte plus nette (ACSM). C’est un objectif progressif : marche ou vélo hors salle peuvent compléter si tu le souhaites.
-- Séances de 60 min : 3 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
-- Charge à trouver à la première séance (aucun historique) : Leg Press, Converging Chest Press, Diverging Lat Pulldown, Rotary Torso, Seated Leg Curl, Chest Press, Lat Pull. Méthode : commence léger, fais une série d’échauffement, puis monte d’un cran à chaque série jusqu’à la charge qui te permet les répétitions prévues à l’effort visé (RPE 6-7 (3 à 4 répétitions en réserve)). Garde cette charge pour tes séries de travail.
+- Perte de graisse : la semaine fait une vraie place au cardio (séances cardio dédiées dès 3 jours) ; la musculation (un exercice par groupe, 2 séries) garde ton muscle.
+- Séances cardio : 50 min proposées comme point de départ (aucun historique). Modifie la durée si c’est trop ou pas assez.
+- Cardio à la salle : 110 min cette semaine. Repère : dès 150 min par semaine, et vers 250 min pour une perte plus nette (ACSM). C’est un objectif progressif : marche ou vélo hors salle peuvent compléter si tu le souhaites.
+- Séances de 60 min : 2 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
+- Charge à trouver à la première séance (aucun historique) : Leg Press, Converging Chest Press, Diverging Lat Pulldown, Rotary Torso, Chest Press, Lat Pull, Abdominal. Méthode : commence léger, fais une série d’échauffement, puis monte d’un cran à chaque série jusqu’à la charge qui te permet les répétitions prévues à l’effort visé (RPE 6-7 (3 à 4 répétitions en réserve)). Garde cette charge pour tes séries de travail.
 
 ### Semaine du 2026-10-26
 
@@ -417,41 +418,37 @@ Remarques affichées à l'utilisateur :
 | Leg Press | 2 × 12 @ 35 kg · repos 90 s | même charge (fourchette pas encore atteinte) | 13/12 reps @ 35 kg |
 | Chest Press | 2 × 12 @ 15 kg · repos 90 s | même charge (fourchette pas encore atteinte) | 12/11 reps @ 15 kg |
 | Lat Pull | 2 × 13 @ 22,5 kg · repos 90 s | répétitions +1 à charge stable (cran suivant 25 kg = +11 %, hors fourchette) | 15/14 reps @ 22,5 kg |
-| Abdominal | 2 × 12 @ à trouver · repos 60 s | à trouver (repère : Rotary Torso 15 kg) | 8/7 reps @ 15 kg |
+| Abdominal | 2 × 15 @ 12,5 kg · repos 60 s | répétitions +1 à charge stable (cran suivant 15 kg = +20 %, hors fourchette) | 16/15 reps @ 12,5 kg |
 | Cardio · Rameur | 30 min | — | 30 min |
 
-**mercredi — Cardio + corps entier B** (durée estimée 57 min)
+**mercredi — Cardio** (durée estimée 42 min)
+
+| Activité | Prévu | Raison de la charge | Fait (simulé) |
+|---|---|---|---|
+| Échauffement · Vélo assis | 5 min | — | 5 min |
+| Cardio · Rameur | 35 min | — | 35 min |
+
+**vendredi — Cardio + corps entier B** (durée estimée 57 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
 | Leg Press | 2 × 12 @ 35 kg · repos 90 s | même charge (fourchette pas encore atteinte) | 13/12 reps @ 35 kg |
-| Prone Leg Curl | 2 × 12 @ à trouver · repos 60 s | à trouver (repère : Seated Leg Curl 25 kg) | 13/12 reps @ 35 kg |
 | Converging Chest Press | 2 × 12 @ 15 kg · repos 90 s | même charge (fourchette pas encore atteinte) | 13/12 reps @ 15 kg |
 | Diverging Lat Pulldown | 2 × 8 @ 22,5 kg · repos 90 s | progression (20 → 22,5 kg, +13 %) | 10/9 reps @ 22,5 kg |
+| Rotary Torso | 2 × 13 @ 15 kg · repos 60 s | répétitions +1 à charge stable (cran suivant 17,5 kg = +17 %, hors fourchette) | 14/13 reps @ 15 kg |
 | Cardio · Rameur | 30 min | — | 30 min |
 
-**vendredi — Cardio + corps entier A** (durée estimée 57 min)
-
-| Activité | Prévu | Raison de la charge | Fait (simulé) |
-|---|---|---|---|
-| Échauffement · Vélo assis | 5 min | — | 5 min |
-| Leg Press | 2 × 12 @ 35 kg · repos 90 s | même charge (fourchette pas encore atteinte) | 13/12 reps @ 35 kg |
-| Chest Press | 2 × 12 @ 15 kg · repos 90 s | même charge (fourchette pas encore atteinte) | 12/11 reps @ 15 kg |
-| Lat Pull | 2 × 13 @ 22,5 kg · repos 90 s | répétitions +1 à charge stable (cran suivant 25 kg = +11 %, hors fourchette) | 15/14 reps @ 22,5 kg |
-| Abdominal | 2 × 12 @ à trouver · repos 60 s | à trouver (repère : Rotary Torso 15 kg) | 8/7 reps @ 15 kg |
-| Cardio · Rameur | 30 min | — | 30 min |
-
-Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Quadriceps 6, Fessiers 0 (+6 ind.), Ischios 2 (+6 ind.), Pectoraux 6, Épaules 0 (+6 ind.), Triceps 0 (+6 ind.), Dos 6, Biceps 0 (+6 ind.), Abdominaux 4 ; cardio à la salle 90 min ; trajet actif 90 min (compté : 0).
+Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Quadriceps 4, Fessiers 0 (+4 ind.), Ischios 0 (+4 ind.), Pectoraux 4, Épaules 0 (+4 ind.), Triceps 0 (+4 ind.), Dos 4, Biceps 0 (+4 ind.), Abdominaux 4 ; cardio à la salle 95 min ; trajet actif 90 min (compté : 0).
 
 Remarques affichées à l'utilisateur :
 - Effort visé à chaque série : RPE 6-7 (3 à 4 répétitions en réserve). La charge pourra augmenter au prochain calcul du programme, quand toutes tes séries atteignent le haut de la fourchette.
 - Trajet actif à vélo : 90 min par semaine (aller-retour). Elles comptent dans le repère de l’OMS si ton allure est au moins modérée (tu peux parler mais pas chanter) : à confirmer dans ton profil.
-- Perte de graisse : le cardio a la plus grande part du temps de séance ; la musculation (un exercice par groupe, 2 séries) se fait avant, pour garder ton muscle.
-- Cardio à la salle : 90 min cette semaine. Repère : dès 150 min par semaine, et vers 250 min pour une perte plus nette (ACSM). C’est un objectif progressif : marche ou vélo hors salle peuvent compléter si tu le souhaites.
-- Séances de 60 min : 3 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
-- Progression en répétitions à charge stable (le cran suivant de la machine est trop grand pour rester dans la fourchette) : Lat Pull 22.5 kg × 13 (cran suivant 25 kg, +11 %).
-- Charge à trouver, repère d’une machine voisine (non transposable telle quelle) : Abdominal — Rotary Torso 15 kg, Prone Leg Curl — Seated Leg Curl 25 kg.
+- Perte de graisse : la semaine fait une vraie place au cardio (séances cardio dédiées dès 3 jours) ; la musculation (un exercice par groupe, 2 séries) garde ton muscle.
+- Cardio : départ à partir de ta durée habituelle (30 min) + 5 min ; la durée progresse de 5 à 10 min toutes les 1 à 2 semaines (ACSM).
+- Cardio à la salle : 95 min cette semaine. Repère : dès 150 min par semaine, et vers 250 min pour une perte plus nette (ACSM). C’est un objectif progressif : marche ou vélo hors salle peuvent compléter si tu le souhaites.
+- Séances de 60 min : 2 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
+- Progression en répétitions à charge stable (le cran suivant de la machine est trop grand pour rester dans la fourchette) : Lat Pull 22.5 kg × 13 (cran suivant 25 kg, +11 %), Abdominal 12.5 kg × 15 (cran suivant 15 kg, +20 %), Rotary Torso 15 kg × 13 (cran suivant 17.5 kg, +17 %).
 
 ### Semaine du 2026-11-02
 
@@ -463,40 +460,37 @@ Remarques affichées à l'utilisateur :
 | Leg Press | 2 × 8 @ 37,5 kg · repos 90 s | progression (35 → 37,5 kg, +7 %) | 11/10 reps @ 37,5 kg |
 | Converging Chest Press | 2 × 13 @ 15 kg · repos 90 s | répétitions +1 à charge stable (cran suivant 17,5 kg = +17 %, hors fourchette) | 14/13 reps @ 15 kg |
 | Diverging Lat Pulldown | 2 × 12 @ 22,5 kg · repos 90 s | même charge (fourchette pas encore atteinte) | 11/10 reps @ 22,5 kg |
-| Rotary Torso | 2 × 13 @ 15 kg · repos 60 s | répétitions +1 à charge stable (cran suivant 17,5 kg = +17 %, hors fourchette) | 15/14 reps @ 15 kg |
+| Rotary Torso | 2 × 14 @ 15 kg · repos 60 s | répétitions +1 à charge stable (cran suivant 17,5 kg = +17 %, hors fourchette) | 15/14 reps @ 15 kg |
 | Cardio · Rameur | 30 min | — | 30 min |
 
-**mercredi — Cardio + corps entier A** (durée estimée 57 min)
+**mercredi — Cardio** (durée estimée 42 min)
+
+| Activité | Prévu | Raison de la charge | Fait (simulé) |
+|---|---|---|---|
+| Échauffement · Vélo assis | 5 min | — | 5 min |
+| Cardio · Rameur | 35 min | — | 35 min |
+
+**vendredi — Cardio + corps entier A** (durée estimée 57 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
 | Leg Press | 2 × 8 @ 37,5 kg · repos 90 s | progression (35 → 37,5 kg, +7 %) | 11/10 reps @ 37,5 kg |
-| Seated Leg Curl | 2 × 12 @ 25 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 14/13 reps @ 25 kg |
 | Chest Press | 2 × 12 @ 15 kg · repos 90 s | même charge (fourchette pas encore atteinte) | 13/12 reps @ 15 kg |
 | Lat Pull | 2 × 8 @ 25 kg · repos 90 s | progression (22,5 → 25 kg, +11 %) | 11/10 reps @ 25 kg |
+| Abdominal | 2 × 16 @ 12,5 kg · repos 60 s | répétitions +1 à charge stable (cran suivant 15 kg = +20 %, hors fourchette) | 18/17 reps @ 12,5 kg |
 | Cardio · Rameur | 30 min | — | 30 min |
 
-**vendredi — Cardio + corps entier B** (durée estimée 57 min)
-
-| Activité | Prévu | Raison de la charge | Fait (simulé) |
-|---|---|---|---|
-| Échauffement · Vélo assis | 5 min | — | 5 min |
-| Leg Press | 2 × 8 @ 37,5 kg · repos 90 s | progression (35 → 37,5 kg, +7 %) | 11/10 reps @ 37,5 kg |
-| Converging Chest Press | 2 × 13 @ 15 kg · repos 90 s | répétitions +1 à charge stable (cran suivant 17,5 kg = +17 %, hors fourchette) | 14/13 reps @ 15 kg |
-| Diverging Lat Pulldown | 2 × 12 @ 22,5 kg · repos 90 s | même charge (fourchette pas encore atteinte) | 11/10 reps @ 22,5 kg |
-| Rotary Torso | 2 × 13 @ 15 kg · repos 60 s | répétitions +1 à charge stable (cran suivant 17,5 kg = +17 %, hors fourchette) | 15/14 reps @ 15 kg |
-| Cardio · Rameur | 30 min | — | 30 min |
-
-Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Quadriceps 6, Fessiers 0 (+6 ind.), Ischios 2 (+6 ind.), Pectoraux 6, Épaules 0 (+6 ind.), Triceps 0 (+6 ind.), Dos 6, Biceps 0 (+6 ind.), Abdominaux 4 ; cardio à la salle 90 min ; trajet actif 90 min (compté : 0).
+Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Quadriceps 4, Fessiers 0 (+4 ind.), Ischios 0 (+4 ind.), Pectoraux 4, Épaules 0 (+4 ind.), Triceps 0 (+4 ind.), Dos 4, Biceps 0 (+4 ind.), Abdominaux 4 ; cardio à la salle 95 min ; trajet actif 90 min (compté : 0).
 
 Remarques affichées à l'utilisateur :
 - Effort visé à chaque série : RPE 6-7 (3 à 4 répétitions en réserve). La charge pourra augmenter au prochain calcul du programme, quand toutes tes séries atteignent le haut de la fourchette.
 - Trajet actif à vélo : 90 min par semaine (aller-retour). Elles comptent dans le repère de l’OMS si ton allure est au moins modérée (tu peux parler mais pas chanter) : à confirmer dans ton profil.
-- Perte de graisse : le cardio a la plus grande part du temps de séance ; la musculation (un exercice par groupe, 2 séries) se fait avant, pour garder ton muscle.
-- Cardio à la salle : 90 min cette semaine. Repère : dès 150 min par semaine, et vers 250 min pour une perte plus nette (ACSM). C’est un objectif progressif : marche ou vélo hors salle peuvent compléter si tu le souhaites.
-- Séances de 60 min : 3 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
-- Progression en répétitions à charge stable (le cran suivant de la machine est trop grand pour rester dans la fourchette) : Converging Chest Press 15 kg × 13 (cran suivant 17.5 kg, +17 %), Rotary Torso 15 kg × 13 (cran suivant 17.5 kg, +17 %).
+- Perte de graisse : la semaine fait une vraie place au cardio (séances cardio dédiées dès 3 jours) ; la musculation (un exercice par groupe, 2 séries) garde ton muscle.
+- Cardio : départ à partir de ta durée habituelle (30 min) + 5 min ; la durée progresse de 5 à 10 min toutes les 1 à 2 semaines (ACSM).
+- Cardio à la salle : 95 min cette semaine. Repère : dès 150 min par semaine, et vers 250 min pour une perte plus nette (ACSM). C’est un objectif progressif : marche ou vélo hors salle peuvent compléter si tu le souhaites.
+- Séances de 60 min : 2 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
+- Progression en répétitions à charge stable (le cran suivant de la machine est trop grand pour rester dans la fourchette) : Converging Chest Press 15 kg × 13 (cran suivant 17.5 kg, +17 %), Rotary Torso 15 kg × 14 (cran suivant 17.5 kg, +17 %), Abdominal 12.5 kg × 16 (cran suivant 15 kg, +20 %).
 
 ### Semaine du 2026-11-09
 
@@ -508,40 +502,37 @@ Remarques affichées à l'utilisateur :
 | Leg Press | 2 × 12 @ 37,5 kg · repos 90 s | même charge (fourchette pas encore atteinte) | 13/12 reps @ 37,5 kg |
 | Chest Press | 2 × 13 @ 15 kg · repos 90 s | répétitions +1 à charge stable (cran suivant 17,5 kg = +17 %, hors fourchette) | 14/13 reps @ 15 kg |
 | Lat Pull | 2 × 12 @ 25 kg · repos 90 s | même charge (fourchette pas encore atteinte) | 13/12 reps @ 25 kg |
-| Abdominal | 2 × 12 @ 15 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 11/10 reps @ 15 kg |
+| Abdominal | 2 × 8 @ 15 kg · repos 60 s | progression (12,5 → 15 kg, +20 %) | 11/10 reps @ 15 kg |
 | Cardio · Rameur | 30 min | — | 30 min |
 
-**mercredi — Cardio + corps entier B** (durée estimée 57 min)
+**mercredi — Cardio** (durée estimée 42 min)
+
+| Activité | Prévu | Raison de la charge | Fait (simulé) |
+|---|---|---|---|
+| Échauffement · Vélo assis | 5 min | — | 5 min |
+| Cardio · Rameur | 35 min | — | 35 min |
+
+**vendredi — Cardio + corps entier B** (durée estimée 57 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
 | Leg Press | 2 × 12 @ 37,5 kg · repos 90 s | même charge (fourchette pas encore atteinte) | 13/12 reps @ 37,5 kg |
-| Prone Leg Curl | 2 × 8 @ 37,5 kg · repos 60 s | progression (35 → 37,5 kg, +7 %) | 11/10 reps @ 37,5 kg |
 | Converging Chest Press | 2 × 14 @ 15 kg · repos 90 s | répétitions +1 à charge stable (cran suivant 17,5 kg = +17 %, hors fourchette) | 15/14 reps @ 15 kg |
 | Diverging Lat Pulldown | 2 × 12 @ 22,5 kg · repos 90 s | même charge (fourchette pas encore atteinte) | 12/11 reps @ 22,5 kg |
+| Rotary Torso | 2 × 15 @ 15 kg · repos 60 s | répétitions +1 à charge stable (cran suivant 17,5 kg = +17 %, hors fourchette) | 17/16 reps @ 15 kg |
 | Cardio · Rameur | 30 min | — | 30 min |
 
-**vendredi — Cardio + corps entier A** (durée estimée 57 min)
-
-| Activité | Prévu | Raison de la charge | Fait (simulé) |
-|---|---|---|---|
-| Échauffement · Vélo assis | 5 min | — | 5 min |
-| Leg Press | 2 × 12 @ 37,5 kg · repos 90 s | même charge (fourchette pas encore atteinte) | 13/12 reps @ 37,5 kg |
-| Chest Press | 2 × 13 @ 15 kg · repos 90 s | répétitions +1 à charge stable (cran suivant 17,5 kg = +17 %, hors fourchette) | 14/13 reps @ 15 kg |
-| Lat Pull | 2 × 12 @ 25 kg · repos 90 s | même charge (fourchette pas encore atteinte) | 13/12 reps @ 25 kg |
-| Abdominal | 2 × 12 @ 15 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 11/10 reps @ 15 kg |
-| Cardio · Rameur | 30 min | — | 30 min |
-
-Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Quadriceps 6, Fessiers 0 (+6 ind.), Ischios 2 (+6 ind.), Pectoraux 6, Épaules 0 (+6 ind.), Triceps 0 (+6 ind.), Dos 6, Biceps 0 (+6 ind.), Abdominaux 4 ; cardio à la salle 90 min ; trajet actif 90 min (compté : 0).
+Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Quadriceps 4, Fessiers 0 (+4 ind.), Ischios 0 (+4 ind.), Pectoraux 4, Épaules 0 (+4 ind.), Triceps 0 (+4 ind.), Dos 4, Biceps 0 (+4 ind.), Abdominaux 4 ; cardio à la salle 95 min ; trajet actif 90 min (compté : 0).
 
 Remarques affichées à l'utilisateur :
 - Effort visé à chaque série : RPE 6-7 (3 à 4 répétitions en réserve). La charge pourra augmenter au prochain calcul du programme, quand toutes tes séries atteignent le haut de la fourchette.
 - Trajet actif à vélo : 90 min par semaine (aller-retour). Elles comptent dans le repère de l’OMS si ton allure est au moins modérée (tu peux parler mais pas chanter) : à confirmer dans ton profil.
-- Perte de graisse : le cardio a la plus grande part du temps de séance ; la musculation (un exercice par groupe, 2 séries) se fait avant, pour garder ton muscle.
-- Cardio à la salle : 90 min cette semaine. Repère : dès 150 min par semaine, et vers 250 min pour une perte plus nette (ACSM). C’est un objectif progressif : marche ou vélo hors salle peuvent compléter si tu le souhaites.
-- Séances de 60 min : 3 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
-- Progression en répétitions à charge stable (le cran suivant de la machine est trop grand pour rester dans la fourchette) : Chest Press 15 kg × 13 (cran suivant 17.5 kg, +17 %), Converging Chest Press 15 kg × 14 (cran suivant 17.5 kg, +17 %).
+- Perte de graisse : la semaine fait une vraie place au cardio (séances cardio dédiées dès 3 jours) ; la musculation (un exercice par groupe, 2 séries) garde ton muscle.
+- Cardio : départ à partir de ta durée habituelle (30 min) + 5 min ; la durée progresse de 5 à 10 min toutes les 1 à 2 semaines (ACSM).
+- Cardio à la salle : 95 min cette semaine. Repère : dès 150 min par semaine, et vers 250 min pour une perte plus nette (ACSM). C’est un objectif progressif : marche ou vélo hors salle peuvent compléter si tu le souhaites.
+- Séances de 60 min : 2 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
+- Progression en répétitions à charge stable (le cran suivant de la machine est trop grand pour rester dans la fourchette) : Chest Press 15 kg × 13 (cran suivant 17.5 kg, +17 %), Converging Chest Press 15 kg × 14 (cran suivant 17.5 kg, +17 %), Rotary Torso 15 kg × 15 (cran suivant 17.5 kg, +17 %).
 
 ### Semaine du 2026-11-16
 
@@ -553,40 +544,37 @@ Remarques affichées à l'utilisateur :
 | Leg Press | 2 × 8 @ 40 kg · repos 90 s | progression (37,5 → 40 kg, +7 %) | 11/10 reps @ 40 kg |
 | Converging Chest Press | 2 × 15 @ 15 kg · repos 90 s | répétitions +1 à charge stable (cran suivant 17,5 kg = +17 %, hors fourchette) | 17/16 reps @ 15 kg |
 | Diverging Lat Pulldown | 2 × 12 @ 22,5 kg · repos 90 s | même charge (fourchette pas encore atteinte) | 14/13 reps @ 22,5 kg |
-| Rotary Torso | 2 × 15 @ 15 kg · repos 60 s | répétitions +1 à charge stable (cran suivant 17,5 kg = +17 %, hors fourchette) | 18/17 reps @ 15 kg |
+| Rotary Torso | 2 × 8 @ 17,5 kg · repos 60 s | progression (15 → 17,5 kg, +17 %) | 11/10 reps @ 17,5 kg |
 | Cardio · Rameur | 30 min | — | 30 min |
 
-**mercredi — Cardio + corps entier A** (durée estimée 57 min)
+**mercredi — Cardio** (durée estimée 42 min)
+
+| Activité | Prévu | Raison de la charge | Fait (simulé) |
+|---|---|---|---|
+| Échauffement · Vélo assis | 5 min | — | 5 min |
+| Cardio · Rameur | 35 min | — | 35 min |
+
+**vendredi — Cardio + corps entier A** (durée estimée 57 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
 | Leg Press | 2 × 8 @ 40 kg · repos 90 s | progression (37,5 → 40 kg, +7 %) | 11/10 reps @ 40 kg |
-| Seated Leg Curl | 2 × 8 @ 27,5 kg · repos 60 s | progression (25 → 27,5 kg, +10 %) | 11/10 reps @ 27,5 kg |
 | Chest Press | 2 × 14 @ 15 kg · repos 90 s | répétitions +1 à charge stable (cran suivant 17,5 kg = +17 %, hors fourchette) | 16/15 reps @ 15 kg |
 | Lat Pull | 2 × 8 @ 27,5 kg · repos 90 s | progression (25 → 27,5 kg, +10 %) | 10/9 reps @ 27,5 kg |
+| Abdominal | 2 × 12 @ 15 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 12/11 reps @ 15 kg |
 | Cardio · Rameur | 30 min | — | 30 min |
 
-**vendredi — Cardio + corps entier B** (durée estimée 57 min)
-
-| Activité | Prévu | Raison de la charge | Fait (simulé) |
-|---|---|---|---|
-| Échauffement · Vélo assis | 5 min | — | 5 min |
-| Leg Press | 2 × 8 @ 40 kg · repos 90 s | progression (37,5 → 40 kg, +7 %) | 11/10 reps @ 40 kg |
-| Converging Chest Press | 2 × 15 @ 15 kg · repos 90 s | répétitions +1 à charge stable (cran suivant 17,5 kg = +17 %, hors fourchette) | 17/16 reps @ 15 kg |
-| Diverging Lat Pulldown | 2 × 12 @ 22,5 kg · repos 90 s | même charge (fourchette pas encore atteinte) | 14/13 reps @ 22,5 kg |
-| Rotary Torso | 2 × 15 @ 15 kg · repos 60 s | répétitions +1 à charge stable (cran suivant 17,5 kg = +17 %, hors fourchette) | 18/17 reps @ 15 kg |
-| Cardio · Rameur | 30 min | — | 30 min |
-
-Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Quadriceps 6, Fessiers 0 (+6 ind.), Ischios 2 (+6 ind.), Pectoraux 6, Épaules 0 (+6 ind.), Triceps 0 (+6 ind.), Dos 6, Biceps 0 (+6 ind.), Abdominaux 4 ; cardio à la salle 90 min ; trajet actif 90 min (compté : 0).
+Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Quadriceps 4, Fessiers 0 (+4 ind.), Ischios 0 (+4 ind.), Pectoraux 4, Épaules 0 (+4 ind.), Triceps 0 (+4 ind.), Dos 4, Biceps 0 (+4 ind.), Abdominaux 4 ; cardio à la salle 95 min ; trajet actif 90 min (compté : 0).
 
 Remarques affichées à l'utilisateur :
 - Effort visé à chaque série : RPE 6-7 (3 à 4 répétitions en réserve). La charge pourra augmenter au prochain calcul du programme, quand toutes tes séries atteignent le haut de la fourchette.
 - Trajet actif à vélo : 90 min par semaine (aller-retour). Elles comptent dans le repère de l’OMS si ton allure est au moins modérée (tu peux parler mais pas chanter) : à confirmer dans ton profil.
-- Perte de graisse : le cardio a la plus grande part du temps de séance ; la musculation (un exercice par groupe, 2 séries) se fait avant, pour garder ton muscle.
-- Cardio à la salle : 90 min cette semaine. Repère : dès 150 min par semaine, et vers 250 min pour une perte plus nette (ACSM). C’est un objectif progressif : marche ou vélo hors salle peuvent compléter si tu le souhaites.
-- Séances de 60 min : 3 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
-- Progression en répétitions à charge stable (le cran suivant de la machine est trop grand pour rester dans la fourchette) : Converging Chest Press 15 kg × 15 (cran suivant 17.5 kg, +17 %), Rotary Torso 15 kg × 15 (cran suivant 17.5 kg, +17 %), Chest Press 15 kg × 14 (cran suivant 17.5 kg, +17 %).
+- Perte de graisse : la semaine fait une vraie place au cardio (séances cardio dédiées dès 3 jours) ; la musculation (un exercice par groupe, 2 séries) garde ton muscle.
+- Cardio : départ à partir de ta durée habituelle (30 min) + 5 min ; la durée progresse de 5 à 10 min toutes les 1 à 2 semaines (ACSM).
+- Cardio à la salle : 95 min cette semaine. Repère : dès 150 min par semaine, et vers 250 min pour une perte plus nette (ACSM). C’est un objectif progressif : marche ou vélo hors salle peuvent compléter si tu le souhaites.
+- Séances de 60 min : 2 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
+- Progression en répétitions à charge stable (le cran suivant de la machine est trop grand pour rester dans la fourchette) : Converging Chest Press 15 kg × 15 (cran suivant 17.5 kg, +17 %), Chest Press 15 kg × 14 (cran suivant 17.5 kg, +17 %).
 
 ### Semaine du 2026-11-23 (prochaine semaine, calculée après 5 semaines faites)
 
@@ -601,50 +589,45 @@ Remarques affichées à l'utilisateur :
 | Abdominal | 2 × 12 @ 15 kg · repos 60 s | même charge (fourchette pas encore atteinte) | — |
 | Cardio · Rameur | 30 min | — | — |
 
-**mercredi — Cardio + corps entier B** (durée estimée 57 min)
+**mercredi — Cardio** (durée estimée 42 min)
+
+| Activité | Prévu | Raison de la charge | Fait (simulé) |
+|---|---|---|---|
+| Échauffement · Vélo assis | 5 min | — | — |
+| Cardio · Rameur | 35 min | — | — |
+
+**vendredi — Cardio + corps entier B** (durée estimée 57 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | — |
 | Leg Press | 2 × 12 @ 40 kg · repos 90 s | même charge (fourchette pas encore atteinte) | — |
-| Prone Leg Curl | 2 × 12 @ 37,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | — |
 | Converging Chest Press | 2 × 8 @ 17,5 kg · repos 90 s | progression (15 → 17,5 kg, +17 %) | — |
 | Diverging Lat Pulldown | 2 × 8 @ 25 kg · repos 90 s | progression (22,5 → 25 kg, +11 %) | — |
+| Rotary Torso | 2 × 12 @ 17,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | — |
 | Cardio · Rameur | 30 min | — | — |
 
-**vendredi — Cardio + corps entier A** (durée estimée 57 min)
-
-| Activité | Prévu | Raison de la charge | Fait (simulé) |
-|---|---|---|---|
-| Échauffement · Vélo assis | 5 min | — | — |
-| Leg Press | 2 × 12 @ 40 kg · repos 90 s | même charge (fourchette pas encore atteinte) | — |
-| Chest Press | 2 × 8 @ 17,5 kg · repos 90 s | progression (15 → 17,5 kg, +17 %) | — |
-| Lat Pull | 2 × 12 @ 27,5 kg · repos 90 s | même charge (fourchette pas encore atteinte) | — |
-| Abdominal | 2 × 12 @ 15 kg · repos 60 s | même charge (fourchette pas encore atteinte) | — |
-| Cardio · Rameur | 30 min | — | — |
-
-Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Quadriceps 6, Fessiers 0 (+6 ind.), Ischios 2 (+6 ind.), Pectoraux 6, Épaules 0 (+6 ind.), Triceps 0 (+6 ind.), Dos 6, Biceps 0 (+6 ind.), Abdominaux 4 ; cardio à la salle 90 min ; trajet actif 90 min (compté : 0).
+Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Quadriceps 4, Fessiers 0 (+4 ind.), Ischios 0 (+4 ind.), Pectoraux 4, Épaules 0 (+4 ind.), Triceps 0 (+4 ind.), Dos 4, Biceps 0 (+4 ind.), Abdominaux 4 ; cardio à la salle 95 min ; trajet actif 90 min (compté : 0).
 
 Remarques affichées à l'utilisateur :
 - Effort visé à chaque série : RPE 6-7 (3 à 4 répétitions en réserve). La charge pourra augmenter au prochain calcul du programme, quand toutes tes séries atteignent le haut de la fourchette.
 - Trajet actif à vélo : 90 min par semaine (aller-retour). Elles comptent dans le repère de l’OMS si ton allure est au moins modérée (tu peux parler mais pas chanter) : à confirmer dans ton profil.
-- Perte de graisse : le cardio a la plus grande part du temps de séance ; la musculation (un exercice par groupe, 2 séries) se fait avant, pour garder ton muscle.
-- Cardio à la salle : 90 min cette semaine. Repère : dès 150 min par semaine, et vers 250 min pour une perte plus nette (ACSM). C’est un objectif progressif : marche ou vélo hors salle peuvent compléter si tu le souhaites.
-- Séances de 60 min : 3 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
+- Perte de graisse : la semaine fait une vraie place au cardio (séances cardio dédiées dès 3 jours) ; la musculation (un exercice par groupe, 2 séries) garde ton muscle.
+- Cardio : départ à partir de ta durée habituelle (30 min) + 5 min ; la durée progresse de 5 à 10 min toutes les 1 à 2 semaines (ACSM).
+- Cardio à la salle : 95 min cette semaine. Repère : dès 150 min par semaine, et vers 250 min pour une perte plus nette (ACSM). C’est un objectif progressif : marche ou vélo hors salle peuvent compléter si tu le souhaites.
+- Séances de 60 min : 2 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
 
 ### Évolution des charges de Léa (fictive) (meilleure série de chaque séance)
 
 | Machine | 10-19 | 10-26 | 11-02 | 11-09 | 11-16 |
 |---|---|---|---|---|---|
-| Leg Press | 35×12, 35×12, 35×12 | 35×13, 35×13, 35×13 | 37,5×11, 37,5×11, 37,5×11 | 37,5×13, 37,5×13, 37,5×13 | 40×11, 40×11, 40×11 |
-| Converging Chest Press | 15×11, 15×11 | 15×13 | 15×14, 15×14 | 15×15 | 15×17, 15×17 |
-| Diverging Lat Pulldown | 20×14, 20×14 | 22,5×10 | 22,5×11, 22,5×11 | 22,5×12 | 22,5×14, 22,5×14 |
-| Rotary Torso | 15×13, 15×13 | — | 15×15, 15×15 | — | 15×18, 15×18 |
-| Seated Leg Curl | 25×12 | — | 25×14 | — | 27,5×11 |
-| Chest Press | 15×11 | 15×12, 15×12 | 15×13 | 15×14, 15×14 | 15×16 |
-| Lat Pull | 22,5×13 | 22,5×15, 22,5×15 | 25×11 | 25×13, 25×13 | 27,5×10 |
-| Abdominal | — | 15×8, 15×8 | — | 15×11, 15×11 | — |
-| Prone Leg Curl | — | 35×13 | — | 37,5×11 | — |
+| Leg Press | 35×12, 35×12 | 35×13, 35×13 | 37,5×11, 37,5×11 | 37,5×13, 37,5×13 | 40×11, 40×11 |
+| Converging Chest Press | 15×11 | 15×13 | 15×14 | 15×15 | 15×17 |
+| Diverging Lat Pulldown | 20×14 | 22,5×10 | 22,5×11 | 22,5×12 | 22,5×14 |
+| Rotary Torso | 15×13 | 15×14 | 15×15 | 15×17 | 17,5×11 |
+| Chest Press | 15×11 | 15×12 | 15×13 | 15×14 | 15×16 |
+| Lat Pull | 22,5×13 | 22,5×15 | 25×11 | 25×13 | 27,5×10 |
+| Abdominal | 12,5×15 | 12,5×16 | 12,5×18 | 15×11 | 15×12 |
 
 ## Sam (fictif) — Force
 
@@ -1229,446 +1212,340 @@ Machines à éviter : Shoulder Press, Converging Shoulder Press.
 
 ### Semaine du 2026-10-19
 
-**lundi — Poussée** (durée estimée 40 min)
+**lundi — Cardio** (durée estimée 42 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
+| Cardio · Rameur | 35 min | — | 35 min |
+
+**mardi — Cardio + endurance musculaire B** (durée estimée 45 min)
+
+| Activité | Prévu | Raison de la charge | Fait (simulé) |
+|---|---|---|---|
+| Échauffement · Vélo assis | 5 min | — | 5 min |
+| Leg Press | 2 × 20 @ à trouver · repos 60 s | charge à trouver (1re fois) | 20/19 reps @ 52,5 kg |
+| Prone Leg Curl | 2 × 20 @ à trouver · repos 45 s | charge à trouver (1re fois) | 19/18 reps @ 52,5 kg |
 | Converging Chest Press | 2 × 20 @ à trouver · repos 60 s | charge à trouver (1re fois) | 19/18 reps @ 30 kg |
-| Seated Dip | 2 × 20 @ à trouver · repos 60 s | charge à trouver (1re fois) | 18/17 reps @ 12,5 kg |
-| Rotary Torso | 2 × 20 @ à trouver · repos 45 s | charge à trouver (1re fois) | 18/17 reps @ 22,5 kg |
+| Diverging Lat Pulldown | 2 × 20 @ à trouver · repos 60 s | charge à trouver (1re fois) | 18/17 reps @ 32,5 kg |
 | Cardio · Rameur | 20 min | — | 20 min |
 
-**mardi — Tirage** (durée estimée 44 min)
+**mercredi — Cardio** (durée estimée 42 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
-| Diverging Lat Pulldown | 2 × 20 @ à trouver · repos 60 s | charge à trouver (1re fois) | 18/17 reps @ 32,5 kg |
-| Diverging Seated Row | 2 × 20 @ à trouver · repos 60 s | charge à trouver (1re fois) | 18/17 reps @ 40 kg |
-| Arm Curl | 2 × 20 @ à trouver · repos 45 s | charge à trouver (1re fois) | 17/16 reps @ 20 kg |
-| Rear Delt / Pec Fly | 2 × 20 @ à trouver · repos 45 s | charge à trouver (1re fois) | 19/18 reps @ 20 kg |
-| Back Extension | 2 × 20 @ à trouver · repos 45 s | charge à trouver (1re fois) | 21/20 reps @ 35 kg |
-| Cardio · Rameur | 15 min | — | 15 min |
+| Cardio · Rameur | 35 min | — | 35 min |
 
-**mercredi — Jambes** (durée estimée 42 min)
+**jeudi — Cardio + endurance musculaire A** (durée estimée 45 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
 | Leg Press | 2 × 20 @ à trouver · repos 60 s | charge à trouver (1re fois) | 20/19 reps @ 52,5 kg |
-| Prone Leg Curl | 2 × 20 @ à trouver · repos 45 s | charge à trouver (1re fois) | 19/18 reps @ 52,5 kg |
-| Hip Abduction · fermé → ouvert | 2 × 20 @ à trouver · repos 45 s | charge à trouver (1re fois) | 20/19 reps @ 37,5 kg |
-| Calf Press | 2 × 20 @ à trouver · repos 45 s | charge à trouver (1re fois) | 22/21 reps @ 20 kg |
-| Rotary Hip | 2 × 20 @ à trouver · repos 45 s | charge à trouver (1re fois) | 19/18 reps @ 40 kg |
-| Cardio · Rameur | 10 min | — | 10 min |
+| Seated Leg Curl | 2 × 20 @ à trouver · repos 45 s | charge à trouver (1re fois) | 20/19 reps @ 37,5 kg |
+| Chest Press | 2 × 20 @ à trouver · repos 60 s | charge à trouver (1re fois) | 18/17 reps @ 30 kg |
+| Lat Pull | 2 × 20 @ à trouver · repos 60 s | charge à trouver (1re fois) | 20/19 reps @ 35 kg |
+| Cardio · Rameur | 20 min | — | 20 min |
 
-**jeudi — Haut du corps** (durée estimée 44 min)
-
-| Activité | Prévu | Raison de la charge | Fait (simulé) |
-|---|---|---|---|
-| Échauffement · Vélo assis | 5 min | — | 5 min |
-| Converging Chest Press | 2 × 20 @ à trouver · repos 60 s | charge à trouver (1re fois) | 19/18 reps @ 30 kg |
-| Seated Dip | 2 × 20 @ à trouver · repos 60 s | charge à trouver (1re fois) | 18/17 reps @ 12,5 kg |
-| Diverging Lat Pulldown | 2 × 20 @ à trouver · repos 60 s | charge à trouver (1re fois) | 18/17 reps @ 32,5 kg |
-| Diverging Seated Row | 2 × 20 @ à trouver · repos 60 s | charge à trouver (1re fois) | 18/17 reps @ 40 kg |
-| Arm Curl | 2 × 20 @ à trouver · repos 45 s | charge à trouver (1re fois) | 17/16 reps @ 20 kg |
-| Cardio · Rameur | 15 min | — | 15 min |
-
-**vendredi — Bas du corps** (durée estimée 43 min)
+**vendredi — Cardio** (durée estimée 42 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
-| Leg Press | 2 × 20 @ à trouver · repos 60 s | charge à trouver (1re fois) | 20/19 reps @ 52,5 kg |
-| Prone Leg Curl | 2 × 20 @ à trouver · repos 45 s | charge à trouver (1re fois) | 19/18 reps @ 52,5 kg |
-| Leg Extension | 2 × 20 @ à trouver · repos 45 s | charge à trouver (1re fois) | 21/20 reps @ 50 kg |
-| Hip Abduction · fermé → ouvert | 2 × 20 @ à trouver · repos 45 s | charge à trouver (1re fois) | 20/19 reps @ 37,5 kg |
-| Calf Press | 2 × 20 @ à trouver · repos 45 s | charge à trouver (1re fois) | 22/21 reps @ 20 kg |
-| Rotary Torso | 2 × 20 @ à trouver · repos 45 s | charge à trouver (1re fois) | 18/17 reps @ 22,5 kg |
-| Cardio · Rameur | 10 min | — | 10 min |
+| Cardio · Rameur | 35 min | — | 35 min |
 
-Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Pectoraux 4 (+4 ind.), Épaules 2 (+12 ind.), Triceps 4 (+4 ind.), Abdominaux 4, Dos 8, Biceps 4 (+8 ind.), Lombaires 2, Quadriceps 6, Fessiers 6 (+4 ind.), Ischios 4 (+4 ind.), Mollets 4 ; cardio à la salle 70 min.
+Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Quadriceps 4, Fessiers 0 (+4 ind.), Ischios 4 (+4 ind.), Pectoraux 4, Épaules 0 (+4 ind.), Triceps 0 (+4 ind.), Dos 4, Biceps 0 (+4 ind.) ; cardio à la salle 145 min.
 
 Remarques affichées à l'utilisateur :
 - Effort visé à chaque série : RPE 7-8 (2 à 3 en réserve). La charge pourra augmenter au prochain calcul du programme, quand toutes tes séries atteignent le haut de la fourchette.
 - Endurance : deux choses différentes. Endurance MUSCULAIRE = séries longues (15-20 répétitions, repos courts) [ACSM09] ; endurance CARDIO = minutes d’activité aérobie [WHO20]. Ton programme combine les deux.
-- Cardio à la salle : 70 min. Repère de l’OMS : 150 min d’activité modérée par semaine ; marche ou vélo hors salle comptent aussi.
-- Séances de 45 min : 1 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
-- Charge à trouver à la première séance (aucun historique) : Converging Chest Press, Seated Dip, Rotary Torso, Diverging Lat Pulldown, Diverging Seated Row, Arm Curl, Rear Delt / Pec Fly, Back Extension, Leg Press, Prone Leg Curl, Hip Abduction · fermé → ouvert, Calf Press, Rotary Hip, Leg Extension. Méthode : commence léger, fais une série d’échauffement, puis monte d’un cran à chaque série jusqu’à la charge qui te permet les répétitions prévues à l’effort visé (RPE 7-8 (2 à 3 en réserve)). Garde cette charge pour tes séries de travail.
+- Séances cardio : 35 min proposées comme point de départ (aucun historique). Modifie la durée si c’est trop ou pas assez.
+- Cardio à la salle : 145 min. Repère de l’OMS : 150 min d’activité modérée par semaine ; marche ou vélo hors salle comptent aussi.
+- Séances de 45 min : 2 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
+- Charge à trouver à la première séance (aucun historique) : Leg Press, Prone Leg Curl, Converging Chest Press, Diverging Lat Pulldown, Seated Leg Curl, Chest Press, Lat Pull. Méthode : commence léger, fais une série d’échauffement, puis monte d’un cran à chaque série jusqu’à la charge qui te permet les répétitions prévues à l’effort visé (RPE 7-8 (2 à 3 en réserve)). Garde cette charge pour tes séries de travail.
 
 ### Semaine du 2026-10-26
 
-**lundi — Poussée** (durée estimée 45 min)
+**lundi — Cardio** (durée estimée 42 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
-| Chest Press | 2 × 20 @ à trouver · repos 60 s | à trouver (repère : Converging Chest Press 30 kg) | 18/17 reps @ 30 kg |
-| Triceps Extension | 2 × 20 @ à trouver · repos 45 s | à trouver (repère : Seated Dip 12,5 kg) | 16/15 reps @ 15 kg |
-| Abdominal | 2 × 20 @ à trouver · repos 45 s | à trouver (repère : Rotary Torso 22,5 kg) | 17/16 reps @ 20 kg |
-| Cardio · Rameur | 25 min | — | 25 min |
+| Cardio · Rameur | 35 min | — | 35 min |
 
-**mardi — Tirage** (durée estimée 44 min)
-
-| Activité | Prévu | Raison de la charge | Fait (simulé) |
-|---|---|---|---|
-| Échauffement · Vélo assis | 5 min | — | 5 min |
-| Lat Pull | 2 × 20 @ à trouver · repos 60 s | à trouver (repère : Diverging Lat Pulldown 32,5 kg) | 21/20 reps @ 35 kg |
-| Seated Row | 2 × 20 @ à trouver · repos 60 s | à trouver (repère : Diverging Seated Row 40 kg) | 19/18 reps @ 37,5 kg |
-| Arm Curl | 2 × 20 @ 20 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 17/16 reps @ 20 kg |
-| Rear Delt / Pec Fly | 2 × 20 @ 20 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 20 kg |
-| Back Extension | 2 × 15 @ 37,5 kg · repos 45 s | progression (35 → 37,5 kg, +7 %) | 18/17 reps @ 37,5 kg |
-| Cardio · Rameur | 15 min | — | 15 min |
-
-**mercredi — Jambes** (durée estimée 42 min)
+**mardi — Cardio + endurance musculaire A** (durée estimée 45 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
 | Leg Press | 2 × 20 @ 52,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 52,5 kg |
-| Seated Leg Curl | 2 × 20 @ à trouver · repos 45 s | à trouver (repère : Prone Leg Curl 52,5 kg) | 20/19 reps @ 37,5 kg |
-| Hip Abduction · ouvert → fermé | 2 × 20 @ à trouver · repos 45 s | à trouver (repère : Hip Abduction · fermé → ouvert 37,5 kg) | 20/19 reps @ 55 kg |
-| Calf Press | 2 × 15 @ 22,5 kg · repos 45 s | progression (20 → 22,5 kg, +13 %) | 17/16 reps @ 22,5 kg |
-| Rotary Hip | 2 × 20 @ 40 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 40 kg |
-| Cardio · Rameur | 10 min | — | 10 min |
+| Seated Leg Curl | 2 × 20 @ 37,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 37,5 kg |
+| Chest Press | 2 × 20 @ 30 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 18/17 reps @ 30 kg |
+| Lat Pull | 2 × 20 @ 35 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 35 kg |
+| Cardio · Rameur | 20 min | — | 20 min |
 
-**jeudi — Haut du corps** (durée estimée 44 min)
+**mercredi — Cardio** (durée estimée 42 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
-| Chest Press | 2 × 20 @ à trouver · repos 60 s | à trouver (repère : Converging Chest Press 30 kg) | 18/17 reps @ 30 kg |
-| Triceps Extension | 2 × 20 @ à trouver · repos 45 s | à trouver (repère : Seated Dip 12,5 kg) | 16/15 reps @ 15 kg |
-| Lat Pull | 2 × 20 @ à trouver · repos 60 s | à trouver (repère : Diverging Lat Pulldown 32,5 kg) | 21/20 reps @ 35 kg |
-| Seated Row | 2 × 20 @ à trouver · repos 60 s | à trouver (repère : Diverging Seated Row 40 kg) | 19/18 reps @ 37,5 kg |
-| Arm Curl | 2 × 20 @ 20 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 17/16 reps @ 20 kg |
-| Cardio · Rameur | 15 min | — | 15 min |
+| Cardio · Rameur | 35 min | — | 35 min |
 
-**vendredi — Bas du corps** (durée estimée 43 min)
+**jeudi — Cardio + endurance musculaire B** (durée estimée 45 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
 | Leg Press | 2 × 20 @ 52,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 52,5 kg |
-| Seated Leg Curl | 2 × 20 @ à trouver · repos 45 s | à trouver (repère : Prone Leg Curl 52,5 kg) | 20/19 reps @ 37,5 kg |
-| Leg Extension | 2 × 15 @ 52,5 kg · repos 45 s | progression (50 → 52,5 kg, +5 %) | 18/17 reps @ 52,5 kg |
-| Hip Abduction · ouvert → fermé | 2 × 20 @ à trouver · repos 45 s | à trouver (repère : Hip Abduction · fermé → ouvert 37,5 kg) | 20/19 reps @ 55 kg |
-| Calf Press | 2 × 15 @ 22,5 kg · repos 45 s | progression (20 → 22,5 kg, +13 %) | 17/16 reps @ 22,5 kg |
-| Abdominal | 2 × 20 @ à trouver · repos 45 s | à trouver (repère : Rotary Torso 22,5 kg) | 17/16 reps @ 20 kg |
-| Cardio · Rameur | 10 min | — | 10 min |
+| Prone Leg Curl | 2 × 20 @ 52,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 52,5 kg |
+| Converging Chest Press | 2 × 20 @ 30 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 19/18 reps @ 30 kg |
+| Diverging Lat Pulldown | 2 × 20 @ 32,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 19/18 reps @ 32,5 kg |
+| Cardio · Rameur | 20 min | — | 20 min |
 
-Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Pectoraux 4, Épaules 2 (+8 ind.), Triceps 4 (+4 ind.), Abdominaux 4, Dos 8, Biceps 4 (+8 ind.), Lombaires 2, Quadriceps 6, Fessiers 6 (+4 ind.), Ischios 4 (+4 ind.), Mollets 4 ; cardio à la salle 75 min.
+**vendredi — Cardio** (durée estimée 42 min)
+
+| Activité | Prévu | Raison de la charge | Fait (simulé) |
+|---|---|---|---|
+| Échauffement · Vélo assis | 5 min | — | 5 min |
+| Cardio · Rameur | 35 min | — | 35 min |
+
+Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Quadriceps 4, Fessiers 0 (+4 ind.), Ischios 4 (+4 ind.), Pectoraux 4, Épaules 0 (+4 ind.), Triceps 0 (+4 ind.), Dos 4, Biceps 0 (+4 ind.) ; cardio à la salle 145 min.
 
 Remarques affichées à l'utilisateur :
 - Effort visé à chaque série : RPE 7-8 (2 à 3 en réserve). La charge pourra augmenter au prochain calcul du programme, quand toutes tes séries atteignent le haut de la fourchette.
 - Endurance : deux choses différentes. Endurance MUSCULAIRE = séries longues (15-20 répétitions, repos courts) [ACSM09] ; endurance CARDIO = minutes d’activité aérobie [WHO20]. Ton programme combine les deux.
-- Cardio à la salle : 75 min. Repère de l’OMS : 150 min d’activité modérée par semaine ; marche ou vélo hors salle comptent aussi.
-- Séances de 45 min : 1 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
-- Charge à trouver, repère d’une machine voisine (non transposable telle quelle) : Chest Press — Converging Chest Press 30 kg, Triceps Extension — Seated Dip 12.5 kg, Abdominal — Rotary Torso 22.5 kg, Lat Pull — Diverging Lat Pulldown 32.5 kg, Seated Row — Diverging Seated Row 40 kg, Seated Leg Curl — Prone Leg Curl 52.5 kg, Hip Abduction · ouvert → fermé — Hip Abduction · fermé → ouvert 37.5 kg.
+- Cardio : départ à partir de ta durée habituelle (35 min) + 5 min ; la durée progresse de 5 à 10 min toutes les 1 à 2 semaines (ACSM).
+- Cardio à la salle : 145 min. Repère de l’OMS : 150 min d’activité modérée par semaine ; marche ou vélo hors salle comptent aussi.
+- Séances de 45 min : 2 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
 
 ### Semaine du 2026-11-02
 
-**lundi — Poussée** (durée estimée 40 min)
+**lundi — Cardio** (durée estimée 42 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
+| Cardio · Rameur | 35 min | — | 35 min |
+
+**mardi — Cardio + endurance musculaire B** (durée estimée 45 min)
+
+| Activité | Prévu | Raison de la charge | Fait (simulé) |
+|---|---|---|---|
+| Échauffement · Vélo assis | 5 min | — | 5 min |
+| Leg Press | 2 × 15 @ 55 kg · repos 60 s | progression (52,5 → 55 kg, +5 %) | 18/17 reps @ 55 kg |
+| Prone Leg Curl | 2 × 20 @ 52,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 52,5 kg |
 | Converging Chest Press | 2 × 20 @ 30 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 30 kg |
-| Seated Dip | 2 × 20 @ 12,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 12,5 kg |
-| Rotary Torso | 2 × 20 @ 22,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 19/18 reps @ 22,5 kg |
+| Diverging Lat Pulldown | 2 × 20 @ 32,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 32,5 kg |
 | Cardio · Rameur | 20 min | — | 20 min |
 
-**mardi — Tirage** (durée estimée 44 min)
+**mercredi — Cardio** (durée estimée 42 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
-| Diverging Lat Pulldown | 2 × 20 @ 32,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 32,5 kg |
-| Diverging Seated Row | 2 × 20 @ 40 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 40 kg |
-| Arm Curl | 2 × 20 @ 20 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 18/17 reps @ 20 kg |
-| Rear Delt / Pec Fly | 2 × 20 @ 20 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 20 kg |
-| Back Extension | 2 × 20 @ 37,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 19/18 reps @ 37,5 kg |
-| Cardio · Rameur | 15 min | — | 15 min |
+| Cardio · Rameur | 35 min | — | 35 min |
 
-**mercredi — Jambes** (durée estimée 42 min)
+**jeudi — Cardio + endurance musculaire A** (durée estimée 45 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
 | Leg Press | 2 × 15 @ 55 kg · repos 60 s | progression (52,5 → 55 kg, +5 %) | 18/17 reps @ 55 kg |
-| Prone Leg Curl | 2 × 20 @ 52,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 52,5 kg |
-| Hip Abduction · fermé → ouvert | 2 × 20 @ 37,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 37,5 kg |
-| Calf Press | 2 × 20 @ 22,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 18/17 reps @ 22,5 kg |
-| Rotary Hip | 2 × 20 @ 40 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 40 kg |
-| Cardio · Rameur | 10 min | — | 10 min |
+| Seated Leg Curl | 2 × 20 @ 37,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 37,5 kg |
+| Chest Press | 2 × 20 @ 30 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 19/18 reps @ 30 kg |
+| Lat Pull | 2 × 15 @ 37,5 kg · repos 60 s | progression (35 → 37,5 kg, +7 %) | 18/17 reps @ 37,5 kg |
+| Cardio · Rameur | 20 min | — | 20 min |
 
-**jeudi — Haut du corps** (durée estimée 44 min)
-
-| Activité | Prévu | Raison de la charge | Fait (simulé) |
-|---|---|---|---|
-| Échauffement · Vélo assis | 5 min | — | 5 min |
-| Converging Chest Press | 2 × 20 @ 30 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 30 kg |
-| Seated Dip | 2 × 20 @ 12,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 12,5 kg |
-| Diverging Lat Pulldown | 2 × 20 @ 32,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 32,5 kg |
-| Diverging Seated Row | 2 × 20 @ 40 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 40 kg |
-| Arm Curl | 2 × 20 @ 20 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 18/17 reps @ 20 kg |
-| Cardio · Rameur | 15 min | — | 15 min |
-
-**vendredi — Bas du corps** (durée estimée 43 min)
+**vendredi — Cardio** (durée estimée 42 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
-| Leg Press | 2 × 15 @ 55 kg · repos 60 s | progression (52,5 → 55 kg, +5 %) | 18/17 reps @ 55 kg |
-| Prone Leg Curl | 2 × 20 @ 52,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 52,5 kg |
-| Leg Extension | 2 × 20 @ 52,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 52,5 kg |
-| Hip Abduction · fermé → ouvert | 2 × 20 @ 37,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 37,5 kg |
-| Calf Press | 2 × 20 @ 22,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 18/17 reps @ 22,5 kg |
-| Rotary Torso | 2 × 20 @ 22,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 19/18 reps @ 22,5 kg |
-| Cardio · Rameur | 10 min | — | 10 min |
+| Cardio · Rameur | 35 min | — | 35 min |
 
-Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Pectoraux 4 (+4 ind.), Épaules 2 (+12 ind.), Triceps 4 (+4 ind.), Abdominaux 4, Dos 8, Biceps 4 (+8 ind.), Lombaires 2, Quadriceps 6, Fessiers 6 (+4 ind.), Ischios 4 (+4 ind.), Mollets 4 ; cardio à la salle 70 min.
+Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Quadriceps 4, Fessiers 0 (+4 ind.), Ischios 4 (+4 ind.), Pectoraux 4, Épaules 0 (+4 ind.), Triceps 0 (+4 ind.), Dos 4, Biceps 0 (+4 ind.) ; cardio à la salle 145 min.
 
 Remarques affichées à l'utilisateur :
 - Effort visé à chaque série : RPE 7-8 (2 à 3 en réserve). La charge pourra augmenter au prochain calcul du programme, quand toutes tes séries atteignent le haut de la fourchette.
 - Endurance : deux choses différentes. Endurance MUSCULAIRE = séries longues (15-20 répétitions, repos courts) [ACSM09] ; endurance CARDIO = minutes d’activité aérobie [WHO20]. Ton programme combine les deux.
-- Cardio à la salle : 70 min. Repère de l’OMS : 150 min d’activité modérée par semaine ; marche ou vélo hors salle comptent aussi.
-- Séances de 45 min : 1 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
+- Cardio : départ à partir de ta durée habituelle (35 min) + 5 min ; la durée progresse de 5 à 10 min toutes les 1 à 2 semaines (ACSM).
+- Cardio à la salle : 145 min. Repère de l’OMS : 150 min d’activité modérée par semaine ; marche ou vélo hors salle comptent aussi.
+- Séances de 45 min : 2 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
 
 ### Semaine du 2026-11-09
 
-**lundi — Poussée** (durée estimée 45 min)
+**lundi — Cardio** (durée estimée 42 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
-| Chest Press | 2 × 20 @ 30 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 30 kg |
-| Triceps Extension | 2 × 20 @ 15 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 18/17 reps @ 15 kg |
-| Abdominal | 2 × 20 @ 20 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 19/18 reps @ 20 kg |
-| Cardio · Rameur | 25 min | — | 25 min |
+| Cardio · Rameur | 35 min | — | 35 min |
 
-**mardi — Tirage** (durée estimée 44 min)
-
-| Activité | Prévu | Raison de la charge | Fait (simulé) |
-|---|---|---|---|
-| Échauffement · Vélo assis | 5 min | — | 5 min |
-| Lat Pull | 2 × 15 @ 37,5 kg · repos 60 s | progression (35 → 37,5 kg, +7 %) | 18/17 reps @ 37,5 kg |
-| Seated Row | 2 × 20 @ 37,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 37,5 kg |
-| Arm Curl | 2 × 20 @ 20 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 19/18 reps @ 20 kg |
-| Rear Delt / Pec Fly | 2 × 20 @ 20 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 20 kg |
-| Back Extension | 2 × 20 @ 37,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 37,5 kg |
-| Cardio · Rameur | 15 min | — | 15 min |
-
-**mercredi — Jambes** (durée estimée 42 min)
+**mardi — Cardio + endurance musculaire A** (durée estimée 45 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
 | Leg Press | 2 × 20 @ 55 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 55 kg |
-| Seated Leg Curl | 2 × 20 @ 37,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 22/21 reps @ 37,5 kg |
-| Hip Abduction · ouvert → fermé | 2 × 20 @ 55 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 55 kg |
-| Calf Press | 2 × 20 @ 22,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 18/17 reps @ 22,5 kg |
-| Rotary Hip | 2 × 15 @ 42,5 kg · repos 45 s | progression (40 → 42,5 kg, +6 %) | 18/17 reps @ 42,5 kg |
-| Cardio · Rameur | 10 min | — | 10 min |
+| Seated Leg Curl | 2 × 15 @ 40 kg · repos 45 s | progression (37,5 → 40 kg, +7 %) | 18/17 reps @ 40 kg |
+| Chest Press | 2 × 20 @ 30 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 30 kg |
+| Lat Pull | 2 × 20 @ 37,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 19/18 reps @ 37,5 kg |
+| Cardio · Rameur | 20 min | — | 20 min |
 
-**jeudi — Haut du corps** (durée estimée 44 min)
+**mercredi — Cardio** (durée estimée 42 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
-| Chest Press | 2 × 20 @ 30 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 30 kg |
-| Triceps Extension | 2 × 20 @ 15 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 18/17 reps @ 15 kg |
-| Lat Pull | 2 × 15 @ 37,5 kg · repos 60 s | progression (35 → 37,5 kg, +7 %) | 18/17 reps @ 37,5 kg |
-| Seated Row | 2 × 20 @ 37,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 37,5 kg |
-| Arm Curl | 2 × 20 @ 20 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 19/18 reps @ 20 kg |
-| Cardio · Rameur | 15 min | — | 15 min |
+| Cardio · Rameur | 35 min | — | 35 min |
 
-**vendredi — Bas du corps** (durée estimée 43 min)
+**jeudi — Cardio + endurance musculaire B** (durée estimée 45 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
 | Leg Press | 2 × 20 @ 55 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 55 kg |
-| Seated Leg Curl | 2 × 20 @ 37,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 22/21 reps @ 37,5 kg |
-| Leg Extension | 2 × 20 @ 52,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 52,5 kg |
-| Hip Abduction · ouvert → fermé | 2 × 20 @ 55 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 55 kg |
-| Calf Press | 2 × 20 @ 22,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 18/17 reps @ 22,5 kg |
-| Abdominal | 2 × 20 @ 20 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 19/18 reps @ 20 kg |
-| Cardio · Rameur | 10 min | — | 10 min |
+| Prone Leg Curl | 2 × 15 @ 55 kg · repos 45 s | progression (52,5 → 55 kg, +5 %) | 18/17 reps @ 55 kg |
+| Converging Chest Press | 2 × 20 @ 30 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 30 kg |
+| Diverging Lat Pulldown | 2 × 20 @ 32,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 32,5 kg |
+| Cardio · Rameur | 20 min | — | 20 min |
 
-Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Pectoraux 4, Épaules 2 (+8 ind.), Triceps 4 (+4 ind.), Abdominaux 4, Dos 8, Biceps 4 (+8 ind.), Lombaires 2, Quadriceps 6, Fessiers 6 (+4 ind.), Ischios 4 (+4 ind.), Mollets 4 ; cardio à la salle 75 min.
+**vendredi — Cardio** (durée estimée 42 min)
+
+| Activité | Prévu | Raison de la charge | Fait (simulé) |
+|---|---|---|---|
+| Échauffement · Vélo assis | 5 min | — | 5 min |
+| Cardio · Rameur | 35 min | — | 35 min |
+
+Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Quadriceps 4, Fessiers 0 (+4 ind.), Ischios 4 (+4 ind.), Pectoraux 4, Épaules 0 (+4 ind.), Triceps 0 (+4 ind.), Dos 4, Biceps 0 (+4 ind.) ; cardio à la salle 145 min.
 
 Remarques affichées à l'utilisateur :
 - Effort visé à chaque série : RPE 7-8 (2 à 3 en réserve). La charge pourra augmenter au prochain calcul du programme, quand toutes tes séries atteignent le haut de la fourchette.
 - Endurance : deux choses différentes. Endurance MUSCULAIRE = séries longues (15-20 répétitions, repos courts) [ACSM09] ; endurance CARDIO = minutes d’activité aérobie [WHO20]. Ton programme combine les deux.
-- Cardio à la salle : 75 min. Repère de l’OMS : 150 min d’activité modérée par semaine ; marche ou vélo hors salle comptent aussi.
-- Séances de 45 min : 1 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
+- Cardio : départ à partir de ta durée habituelle (35 min) + 5 min ; la durée progresse de 5 à 10 min toutes les 1 à 2 semaines (ACSM).
+- Cardio à la salle : 145 min. Repère de l’OMS : 150 min d’activité modérée par semaine ; marche ou vélo hors salle comptent aussi.
+- Séances de 45 min : 2 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
 
 ### Semaine du 2026-11-16
 
-**lundi — Poussée** (durée estimée 40 min)
+**lundi — Cardio** (durée estimée 42 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
-| Converging Chest Press | 2 × 20 @ 30 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 22/21 reps @ 30 kg |
-| Seated Dip | 2 × 20 @ 12,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 12,5 kg |
-| Rotary Torso | 2 × 20 @ 22,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 22,5 kg |
+| Cardio · Rameur | 35 min | — | 35 min |
+
+**mardi — Cardio + endurance musculaire B** (durée estimée 45 min)
+
+| Activité | Prévu | Raison de la charge | Fait (simulé) |
+|---|---|---|---|
+| Échauffement · Vélo assis | 5 min | — | 5 min |
+| Leg Press | 2 × 20 @ 55 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 55 kg |
+| Prone Leg Curl | 2 × 20 @ 55 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 55 kg |
+| Converging Chest Press | 2 × 15 @ 32,5 kg · repos 60 s | progression (30 → 32,5 kg, +8 %) | 18/17 reps @ 32,5 kg |
+| Diverging Lat Pulldown | 2 × 15 @ 35 kg · repos 60 s | progression (32,5 → 35 kg, +8 %) | 18/17 reps @ 35 kg |
 | Cardio · Rameur | 20 min | — | 20 min |
 
-**mardi — Tirage** (durée estimée 44 min)
+**mercredi — Cardio** (durée estimée 42 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
-| Diverging Lat Pulldown | 2 × 20 @ 32,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 32,5 kg |
-| Diverging Seated Row | 2 × 20 @ 40 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 40 kg |
-| Arm Curl | 2 × 20 @ 20 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 20 kg |
-| Rear Delt / Pec Fly | 2 × 21 @ 20 kg · repos 45 s | répétitions +1 à charge stable (cran suivant 22,5 kg = +13 %, hors fourchette) | 22/21 reps @ 20 kg |
-| Back Extension | 2 × 20 @ 37,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 37,5 kg |
-| Cardio · Rameur | 15 min | — | 15 min |
+| Cardio · Rameur | 35 min | — | 35 min |
 
-**mercredi — Jambes** (durée estimée 42 min)
+**jeudi — Cardio + endurance musculaire A** (durée estimée 45 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
 | Leg Press | 2 × 20 @ 55 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 55 kg |
-| Prone Leg Curl | 2 × 15 @ 55 kg · repos 45 s | progression (52,5 → 55 kg, +5 %) | 18/17 reps @ 55 kg |
-| Hip Abduction · fermé → ouvert | 2 × 15 @ 40 kg · repos 45 s | progression (37,5 → 40 kg, +7 %) | 18/17 reps @ 40 kg |
-| Calf Press | 2 × 20 @ 22,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 19/18 reps @ 22,5 kg |
-| Rotary Hip | 2 × 20 @ 42,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 19/18 reps @ 42,5 kg |
-| Cardio · Rameur | 10 min | — | 10 min |
+| Seated Leg Curl | 2 × 20 @ 40 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 19/18 reps @ 40 kg |
+| Chest Press | 2 × 20 @ 30 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 30 kg |
+| Lat Pull | 2 × 20 @ 37,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 37,5 kg |
+| Cardio · Rameur | 20 min | — | 20 min |
 
-**jeudi — Haut du corps** (durée estimée 44 min)
-
-| Activité | Prévu | Raison de la charge | Fait (simulé) |
-|---|---|---|---|
-| Échauffement · Vélo assis | 5 min | — | 5 min |
-| Converging Chest Press | 2 × 20 @ 30 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 22/21 reps @ 30 kg |
-| Seated Dip | 2 × 20 @ 12,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 12,5 kg |
-| Diverging Lat Pulldown | 2 × 20 @ 32,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 32,5 kg |
-| Diverging Seated Row | 2 × 20 @ 40 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 40 kg |
-| Arm Curl | 2 × 20 @ 20 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 20/19 reps @ 20 kg |
-| Cardio · Rameur | 15 min | — | 15 min |
-
-**vendredi — Bas du corps** (durée estimée 43 min)
+**vendredi — Cardio** (durée estimée 42 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | 5 min |
-| Leg Press | 2 × 20 @ 55 kg · repos 60 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 55 kg |
-| Prone Leg Curl | 2 × 15 @ 55 kg · repos 45 s | progression (52,5 → 55 kg, +5 %) | 18/17 reps @ 55 kg |
-| Leg Extension | 2 × 20 @ 52,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 52,5 kg |
-| Hip Abduction · fermé → ouvert | 2 × 15 @ 40 kg · repos 45 s | progression (37,5 → 40 kg, +7 %) | 18/17 reps @ 40 kg |
-| Calf Press | 2 × 20 @ 22,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 19/18 reps @ 22,5 kg |
-| Rotary Torso | 2 × 20 @ 22,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | 21/20 reps @ 22,5 kg |
-| Cardio · Rameur | 10 min | — | 10 min |
+| Cardio · Rameur | 35 min | — | 35 min |
 
-Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Pectoraux 4 (+4 ind.), Épaules 2 (+12 ind.), Triceps 4 (+4 ind.), Abdominaux 4, Dos 8, Biceps 4 (+8 ind.), Lombaires 2, Quadriceps 6, Fessiers 6 (+4 ind.), Ischios 4 (+4 ind.), Mollets 4 ; cardio à la salle 70 min.
+Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Quadriceps 4, Fessiers 0 (+4 ind.), Ischios 4 (+4 ind.), Pectoraux 4, Épaules 0 (+4 ind.), Triceps 0 (+4 ind.), Dos 4, Biceps 0 (+4 ind.) ; cardio à la salle 145 min.
 
 Remarques affichées à l'utilisateur :
 - Effort visé à chaque série : RPE 7-8 (2 à 3 en réserve). La charge pourra augmenter au prochain calcul du programme, quand toutes tes séries atteignent le haut de la fourchette.
 - Endurance : deux choses différentes. Endurance MUSCULAIRE = séries longues (15-20 répétitions, repos courts) [ACSM09] ; endurance CARDIO = minutes d’activité aérobie [WHO20]. Ton programme combine les deux.
-- Cardio à la salle : 70 min. Repère de l’OMS : 150 min d’activité modérée par semaine ; marche ou vélo hors salle comptent aussi.
-- Séances de 45 min : 1 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
-- Progression en répétitions à charge stable (le cran suivant de la machine est trop grand pour rester dans la fourchette) : Rear Delt / Pec Fly 20 kg × 21 (cran suivant 22.5 kg, +13 %).
+- Cardio : départ à partir de ta durée habituelle (35 min) + 5 min ; la durée progresse de 5 à 10 min toutes les 1 à 2 semaines (ACSM).
+- Cardio à la salle : 145 min. Repère de l’OMS : 150 min d’activité modérée par semaine ; marche ou vélo hors salle comptent aussi.
+- Séances de 45 min : 2 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
 
 ### Semaine du 2026-11-23 (prochaine semaine, calculée après 5 semaines faites)
 
-**lundi — Poussée** (durée estimée 45 min)
+**lundi — Cardio** (durée estimée 42 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | — |
-| Chest Press | 2 × 20 @ 30 kg · repos 60 s | même charge (fourchette pas encore atteinte) | — |
-| Triceps Extension | 2 × 20 @ 15 kg · repos 45 s | même charge (fourchette pas encore atteinte) | — |
-| Abdominal | 2 × 20 @ 20 kg · repos 45 s | même charge (fourchette pas encore atteinte) | — |
-| Cardio · Rameur | 25 min | — | — |
+| Cardio · Rameur | 35 min | — | — |
 
-**mardi — Tirage** (durée estimée 44 min)
-
-| Activité | Prévu | Raison de la charge | Fait (simulé) |
-|---|---|---|---|
-| Échauffement · Vélo assis | 5 min | — | — |
-| Lat Pull | 2 × 20 @ 37,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | — |
-| Seated Row | 2 × 15 @ 40 kg · repos 60 s | progression (37,5 → 40 kg, +7 %) | — |
-| Arm Curl | 2 × 20 @ 20 kg · repos 45 s | même charge (fourchette pas encore atteinte) | — |
-| Rear Delt / Pec Fly | 2 × 15 @ 22,5 kg · repos 45 s | progression (20 → 22,5 kg, +13 %) | — |
-| Back Extension | 2 × 20 @ 37,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | — |
-| Cardio · Rameur | 15 min | — | — |
-
-**mercredi — Jambes** (durée estimée 42 min)
+**mardi — Cardio + endurance musculaire A** (durée estimée 45 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | — |
 | Leg Press | 2 × 15 @ 57,5 kg · repos 60 s | progression (55 → 57,5 kg, +5 %) | — |
-| Seated Leg Curl | 2 × 15 @ 40 kg · repos 45 s | progression (37,5 → 40 kg, +7 %) | — |
-| Hip Abduction · ouvert → fermé | 2 × 15 @ 57,5 kg · repos 45 s | progression (55 → 57,5 kg, +5 %) | — |
-| Calf Press | 2 × 20 @ 22,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | — |
-| Rotary Hip | 2 × 20 @ 42,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | — |
-| Cardio · Rameur | 10 min | — | — |
+| Seated Leg Curl | 2 × 20 @ 40 kg · repos 45 s | même charge (fourchette pas encore atteinte) | — |
+| Chest Press | 2 × 20 @ 30 kg · repos 60 s | même charge (fourchette pas encore atteinte) | — |
+| Lat Pull | 2 × 20 @ 37,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | — |
+| Cardio · Rameur | 20 min | — | — |
 
-**jeudi — Haut du corps** (durée estimée 44 min)
+**mercredi — Cardio** (durée estimée 42 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | — |
-| Chest Press | 2 × 20 @ 30 kg · repos 60 s | même charge (fourchette pas encore atteinte) | — |
-| Triceps Extension | 2 × 20 @ 15 kg · repos 45 s | même charge (fourchette pas encore atteinte) | — |
-| Lat Pull | 2 × 20 @ 37,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | — |
-| Seated Row | 2 × 15 @ 40 kg · repos 60 s | progression (37,5 → 40 kg, +7 %) | — |
-| Arm Curl | 2 × 20 @ 20 kg · repos 45 s | même charge (fourchette pas encore atteinte) | — |
-| Cardio · Rameur | 15 min | — | — |
+| Cardio · Rameur | 35 min | — | — |
 
-**vendredi — Bas du corps** (durée estimée 43 min)
+**jeudi — Cardio + endurance musculaire B** (durée estimée 45 min)
 
 | Activité | Prévu | Raison de la charge | Fait (simulé) |
 |---|---|---|---|
 | Échauffement · Vélo assis | 5 min | — | — |
 | Leg Press | 2 × 15 @ 57,5 kg · repos 60 s | progression (55 → 57,5 kg, +5 %) | — |
-| Seated Leg Curl | 2 × 15 @ 40 kg · repos 45 s | progression (37,5 → 40 kg, +7 %) | — |
-| Leg Extension | 2 × 15 @ 55 kg · repos 45 s | progression (52,5 → 55 kg, +5 %) | — |
-| Hip Abduction · ouvert → fermé | 2 × 15 @ 57,5 kg · repos 45 s | progression (55 → 57,5 kg, +5 %) | — |
-| Calf Press | 2 × 20 @ 22,5 kg · repos 45 s | même charge (fourchette pas encore atteinte) | — |
-| Abdominal | 2 × 20 @ 20 kg · repos 45 s | même charge (fourchette pas encore atteinte) | — |
-| Cardio · Rameur | 10 min | — | — |
+| Prone Leg Curl | 2 × 20 @ 55 kg · repos 45 s | même charge (fourchette pas encore atteinte) | — |
+| Converging Chest Press | 2 × 20 @ 32,5 kg · repos 60 s | même charge (fourchette pas encore atteinte) | — |
+| Diverging Lat Pulldown | 2 × 20 @ 35 kg · repos 60 s | même charge (fourchette pas encore atteinte) | — |
+| Cardio · Rameur | 20 min | — | — |
 
-Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Pectoraux 4, Épaules 2 (+8 ind.), Triceps 4 (+4 ind.), Abdominaux 4, Dos 8, Biceps 4 (+8 ind.), Lombaires 2, Quadriceps 6, Fessiers 6 (+4 ind.), Ischios 4 (+4 ind.), Mollets 4 ; cardio à la salle 75 min.
+**vendredi — Cardio** (durée estimée 42 min)
+
+| Activité | Prévu | Raison de la charge | Fait (simulé) |
+|---|---|---|---|
+| Échauffement · Vélo assis | 5 min | — | — |
+| Cardio · Rameur | 35 min | — | — |
+
+Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — Quadriceps 4, Fessiers 0 (+4 ind.), Ischios 4 (+4 ind.), Pectoraux 4, Épaules 0 (+4 ind.), Triceps 0 (+4 ind.), Dos 4, Biceps 0 (+4 ind.) ; cardio à la salle 145 min.
 
 Remarques affichées à l'utilisateur :
 - Effort visé à chaque série : RPE 7-8 (2 à 3 en réserve). La charge pourra augmenter au prochain calcul du programme, quand toutes tes séries atteignent le haut de la fourchette.
 - Endurance : deux choses différentes. Endurance MUSCULAIRE = séries longues (15-20 répétitions, repos courts) [ACSM09] ; endurance CARDIO = minutes d’activité aérobie [WHO20]. Ton programme combine les deux.
-- Cardio à la salle : 75 min. Repère de l’OMS : 150 min d’activité modérée par semaine ; marche ou vélo hors salle comptent aussi.
-- Séances de 45 min : 1 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
+- Cardio : départ à partir de ta durée habituelle (35 min) + 5 min ; la durée progresse de 5 à 10 min toutes les 1 à 2 semaines (ACSM).
+- Cardio à la salle : 145 min. Repère de l’OMS : 150 min d’activité modérée par semaine ; marche ou vélo hors salle comptent aussi.
+- Séances de 45 min : 2 exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).
 
 ### Évolution des charges de Hugo (fictif) (meilleure série de chaque séance)
 
 | Machine | 10-19 | 10-26 | 11-02 | 11-09 | 11-16 |
 |---|---|---|---|---|---|
-| Converging Chest Press | 30×19, 30×19 | — | 30×20, 30×20 | — | 30×22, 30×22 |
-| Seated Dip | 12,5×18, 12,5×18 | — | 12,5×20, 12,5×20 | — | 12,5×21, 12,5×21 |
-| Rotary Torso | 22,5×18, 22,5×18 | — | 22,5×19, 22,5×19 | — | 22,5×21, 22,5×21 |
-| Diverging Lat Pulldown | 32,5×18, 32,5×18 | — | 32,5×20, 32,5×20 | — | 32,5×21, 32,5×21 |
-| Diverging Seated Row | 40×18, 40×18 | — | 40×20, 40×20 | — | 40×21, 40×21 |
-| Arm Curl | 20×17, 20×17 | 20×17, 20×17 | 20×18, 20×18 | 20×19, 20×19 | 20×20, 20×20 |
-| Rear Delt / Pec Fly | 20×19 | 20×20 | 20×20 | 20×21 | 20×22 |
-| Back Extension | 35×21 | 37,5×18 | 37,5×19 | 37,5×20 | 37,5×20 |
 | Leg Press | 52,5×20, 52,5×20 | 52,5×21, 52,5×21 | 55×18, 55×18 | 55×20, 55×20 | 55×21, 55×21 |
-| Prone Leg Curl | 52,5×19, 52,5×19 | — | 52,5×21, 52,5×21 | — | 55×18, 55×18 |
-| Hip Abduction · fermé → ouvert | 37,5×20, 37,5×20 | — | 37,5×21, 37,5×21 | — | 40×18, 40×18 |
-| Calf Press | 20×22, 20×22 | 22,5×17, 22,5×17 | 22,5×18, 22,5×18 | 22,5×18, 22,5×18 | 22,5×19, 22,5×19 |
-| Rotary Hip | 40×19 | 40×20 | 40×21 | 42,5×18 | 42,5×19 |
-| Leg Extension | 50×21 | 52,5×18 | 52,5×20 | 52,5×20 | 52,5×21 |
-| Chest Press | — | 30×18, 30×18 | — | 30×20, 30×20 | — |
-| Triceps Extension | — | 15×16, 15×16 | — | 15×18, 15×18 | — |
-| Abdominal | — | 20×17, 20×17 | — | 20×19, 20×19 | — |
-| Lat Pull | — | 35×21, 35×21 | — | 37,5×18, 37,5×18 | — |
-| Seated Row | — | 37,5×19, 37,5×19 | — | 37,5×21, 37,5×21 | — |
-| Seated Leg Curl | — | 37,5×20, 37,5×20 | — | 37,5×22, 37,5×22 | — |
-| Hip Abduction · ouvert → fermé | — | 55×20, 55×20 | — | 55×21, 55×21 | — |
+| Prone Leg Curl | 52,5×19 | 52,5×20 | 52,5×21 | 55×18 | 55×20 |
+| Converging Chest Press | 30×19 | 30×19 | 30×20 | 30×21 | 32,5×18 |
+| Diverging Lat Pulldown | 32,5×18 | 32,5×19 | 32,5×20 | 32,5×21 | 35×18 |
+| Seated Leg Curl | 37,5×20 | 37,5×20 | 37,5×21 | 40×18 | 40×19 |
+| Chest Press | 30×18 | 30×18 | 30×19 | 30×20 | 30×20 |
+| Lat Pull | 35×20 | 35×21 | 37,5×18 | 37,5×19 | 37,5×20 |
 
 ## Inès (fictive) — Prise de muscle
 

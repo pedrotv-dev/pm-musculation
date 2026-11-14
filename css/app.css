@@ -488,3 +488,19 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-qs-card input:focus-visible + span { outline: none; }
 .pm-onboarding .pm-ob-actions { position: sticky; bottom: 0; z-index: 2; margin: 18px -16px -16px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg, #0b1012) 70%, transparent); }
 .pm-ob-actions .pm-secondary { min-height: 48px; padding: 0 18px; }
+
+/* « Générer mon programme » : formulaire court, aperçu de la semaine */
+.pm-gen-form { display: grid; gap: 10px; }
+.pm-gen-days .pm-coach-checks { display: flex; flex-wrap: wrap; gap: 6px; }
+.pm-gen-sum { font-weight: 700; color: var(--turq); margin: 4px 0 10px; }
+.pm-gen-day { border: 1px solid var(--ascent-rim, var(--stroke)); border-radius: 14px; padding: 12px; margin-bottom: 10px; display: grid; gap: 8px; }
+.pm-gen-dayhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pm-gen-dayhead .pm-validate { width: auto; min-height: 44px; padding: 0 18px; flex: none; }
+.pm-gen-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.pm-gen-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; }
+.pm-gen-item .pm-select, .pm-gen-move { width: auto; min-height: 44px; font-size: 13px; }
+.pm-gen-more { width: 100%; margin: 4px 0 10px; }
+.pm-gen-item { flex-wrap: wrap; }
+.pm-gen-item > span { flex: 1 1 60%; min-width: 0; }
+.pm-gen-item .pm-select { flex: 0 0 auto; max-width: 42%; padding-right: 28px; }
+.pm-gen-dayhead strong { display: block; }

@@ -21,6 +21,11 @@ publications reconnues. Ce qui n'a pas de source n'est pas codé. Les abréviati
 | Effort : jamais déduit du nombre de répétitions ; seul le ressenti noté (« trop difficile ») bloque une hausse | [HEL16] |
 | Force : lourd (4-6) sur le gros exercice de chaque groupe ; assistance (isolation, abdos) en 8-12 | [ACSM09] |
 | Cardio : objectif 150 min d'activité modérée par semaine (salle + hors salle) ; renforcement ≥ 2 jours par semaine | [WHO20] |
+| Semaine : la répartition (renforcement, mixte, cardio dédié) est choisie AVANT de remplir les journées ; jours et durée = contraintes ; renforcement ≥ 2 j/sem quand c'est possible | [WHO20] |
+| Perte de graisse : séances cardio dédiées dès 3 jours (ex. 5 j → 3 renforcement + 2 cardio) ; « Plus de cardio » = un jour cardio de plus ; « Cardio seul » = cardio tous les jours demandés | [DON09], [WIL12] |
+| Endurance : 2 séances avec endurance musculaire (2×15-20) + cardio, les autres en cardio dédié | [ACSM09], [WHO20] |
+| Durée de cardio de départ : avec historique, durée habituelle (médiane des 5 dernières) + 5 min ; sans historique, tout le créneau, affiché comme point de départ modifiable | progression de la durée de 5 à 10 min toutes les 1 à 2 semaines (ACSM, Guidelines for Exercise Testing and Prescription) |
+| Créneau court : gros exercices d'abord, 2 séries au lieu de 3 avant d'en retirer un ; séance mixte courte : cardio en début de séance, ses 5 premières minutes servant d'échauffement | [KRI10] ; échauffement = 5-10 min d'aérobie légère [ACSM09] |
 | Perte de graisse : le cardio a la plus grande part du temps ; repère dès 150 min/sem, vers 250 min pour une perte plus nette (objectif progressif, pas un quota) ; musculation avant le cardio, un exercice par groupe (ischios et abdos en alternance), 2 séries | [DON09], [WIL12], [WHO20] |
 | Cardio de fin de séance : la machine de cardio la plus faite dans tes séances (sinon rameur, tapis) | préférence de l'utilisateur (pas une règle d'entraînement) |
 | Trajet à pied ou à vélo : affiché comme trajet actif ; compté dans les 150 min SEULEMENT si l'allure est confirmée au moins modérée (« parler mais pas chanter ») | [WHO20] |

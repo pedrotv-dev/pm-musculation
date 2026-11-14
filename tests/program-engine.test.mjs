@@ -104,7 +104,7 @@ test('machine voisine : repère affiché, AUCUNE charge transposée (bras de lev
 test('séance courte (45 min) : un exercice par groupe gardé en priorité, une seule remarque', () => {
   const sport = { mainGoal: 'Perte de graisse', level: 'debutant', frequency: 3, days: ['lundi', 'mercredi', 'vendredi'], durationMin: 45 };
   const { program, notes } = E.generateWeek({ profileId, weekStart: '2026-11-16', sport, gym: {}, catalog });
-  for (const d of program.programs[profileId].days) {
+  for (const d of program.programs[profileId].days.filter(x => x.activities.some(a => a.type === 'strength'))) {
     const ids = d.activities.filter(a => a.type === 'strength').map(a => a.machineId);
     assert.ok(ids.some(id => ['leg-press'].includes(id)), 'jambes');
     assert.ok(ids.some(id => /chest-press/.test(id)), 'poussée');
@@ -215,4 +215,46 @@ test('perte de graisse (Donnelly 2009, Willis 2012) : cardio en premier, muscula
   assert.equal(day(fat).filter(a => a.type === 'strength').length, 4, 'un exercice par groupe');
   for (const d of fat.program.programs.x.days) assert.ok(PR.estimateDayMinutes(d) <= 65, d.id + ' : ' + PR.estimateDayMinutes(d));
   assert.ok(fat.notes.some(n => /250 min/.test(n)));
+});
+
+const cardioOut = d => d.activities.filter(a => a.type === 'cardio').reduce((n, a) => n + a.durationMinutes, 0);
+const kindOf = d => (d.activities.some(a => a.type === 'strength') ? (cardioOut(d) ? 'mixte' : 'renfo') : 'cardio');
+
+test('répartition choisie AVANT les journées : perte de graisse 5 j → 3 renforcement + 2 cardio espacés ; « Cardio seul » → tout cardio', () => {
+  const DAYS5 = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
+  assert.deepEqual(E.weekLayout({ mainGoal: 'Perte de graisse' }, 5), ['mixed', 'cardio', 'mixed', 'cardio', 'mixed']);
+  assert.equal(E.weekLayout({ mainGoal: 'Perte de graisse', cardioMode: 'more' }, 5).filter(k => k === 'cardio').length, 3, 'plus de cardio : un jour de plus');
+  assert.deepEqual(E.weekLayout({ mainGoal: 'Perte de graisse', cardioMode: 'only' }, 4), ['cardio', 'cardio', 'cardio', 'cardio']);
+  assert.ok(E.weekLayout({ mainGoal: 'Prise de muscle' }, 4).every(k => k === 'strength'));
+  const r = E.generateWeek({ profileId, weekStart: '2026-11-16', sport: { mainGoal: 'Perte de graisse', level: 'debutant', days: DAYS5, frequency: 5, durationMin: 60 }, gym: {}, catalog });
+  const days = r.program.programs[profileId].days;
+  assert.deepEqual(days.map(kindOf), ['mixte', 'cardio', 'mixte', 'cardio', 'mixte']);
+  assert.ok(days.filter(d => kindOf(d) === 'cardio').every(d => cardioOut(d) >= 40), 'vraies séances cardio');
+  assert.equal(r.summary.layoutText, '3 séances de renforcement (avec cardio) · 2 séances cardio');
+});
+
+test('durée choisie respectée (30, 45, 60 min) pour chaque objectif ; machines exclues absentes ; débutant ≠ blocs de 10 min', () => {
+  const gym = { avoid: ['leg-press', 'shoulder-press', 'converging-shoulder-press'] };
+  for (const goal of ['Perte de graisse', 'Prise de muscle', 'Endurance', 'Remise en forme', 'Force'])
+    for (const dur of [30, 45, 60]) for (const n of [2, 3, 5]) {
+      const r = E.generateWeek({ profileId, weekStart: '2026-11-16', sport: { mainGoal: goal, level: 'debutant', days: ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'].slice(0, n), frequency: n, durationMin: dur }, gym, catalog });
+      for (const d of r.program.programs[profileId].days) {
+        assert.ok(minutesOf(d) <= dur, `${goal} ${n} j ${dur} min ${d.id} : ${minutesOf(d)} min`);
+        assert.ok(!d.activities.some(a => gym.avoid.includes(a.machineId)), 'machine exclue');
+        if (kindOf(d) === 'cardio') assert.ok(cardioOut(d) >= dur - 15, `${goal} ${dur} min : cardio dédié ${cardioOut(d)} min`);
+      }
+    }
+});
+
+test('endurance : cardio en bloc principal ; avec historique, départ = durée habituelle + 5 min (ACSM) ; sans historique, proposition modifiable', () => {
+  const sport = { mainGoal: 'Endurance', level: 'intermediaire', days: ['lundi', 'mercredi', 'vendredi', 'samedi'], frequency: 4, durationMin: 60 };
+  const fresh = E.generateWeek({ profileId, weekStart: '2026-11-16', sport, gym: {}, catalog });
+  assert.ok(fresh.program.programs[profileId].days.every(d => cardioOut(d) >= 20), 'cardio dans chaque séance');
+  assert.ok(fresh.notes.some(n => /point de départ \(aucun historique\)/.test(n)));
+  const hist = [1, 2, 3].map(i => ({ id: 'h' + i, date: '2026-11-0' + (i + 1), endedAt: '2026-11-0' + (i + 1) + 'T12:00:00Z', status: 'completed', activities: [{ type: 'cardio', name: 'Rameur', status: 'done', actual: { durationMinutes: 20 } }] }));
+  assert.equal(E.recentCardioMinutes(hist), 20);
+  const r = E.generateWeek({ profileId, weekStart: '2026-11-16', sport, gym: {}, catalog, sessions: hist });
+  const cardioDays = r.program.programs[profileId].days.filter(d => kindOf(d) === 'cardio');
+  assert.ok(cardioDays.length && cardioDays.every(d => cardioOut(d) === 25), 'départ 20 + 5 min');
+  assert.ok(r.notes.some(n => /durée habituelle \(20 min\)/.test(n)));
 });
