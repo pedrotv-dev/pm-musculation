@@ -73,7 +73,10 @@ await step('trajet à vélo 15 min : affiché comme trajet actif tant que l’al
   assert.match(await page.locator(coach + ' .pm-engine-out').innerText(), /Trajet actif à vélo : 90 min par semaine.*si ton allure est au moins modérée/s);
   await page.click('#open-settings');
   if (!(await f.evaluate(d => d.open))) await f.locator('summary').click();
-  await page.check('#pm-sport-commute-moderate');
+  const pace = page.locator('label:has(#pm-sport-commute-moderate)');
+  await pace.waitFor({ state: 'visible' });
+  if (!(await page.isChecked('#pm-sport-commute-moderate'))) await pace.click();
+  assert.equal(await page.isChecked('#pm-sport-commute-moderate'), true);
   await f.locator('button:has-text("Enregistrer mon profil sportif")').click();
   await f.locator('.pm-coach-status[data-state="ok"]').waitFor();
   s = await db(async id => (await import('./js/sport-profile.js')).getSportProfile(id), id);
