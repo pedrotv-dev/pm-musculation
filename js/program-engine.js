@@ -26,7 +26,7 @@
 import { lastPerformance, knownLoads, isAssisted } from './last-loads.js';
 import { currentReference } from './declared-loads.js';
 import { stepWeight } from './machine-rules.js';
-import { ACTIVE_COMMUTES } from './sport-profile.js';
+import { ACTIVE_COMMUTES, INTENSITIES } from './sport-profile.js';
 
 export const ENGINE_VERSION = 1;
 const DAY_ORDER = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
@@ -85,8 +85,9 @@ export function splitFor(count, level) { // eslint-disable-line no-unused-vars
  *  - Prise de muscle / Renforcement : 8-12 [ACSM09], repos ≥ 90 s (au-delà, pas de différence) [SIN24][ACSM09] ;
  *  - Endurance : 15-20, repos courts ≤ 60 s [ACSM09] ;
  *  - Perte de graisse / Remise en forme : 10-15 (zone hypertrophie/endurance, [SCH17l]) + cardio [WHO20] ;
- *  - débutant : 8-12 RM, 3 séries maximum [ACSM09] (sauf endurance).
- * L'intensité choisie (RPE / répétitions en réserve) ne change PAS le volume : elle reste une consigne d'effort.
+ *  - débutant : 8-12 RM [ACSM09] (sauf endurance), volume de l'objectif conservé [KRI10][RHE03].
+ * L'intensité choisie (RPE / répétitions en réserve) ne change PAS le volume : c'est la consigne d'effort de chaque série
+ * (échelle RPE fondée sur les répétitions en réserve [HEL16]), rappelée dans les remarques de la semaine.
  */
 export function dosage(sport = {}) {
   const base = ({
@@ -98,10 +99,10 @@ export function dosage(sport = {}) {
     'Remise en forme': { sets: 3, low: 10, high: 15, restMain: 90, restAcc: 60 }
   })[sport.mainGoal] || { sets: 3, low: 8, high: 12, restMain: 120, restAcc: 90 };
   const d = { ...base };
-  if (sport.level === 'debutant') {
-    d.sets = Math.min(d.sets, 3);
-    if (sport.mainGoal !== 'Endurance') { d.low = 8; d.high = 12; }
-  }
+  // débutant : 8-12 RM [ACSM09] ; le VOLUME reste celui de l'objectif (retours 13/11 : débutant ≠ petite séance).
+  // Chez les non-entraînés, plusieurs séries par muscle font mieux qu'une seule [KRI10] et ~4 séries par muscle et
+  // par séance donnent le meilleur gain de force [RHE03]. L'intensité se règle par l'effort ressenti (RPE) choisi.
+  if (sport.level === 'debutant' && sport.mainGoal !== 'Endurance') { d.low = 8; d.high = 12; }
   // OMS : 150 min d'aérobie modérée / semaine ; une partie à la salle, le reste (marche, vélo…) hors séance
   d.weeklyCardio = ({ 'Perte de graisse': 150, Endurance: 150, 'Remise en forme': 150 })[sport.mainGoal] || 0;
   // trajet actif (marche, vélo) aller-retour, les jours de séance : compte dans l'activité modérée [WHO20]
@@ -176,8 +177,11 @@ export function lastFeel(sessions, machineId) {
   return null;
 }
 
-/** Durée estimée d'un exercice de musculation (minutes) : séries × (≈ 45 s d'effort + repos) + installation. */
-const strengthMinutes = (sets, rest) => sets * (45 + rest) / 60 + 1.5;
+/**
+ * Durée estimée d'un exercice (minutes), même calcul que l'aperçu du programme (programs.js, estimateDayMinutes) :
+ * 2 min d'installation + 45 s par série + repos ENTRE les séries (le repos après la dernière se passe à changer de machine).
+ */
+const strengthMinutes = (sets, rest) => (120 + sets * 45 + Math.max(0, sets - 1) * rest) / 60;
 
 /**
  * Génère la semaine.
@@ -194,6 +198,9 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
   const cardio = machines.filter(m => m.kind === 'cardio' && usable(m));
   const byId = new Map(strength.map(m => [m.id, m]));
   const days = pickDays(sport.days && sport.days.length ? sport.days : ['lundi', 'mercredi', 'vendredi'], sport.frequency);
+  const effort = INTENSITIES.find(([k]) => k === sport.intensity);
+  notes.push('Effort visé à chaque série : ' + (effort ? effort[1].replace(/^[^—]*— /, '') : 'RPE 7-8 (2 à 3 répétitions en réserve)')
+    + '. Si tu fais plus de répétitions que prévu à cet effort, la charge montera à la séance suivante.');
   if (!(sport.days && sport.days.length)) notes.push('Aucun jour disponible renseigné : lundi, mercredi, vendredi par défaut.');
   const split = splitFor(days.length, sport.level);
   const dose = dosage(sport);

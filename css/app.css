@@ -444,3 +444,6 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 }
 .pm-import-manual { display:none; margin:0 0 10px; }
 .pm-import[data-source="engine"] .pm-import-manual { display:inline-block; }
+
+/* retours 13/11 : réordonner les machines avant la première série */
+.pm-reorder-cta { width: 100%; margin-top: 12px; }

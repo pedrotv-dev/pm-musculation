@@ -5,7 +5,9 @@ publications reconnues. Ce qui n'a pas de source n'est pas codé. Les abréviati
 
 | Règle appliquée | Source |
 |---|---|
-| Débutant : 8 à 12 répétitions, 1 à 3 séries, 2 à 3 séances par semaine | [ACSM09] |
+| Débutant : 8 à 12 répétitions [ACSM09] ; volume de l'objectif conservé (débutant ≠ petite séance) : plusieurs séries par muscle font mieux qu'une seule, ~4 séries par muscle et par séance chez les non-entraînés | [ACSM09], [KRI10], [RHE03] |
+| Intensité choisie = effort visé à chaque série (RPE fondé sur les répétitions en réserve), rappelée chaque semaine | [HEL16] |
+| Durée d'une séance : 2 min d'installation + 45 s par série + repos entre les séries (même calcul que l'aperçu) | estimation de l'application (pas une règle d'entraînement) |
 | Force : charges lourdes (4 à 6 répétitions), repos 2 à 3 min sur les gros exercices | [ACSM09], [SCH17l] |
 | Prise de muscle / renforcement : 8 à 12 répétitions | [ACSM09] ; l'hypertrophie reste possible sur une large gamme de charges [SCH17l] |
 | Endurance musculaire : 15 à 20 répétitions, repos courts | [ACSM09] |
@@ -31,4 +33,7 @@ publications reconnues. Ce qui n'a pas de source n'est pas codé. Les abréviati
   Le seuil d'environ 10 séries reste un repère : l'analyse par catégories n'était que tendancielle.
 - **[SCH17l]** Schoenfeld BJ et al. *Strength and hypertrophy adaptations between low- vs. high-load resistance training*. J Strength Cond Res, 2017. [PubMed 28834797](https://pubmed.ncbi.nlm.nih.gov/28834797/)
 - **[SIN24]** Singer A et al. *Give it a rest: a systematic review with Bayesian meta-analysis on the effect of inter-set rest interval duration on muscle hypertrophy*. Front Sports Act Living, 2024. [Article](https://frontiersin.org/journals/sports-and-active-living/articles/10.3389/fspor.2024.1429789/abstract)
+- **[KRI10]** Krieger JW. *Single vs. multiple sets of resistance exercise for muscle hypertrophy: a meta-analysis*. J Strength Cond Res, 2010. [PubMed 20300012](https://pubmed.ncbi.nlm.nih.gov/20300012/)
+- **[RHE03]** Rhea MR et al. *A meta-analysis to determine the dose response for strength development*. Med Sci Sports Exerc, 2003. [PubMed 12618576](https://pubmed.ncbi.nlm.nih.gov/12618576/)
+- **[HEL16]** Helms ER et al. *Application of the repetitions in reserve-based rating of perceived exertion scale for resistance training*. Strength Cond J, 2016. [PubMed 27531969](https://pubmed.ncbi.nlm.nih.gov/27531969/)
 - **[WHO20]** Organisation mondiale de la santé. *Lignes directrices sur l'activité physique et la sédentarité*, 2020 : 150 à 300 min d'activité aérobie modérée par semaine et renforcement musculaire au moins 2 jours par semaine (adultes).

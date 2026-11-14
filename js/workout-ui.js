@@ -1060,7 +1060,11 @@ function renderList() {
   });
   box.append(list);
   box.append(btn('+ Ajouter une machine', 'pm-secondary', addMachineDialog));
-  box.append(btn('Retour à la machine', 'pm-validate', () => { S.view = 'activity'; S.revealed = null; render(); window.scrollTo(0, 0); }));
+  // retours 13/11 : avant la première série, l'ordre se règle ici puis on commence par la PREMIÈRE machine de la liste
+  const fresh = !s.activities.some(a => a.status !== 'pending' || (a.sets || []).some(x => x.done));
+  const first = fresh ? s.order.map(k => act(s, k)).find(Boolean) : null;
+  box.append(first ? btn('Commencer par « ' + nameOf(first) + ' »', 'pm-validate', () => select(first.key))
+    : btn('Retour à la machine', 'pm-validate', () => { S.view = 'activity'; S.revealed = null; render(); window.scrollTo(0, 0); }));
   return box;
 }
 async function addMachineDialog() {
@@ -1358,6 +1362,8 @@ function render() {
     const postponed = getPostponedActivities(s);
     if (postponed.length) panel.append(el('p', 'pm-postponed-note', '↷ ' + postponed.length + ' machine(s) reportée(s) : à faire avant la fin.'));
     const foot = el('div', 'pm-footer');
+    const fresh = !s.activities.some(a => a.status !== 'pending' || (a.sets || []).some(x => x.done));
+    if (fresh && s.order.length > 1) panel.append(btn('↕ Changer l’ordre des machines avant de commencer', 'pm-secondary pm-reorder-cta', showList));
     add(foot, btn('Machines', 'pm-secondary', showList), btn('Pause', 'pm-secondary', async () => {
       await flushAll(); if (isLive(T)) commitTo(T, (p, id) => pauseWorkout(p, id));
     }), btn('Terminer', 'pm-secondary', showRecap));

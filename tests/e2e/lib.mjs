@@ -86,13 +86,13 @@ export async function createProfileApi(page, name, color = 'sauge') {
   }, [name, color]);
 }
 /** Inscription guidée complète par l'interface (choix fictifs), étape facultative passée → premier Accueil. */
-export async function createProfileUI(page, name, { goal = 'Remise en forme', seniority = 'De 3 à 12 mois', intensity = 'Soutenue', days = ['Lun', 'Mer', 'Ven'], duration = '60 min', optional = 'skip' } = {}) {
+export async function createProfileUI(page, name, { goal = 'Remise en forme', seniority = 'De 3 à 12 mois', intensity = 'Soutenue', days = ['Lun', 'Mer', 'Ven'], duration = '60 min', commute = 'Voiture ou moto', optional = 'skip' } = {}) {
   if (await page.locator('#screen-select').isHidden()) { await page.click('#switch-profile'); }
   await page.click('#create-profile'); await page.fill('#new-profile-name', name); await page.click('#create-profile-submit');
-  return finishOnboardingUI(page, { goal, seniority, intensity, days, duration, optional });
+  return finishOnboardingUI(page, { goal, seniority, intensity, days, duration, commute, optional });
 }
-/** Étapes 2 à 7 de l'inscription guidée (profil déjà créé à l'étape 1), choix fictifs. */
-export async function finishOnboardingUI(page, { goal = 'Remise en forme', seniority = 'De 3 à 12 mois', intensity = 'Soutenue', days = ['Lun', 'Mer', 'Ven'], duration = '60 min', optional = 'skip' } = {}) {
+/** Étapes 2 à 8 de l'inscription guidée (profil déjà créé à l'étape 1), choix fictifs. */
+export async function finishOnboardingUI(page, { goal = 'Remise en forme', seniority = 'De 3 à 12 mois', intensity = 'Soutenue', days = ['Lun', 'Mer', 'Ven'], duration = '60 min', commute = 'Voiture ou moto', commuteMin = '15', optional = 'skip' } = {}) {
   const ob = '#screen-onboarding:not([hidden]) .pm-onboarding';
   const chip = label => page.click(ob + ' label.pm-qs-chip:has(span:text-is("' + label + '"))');
   const next = () => page.click(ob + ' button:has-text("Suivant")');
@@ -101,10 +101,20 @@ export async function finishOnboardingUI(page, { goal = 'Remise en forme', senio
   await page.waitForSelector(ob + ' #pm-ob-title:has-text("intensité")'); await chip(intensity.startsWith('Hard') ? 'Hard / élevée — RPE 8-9 (1 à 2 en réserve)' : intensity === 'Modérée' ? 'Modérée — RPE 6-7 (3 à 4 répétitions en réserve)' : 'Soutenue — RPE 7-8 (2 à 3 en réserve)'); await next();
   await page.waitForSelector(ob + ' #pm-ob-title:has-text("jours")'); for (const d of days) await chip(d); await next();
   await page.waitForSelector(ob + ' #pm-ob-title:has-text("Durée")'); await chip(duration); await next();
+  await commuteStepUI(page, commute, commuteMin);
   await page.waitForSelector(ob + ' #pm-ob-title:has-text("facultatif")');
   if (optional === 'skip') await page.click(ob + ' button:has-text("Passer cette étape")');
   else return page.evaluate(() => document.documentElement.dataset.pmProfile);
   await page.waitForSelector('[data-page="accueil"]:not([hidden])');
   await page.waitForFunction(() => document.getElementById('screen-onboarding').hidden);
   return page.evaluate(() => document.documentElement.dataset.pmProfile);
+}
+
+/** Étape « Comment tu viens à la salle ? » (choix fictif ; durée demandée seulement à pied ou à vélo). */
+export async function commuteStepUI(page, commute = 'Voiture ou moto', minutes = '15') {
+  const ob = '#screen-onboarding:not([hidden]) .pm-onboarding';
+  await page.waitForSelector(ob + ' #pm-ob-title:has-text("salle")');
+  await page.click(ob + ' label.pm-qs-chip:has(span:text-is("' + commute + '"))');
+  if (['À pied', 'À vélo'].includes(commute)) await page.selectOption('#pm-ob-commute-min', minutes);
+  await page.click(ob + ' button:has-text("Suivant")');
 }

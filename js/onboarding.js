@@ -9,16 +9,16 @@
  */
 import { el, btn, add, toast, fmtNum, parseNum, localISODate } from './dom.js';
 import { getProfileInfo, profileRecord, updateProfile, isRealProfile, NAME_MAX } from './profiles.js';
-import { GOALS, SENIORITY, LEVEL_OF_SENIORITY, INTENSITIES, DAYS, DURATIONS, MEASURES, COMMUTES, COMMUTE_MINUTES, getSportProfile, saveSportProfile, mainGoalOf, weightOrNull } from './sport-profile.js';
+import { GOALS, SENIORITY, LEVEL_OF_SENIORITY, INTENSITIES, DAYS, DURATIONS, MEASURES, COMMUTES, ACTIVE_COMMUTES, COMMUTE_MINUTES, getSportProfile, saveSportProfile, mainGoalOf, weightOrNull } from './sport-profile.js';
 import { recordBodyWeight } from './weights.js';
 import { renderMascot } from './mascot.js';
 import { chips } from './quick-start.js';
 
-export const STEPS = 7;
+export const STEPS = 8;
 const DAY_SHORT = { lundi: 'Lun', mardi: 'Mar', mercredi: 'Mer', jeudi: 'Jeu', vendredi: 'Ven', samedi: 'Sam', dimanche: 'Dim' };
 const SAY = ['Salut ! Je suis Korv. On fait connaissance ?', 'Ton cap principal : je m’en souviendrai.', 'Depuis quand tu pousses de la fonte ?',
   'Ton ancienneté ne décide pas pour toi : l’intensité, c’est ton choix.', 'Quels jours tu viens à la salle ?', 'Combien de temps tu as, au maximum ?',
-  'Le reste est facultatif. Tu peux passer.'];
+  'Et pour venir à la salle ?', 'Le reste est facultatif. Tu peux passer.'];
 
 /** Le profil doit-il (re)prendre son inscription ? Seulement s'il l'a commencée et pas terminée. */
 export function needsOnboarding(profileId) {
@@ -125,6 +125,25 @@ export function showOnboarding(root, profileId, { onDone } = {}) {
       const c = chips('Durée maximale', 'pm-ob-duration', DURATIONS.map(d => [d, d + ' min']), { value: sport.durationMin });
       add(box, el('p', 'pm-muted', 'C’est une limite, pas une durée à remplir : une séance plus courte est normale.'), c.box);
       add(actions, next('Suivant', async () => { const v = c.read(); if (!v) throw new Error('Choisis une durée.'); await saveSport(profileId, { durationMin: Number(v) }); }));
+    } else if (n === 7) {
+      // trajet jusqu'à la salle (retours 13/11 : étape à part) : marche et vélo comptent dans l'activité modérée (OMS 2020)
+      title.textContent = 'Comment tu viens à la salle ?';
+      const commute = chips('Trajet jusqu’à la salle', 'pm-ob-commute', COMMUTES.map(([k, l]) => [k, l]), { value: sport.commuteMode });
+      const commuteMin = el('select', 'pm-select'); commuteMin.id = 'pm-ob-commute-min';
+      commuteMin.append(new Option('Choisir', ''), ...COMMUTE_MINUTES.map(m => new Option(m + ' min', String(m))));
+      commuteMin.value = sport.commuteMin ? String(sport.commuteMin) : '';
+      const ml = el('label', 'pm-coach-label', 'Durée du trajet (aller)'); ml.htmlFor = commuteMin.id;
+      const minField = add(el('div', 'pm-coach-field'), ml, commuteMin,
+        el('p', 'pm-muted pm-qs-hint', 'Compté dans tes 150 min d’activité modérée de la semaine (OMS) : moins de cardio à faire à la salle.'));
+      const sync = () => { minField.hidden = !ACTIVE_COMMUTES.includes(commute.read()); };
+      commute.row.addEventListener('change', sync); sync();
+      add(box, el('p', 'pm-muted', 'À pied ou à vélo, ton trajet est déjà de l’exercice : il est pris en compte dans le calcul de ta semaine.'), commute.box, minField);
+      add(actions, next('Suivant', async () => {
+        const mode = commute.read(); if (!mode) throw new Error('Choisis ton moyen de transport.');
+        const active = ACTIVE_COMMUTES.includes(mode);
+        if (active && !commuteMin.value) throw new Error('Indique la durée du trajet.');
+        await saveSport(profileId, { commuteMode: mode, commuteMin: active ? commuteMin.value : '' });
+      }));
     } else {
       title.textContent = 'Pour aller plus loin (facultatif)';
       const field = (label, input, id) => { input.id = id; const l = el('label', 'pm-coach-label', label); l.htmlFor = id; return add(el('div', 'pm-coach-field'), l, input); };
@@ -137,21 +156,14 @@ export function showOnboarding(root, profileId, { onDone } = {}) {
       const grid = el('div', 'pm-coach-grid');
       const ms = MEASURES.map(([k, label, unit]) => { const i = el('input', 'pm-input'); i.type = 'text'; i.inputMode = 'decimal'; i.value = sport.measures?.[k] ? fmtNum(sport.measures[k]) : ''; grid.append(field(label + ' (' + unit + ')', i, 'pm-ob-m-' + k)); return [k, i]; });
       fold.append(grid);
-      // trajet jusqu'à la salle : marche et vélo comptent dans l'activité modérée de la semaine (OMS 2020)
-      const commute = chips('Trajet jusqu’à la salle', 'pm-ob-commute', COMMUTES.map(([k, l]) => [k, l]), { value: sport.commuteMode });
-      const commuteMin = el('select', 'pm-select');
-      commuteMin.append(new Option('Durée de l’aller', ''), ...COMMUTE_MINUTES.map(m => new Option(m + ' min', String(m))));
-      commuteMin.value = sport.commuteMin ? String(sport.commuteMin) : '';
       add(box, el('p', 'pm-muted', 'Tout est facultatif et reste sur ce téléphone. Ces informations affinent le calcul de ton programme.'),
-        commute.box, field('Durée du trajet (aller)', commuteMin, 'pm-ob-commute-min'),
         field('Poids actuel (kg)', weight, 'pm-ob-weight'), fold, field('Informations complémentaires', info, 'pm-ob-info'),
         field('Contraintes physiques', cons, 'pm-ob-constraints'), field('Préférences personnelles', prefs, 'pm-ob-prefs'));
       add(actions, btn('Terminer', 'pm-validate', () => go(n + 1, async () => {
         const kg = weightOrNull(weight.value.trim(), 'Poids actuel');
         const measures = { ...(sport.measures || {}) };
         for (const [k, i] of ms) { const raw = i.value.trim(); if (raw === '') delete measures[k]; else measures[k] = parseNum(raw); }
-        const mode = commute.read() || null;
-        await saveSport(profileId, { goalNote: info.value, constraints: cons.value, preferences: prefs.value, measures, commuteMode: mode, commuteMin: mode ? commuteMin.value : '' });
+        await saveSport(profileId, { goalNote: info.value, constraints: cons.value, preferences: prefs.value, measures });
         if (kg !== null) await recordBodyWeight(profileId, kg, localISODate());
       })), btn('Passer cette étape', 'pm-link', () => go(n + 1)));
     }

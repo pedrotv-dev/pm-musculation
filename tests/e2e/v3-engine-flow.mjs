@@ -41,6 +41,23 @@ await step('« Importer ce programme » → semaine enregistrée, aucune machine
   await page.waitForSelector('[data-page="accueil"] .pm-next-card, [data-page="accueil"] h3:has-text("Prochaine séance")');
 });
 
+await step('avant la 1re série : « Changer l’ordre des machines » → ↑ sur la 3e → « Commencer par » la nouvelle première', async () => {
+  const wk = await db(async id => { const r = (await (await import('./storage.js')).listPrograms(id))[0]; return (r.data || r).weekStart; }, id);
+  await db(([id, wk]) => document.dispatchEvent(new CustomEvent('pm:start-workout', { detail: { profileId: id, weekStart: wk, dayId: 'mercredi' } })), [id, wk]);
+  await page.waitForSelector('.pm-workout-screen:not([hidden]) .pm-reorder-cta');
+  await page.click('.pm-reorder-cta');
+  const names = () => page.locator('.pm-workout-screen .pm-list-item .pm-list-main strong').allInnerTexts();
+  const before = await names();
+  await page.locator('.pm-workout-screen .pm-list-item').nth(2).locator('button[aria-label="Monter"]').click();
+  await page.waitForFunction(n => document.querySelectorAll('.pm-workout-screen .pm-list-item .pm-list-main strong')[1]?.textContent === n, before[2]);
+  await page.click('.pm-workout-screen button:has-text("Commencer par « ' + before[0] + ' »")');
+  await page.waitForFunction(() => !document.querySelector('.pm-workout-screen .pm-list'));
+  assert.equal(await page.locator('.pm-workout-screen .pm-reorder-cta').count(), 1, 'toujours possible tant que rien n’est validé');
+  await page.click('.pm-workout-screen button:has-text("Annuler cette séance (vide)")');
+  await page.click('button:has-text("Annuler la séance")');
+  await page.waitForSelector('[data-page="accueil"]:not([hidden])');
+});
+
 await step('trajet à vélo (15 min aller) dans Réglages → compté dans les 150 min de l’OMS (remarque du calcul + « Ma semaine »)', async () => {
   await page.click('#open-settings');
   const f = page.locator('.pm-sport-fold'); if (!(await f.evaluate(d => d.open))) await f.locator('summary').click();

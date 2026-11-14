@@ -74,12 +74,14 @@ await step('réglage du repos +15 s puis pause / reprise', async () => {
   await page.click('.pm-rest-actions .pm-rest-primary:has-text("Reprendre")');
   await page.waitForSelector('.pm-rest-ui[data-state="running"]');
 });
-await step('terminer la machine puis changer de machine arrête le chrono', async () => {
+await step('terminer la machine puis changer de machine : le repos en cours CONTINUE (retours 13/11)', async () => {
   await page.click('#pm-validate-set'); await page.waitForTimeout(250);
   await page.click('#pm-validate-set'); await page.waitForSelector('.pm-machine-done');
   await page.click(screen + ' .pm-validate:has-text("Machine suivante")');
   await page.waitForFunction(() => /Shoulder/.test(document.querySelector('#pm-workout-screen').innerText));
-  await page.waitForFunction(() => !document.querySelector('.pm-rest-ui') || document.querySelector('.pm-rest-ui').dataset.state !== 'running');
+  await page.waitForSelector('.pm-rest-ui[data-state="running"]');
+  await page.locator('.pm-rest-actions button:visible', { hasText: /Arrêter|Passer/ }).first().click();
+  await page.waitForFunction(() => document.querySelector('.pm-rest-ui')?.dataset.state !== 'running');
 });
 await step('machine occupée : reportée à la fin, puis reprise', async () => {
   await page.click(screen + ' button:has-text("Machine occupée")');
