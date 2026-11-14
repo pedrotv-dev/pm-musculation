@@ -80,7 +80,7 @@ await step('5 · profil complété (poids actuel 80,4, poids cible 75) → « Ca
   assert.deepEqual(await weights(alex), [['2026-11-10', 80.4]], 'une pesée datée, dans le système de pesées existant');
 });
 
-await step('6 · semaine calculée : 3 jours espacés parmi lundi, mardi, jeudi, samedi ; débutant 8-12 répétitions, ≤ 3 séries (ACSM) ; durée max respectée', async () => {
+await step('6 · semaine calculée : 3 jours espacés parmi lundi, mardi, jeudi, samedi ; débutant 8-12 répétitions (ACSM), volume de l’objectif ; durée max respectée', async () => {
   await page.click(coach + ' button:has-text("Calculer ma semaine")');
   await page.waitForSelector('.pm-action-save:not([disabled])');
   const ex = JSON.parse(await page.inputValue('.pm-textarea'));
@@ -89,7 +89,7 @@ await step('6 · semaine calculée : 3 jours espacés parmi lundi, mardi, jeudi,
   assert.equal(days.length, 3);
   assert.ok(days.every(d => ['lundi', 'mardi', 'jeudi', 'samedi'].includes(d.id)));
   const strength = days.flatMap(d => d.activities.filter(a => a.type === 'strength'));
-  assert.ok(strength.every(a => a.sets.length <= 3 && a.sets.every(x => x.reps >= 8 && x.reps <= 12)), 'débutant : 8-12 RM, ≤ 3 séries');
+  assert.ok(strength.every(a => a.sets.length <= 4 && a.sets.every(x => x.reps >= 8 && x.reps <= 12)), 'débutant : 8-12 RM, séries de l’objectif (≤ 4)');
   for (const d of days) assert.ok(await db(d => import('./js/programs.js').then(P => P.estimateDayMinutes(d)), d) <= 122, d.id);
 });
 

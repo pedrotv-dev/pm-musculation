@@ -115,7 +115,9 @@ test('Démo : annulation d’une séance vide refusée si elle a reçu un résul
   await W.resetDemoWorkouts();
   const open = (await W.listWorkouts('demo')).find(x => x.status === 'in_progress');
   if (open) await W.finishWorkout('demo', open.id, 'partial');
-  const s = await W.startWorkout('demo');
+  // jour fixe du programme Démo : le test ne dépend pas du jour où il est lancé (samedi, dimanche…)
+  const demoDay = (await W.getDemoProgram()).days[0].id;
+  const s = await W.startWorkout('demo', { dayId: demoDay });
   const k = s.activities.find(a => a.type === 'strength').key;
   const c = shown(s);                                          // confirmation « Cette séance est vide. L’annuler ? »
   const setId = s.activities.find(a => a.key === k).sets[0].id;

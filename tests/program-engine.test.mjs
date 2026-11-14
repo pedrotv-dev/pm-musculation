@@ -31,11 +31,13 @@ test('découpage : chaque muscle ≥ 2 fois/semaine (Schoenfeld 2016) ; 4 séanc
   assert.equal(E.splitFor(7, 'confirme').length, 7);
 });
 
-test('dosage (ACSM 2009, Singer 2024) : force lourd 3 min ; débutant 8-12 RM ≤ 3 séries ; repos ≥ 90 s en hypertrophie ; intensité sans effet sur le volume', () => {
+test('dosage (ACSM 2009, Singer 2024) : force lourd 3 min ; débutant 8-12 RM, volume de l’objectif (Krieger 2010, Rhea 2003) ; repos ≥ 90 s en hypertrophie ; intensité sans effet sur le volume', () => {
   const f = E.dosage({ mainGoal: 'Force' });
   assert.deepEqual([f.sets, f.low, f.high, f.restMain], [4, 4, 6, 180]);
+  const h0 = E.dosage({ mainGoal: 'Prise de muscle' });
   const b = E.dosage({ mainGoal: 'Force', level: 'debutant' });
-  assert.deepEqual([b.sets, b.low, b.high], [3, 8, 12]);
+  assert.deepEqual([b.sets, b.low, b.high], [4, 8, 12], 'débutant ≠ petite séance : séries de l’objectif');
+  assert.equal(E.dosage({ mainGoal: 'Prise de muscle', level: 'debutant' }).sets, h0.sets);
   const h = E.dosage({ mainGoal: 'Prise de muscle' });
   assert.ok(h.restAcc >= 90 && h.restMain >= 90);
   assert.equal(E.dosage({ mainGoal: 'Prise de muscle', intensity: 'elevee', level: 'confirme' }).sets, h.sets);
@@ -130,4 +132,24 @@ test('faits de la semaine : seulement le lundi → dimanche, séries validées p
   ];
   const f = E.weekFacts(sessions, catalog, '2026-11-16');
   assert.deepEqual(f, { strengthDays: 2, volume: { legs: 3, push: 3, pull: 3, core: 0 }, cardioMinutes: 12 });
+});
+
+test('trajet actif (OMS) : vélo 15 min aller × 2 × 3 séances = 90 min comptées ; voiture : rien', () => {
+  const base = { mainGoal: 'Perte de graisse', level: 'intermediaire', frequency: 3, days: ['lundi', 'mercredi', 'vendredi'], durationMin: 60 };
+  const bike = E.dosage({ ...base, commuteMode: 'velo', commuteMin: 15 });
+  assert.deepEqual([bike.commuteWeekly, bike.weeklyCardio], [90, 60]);
+  const car = E.dosage({ ...base, commuteMode: 'voiture', commuteMin: 15 });
+  assert.deepEqual([car.commuteWeekly, car.weeklyCardio], [0, 150]);
+  const { notes } = E.generateWeek({ profileId, weekStart: '2026-11-16', sport: { ...base, commuteMode: 'velo', commuteMin: 15 }, gym: {}, catalog });
+  assert.ok(notes.some(n => /Trajet à vélo : 90 min/.test(n)));
+});
+
+test('débutant : séance aussi fournie qu’un intermédiaire, effort visé (RPE) rappelé', () => {
+  const base = { mainGoal: 'Prise de muscle', intensity: 'moderee', days: ['lundi', 'mercredi', 'vendredi'], frequency: 3, durationMin: 60 };
+  const run = level => E.generateWeek({ profileId: 'x', weekStart: '2026-11-16', sport: { ...base, level }, gym: {}, catalog, sessions: [], declared: null });
+  const sets = r => r.program.programs.x.days.flatMap(d => d.activities).filter(a => a.type === 'strength').reduce((n, a) => n + a.sets.length, 0);
+  const deb = run('debutant'), mid = run('intermediaire');
+  assert.equal(sets(deb), sets(mid));
+  assert.ok(deb.program.programs.x.days[0].activities.filter(a => a.type === 'strength').length >= 6, '60 min : au moins 6 machines');
+  assert.ok(deb.notes.some(n => n.includes('RPE 6-7')), 'intensité = consigne RPE');
 });

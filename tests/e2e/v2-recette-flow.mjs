@@ -211,6 +211,7 @@ await step('2.5 reprise après fermeture : séries validées intactes, saisie no
 });
 
 await step('2.6 retour à la machine reportée ; repos en mode manuel (« Lancer le repos »)', async () => {
+  await page.evaluate(async id => (await import('./js/rest-timer.js')).stopRest(id), alex); // le repos précédent continuerait sinon
   await page.click(screen + ' .pm-footer button:has-text("Machines")');
   await page.click(screen + ' .pm-list-main:has-text("Chest Press")');
   await page.click(screen + ' button:has-text("Y revenir maintenant")');

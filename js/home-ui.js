@@ -12,7 +12,7 @@ import { computeProgress, progressionStartFor } from './gamification.js';
 import { homeHero, levelStrip } from './jeu-ui.js';
 import { recentProgress } from './stats.js';
 import { icon } from './icons.js';
-import { getSportProfile, missingEssentials } from './sport-profile.js';
+import { getSportProfile, missingEssentials, ACTIVE_COMMUTES } from './sport-profile.js';
 import { prepareWeek } from './coach-ui.js';
 import { weekFacts } from './program-engine.js';
 
@@ -92,6 +92,8 @@ function welcomeCard(profile) {
  */
 function weekCard(sessions, catalogList, sport) {
   const f = weekFacts(sessions, catalogList, mondayOf());
+  // trajet à pied ou à vélo (aller-retour), compté les jours de séance enregistrés (OMS 2020 : transport actif)
+  const trip = ACTIVE_COMMUTES.includes(sport?.commuteMode) && sport?.commuteMin ? sport.commuteMin * 2 : 0;
   const card = el('article', 'panel pm-week-card');
   const bar = (label, value, target, unit) => {
     const pct = Math.min(100, Math.round(value / target * 100));
@@ -101,7 +103,7 @@ function weekCard(sessions, catalogList, sport) {
   };
   add(card, el('h3', '', 'Ma semaine'),
     bar('Jours de renforcement', f.strengthDays, 2, 'j'),
-    bar('Cardio enregistré à la salle', f.cardioMinutes, 150, 'min'));
+    bar(trip ? 'Activité modérée (cardio + trajets)' : 'Cardio enregistré à la salle', f.cardioMinutes + trip * f.strengthDays, 150, 'min'));
   if (sport?.mainGoal === 'Prise de muscle') {
     const names = { legs: 'Jambes', push: 'Poussée', pull: 'Tirage' };
     for (const k of ['legs', 'push', 'pull']) card.append(bar('Séries · ' + names[k], f.volume[k], 10, 'séries'));

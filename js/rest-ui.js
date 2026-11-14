@@ -9,7 +9,7 @@ import {
 } from './rest-timer.js';
 import { el, btn } from './dom.js';
 import { isKnownProfile } from './profiles.js';
-import { syncRestAudio, stopRestAudio, restAudioCovers } from './rest-audio.js';
+import { syncRestAudio, stopRestAudio, restAudioCovers, playEndChime } from './rest-audio.js';
 import { peekUiSettings } from './ui-settings.js';
 import { fx } from './fx.js';
 
@@ -178,7 +178,7 @@ async function alertIfFinished() {
     if (out.alert.sound && !restAudioCovers(state.view?.endsAt)) { // sinon : déjà sonné par le son système
       try {
         const Context = window.AudioContext || window.webkitAudioContext;
-        if (Context) {
+        if (!playEndChime() && Context) { // iPhone : élément <audio> débloqué ; sinon bip Web Audio
           const ctx = new Context();
           const osc = ctx.createOscillator(), gain = ctx.createGain();
           osc.type = 'sine'; osc.frequency.value = 780;
