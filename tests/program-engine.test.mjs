@@ -42,7 +42,8 @@ test('dosage (ACSM 2009, Singer 2024) : force lourd 3 min ; débutant 8-12 RM, v
   assert.ok(h.restAcc >= 90 && h.restMain >= 90);
   assert.equal(E.dosage({ mainGoal: 'Prise de muscle', intensity: 'elevee', level: 'confirme' }).sets, h.sets);
   assert.equal(E.dosage({ mainGoal: 'Prise de muscle', fatigue: 5 }).sets, h.sets, 'aucune règle non sourcée');
-  assert.equal(E.dosage({ mainGoal: 'Perte de graisse' }).weeklyCardio, 150, 'OMS 2020');
+  assert.equal(E.dosage({ mainGoal: 'Perte de graisse' }).weeklyCardio, 250, 'ACSM 2009 (Donnelly) : > 250 min pour perdre du poids');
+  assert.equal(E.dosage({ mainGoal: 'Remise en forme' }).weeklyCardio, 150, 'OMS 2020');
 });
 
 test('semaine complète valide (format d\'import), machines « à éviter » et indisponibles exclues, durée respectée', () => {
@@ -111,7 +112,7 @@ test('séance courte (45 min) : un exercice par groupe gardé en priorité, une 
     assert.ok(PR.estimateDayMinutes(d) <= 47, PR.estimateDayMinutes(d) + ' min');
   }
   assert.ok(notes.filter(n => /en moins/.test(n)).length <= 1);
-  assert.ok(notes.some(n => /OMS/.test(n)), 'cardio hebdo comparé à l’OMS');
+  assert.ok(notes.some(n => /250 min/.test(n)), 'cardio hebdo comparé à l’objectif perte de poids (ACSM)');
 });
 
 test('repos (ACSM 2009, Singer 2024) : 120 s gros exercices, 90 s accessoires en prise de muscle', () => {
@@ -134,12 +135,12 @@ test('faits de la semaine : seulement le lundi → dimanche, séries validées p
   assert.deepEqual(f, { strengthDays: 2, volume: { legs: 3, push: 3, pull: 3, core: 0 }, cardioMinutes: 12 });
 });
 
-test('trajet actif (OMS) : vélo 15 min aller × 2 × 3 séances = 90 min comptées ; voiture : rien', () => {
+test('trajet actif (OMS) en perte de graisse (250 min, ACSM) : vélo 15 min aller × 2 × 3 séances = 90 min comptées ; voiture : rien', () => {
   const base = { mainGoal: 'Perte de graisse', level: 'intermediaire', frequency: 3, days: ['lundi', 'mercredi', 'vendredi'], durationMin: 60 };
   const bike = E.dosage({ ...base, commuteMode: 'velo', commuteMin: 15 });
-  assert.deepEqual([bike.commuteWeekly, bike.weeklyCardio], [90, 60]);
+  assert.deepEqual([bike.commuteWeekly, bike.weeklyCardio], [90, 160]);
   const car = E.dosage({ ...base, commuteMode: 'voiture', commuteMin: 15 });
-  assert.deepEqual([car.commuteWeekly, car.weeklyCardio], [0, 150]);
+  assert.deepEqual([car.commuteWeekly, car.weeklyCardio], [0, 250]);
   const { notes } = E.generateWeek({ profileId, weekStart: '2026-11-16', sport: { ...base, commuteMode: 'velo', commuteMin: 15 }, gym: {}, catalog });
   assert.ok(notes.some(n => /Trajet à vélo : 90 min/.test(n)));
 });
@@ -152,4 +153,20 @@ test('débutant : séance aussi fournie qu’un intermédiaire, effort visé (RP
   assert.equal(sets(deb), sets(mid));
   assert.ok(deb.program.programs.x.days[0].activities.filter(a => a.type === 'strength').length >= 6, '60 min : au moins 6 machines');
   assert.ok(deb.notes.some(n => n.includes('RPE 6-7')), 'intensité = consigne RPE');
+});
+
+test('perte de graisse (Donnelly 2009, Willis 2012) : cardio en premier, musculation d’entretien, machine de cardio préférée', () => {
+  const sport = { mainGoal: 'Perte de graisse', level: 'intermediaire', intensity: 'soutenue', frequency: 3, days: ['lundi', 'mercredi', 'vendredi'], durationMin: 60 };
+  const fav = [{ id: 's1', date: '2026-11-02', endedAt: '2026-11-02T12:00:00Z', status: 'completed', activities: [{ type: 'cardio', name: 'Vélo elliptique', status: 'done', actual: { durationMinutes: 30 } }] }];
+  const fat = E.generateWeek({ profileId: 'x', weekStart: '2026-11-16', sport, gym: {}, catalog, sessions: fav, declared: null });
+  const mass = E.generateWeek({ profileId: 'x', weekStart: '2026-11-16', sport: { ...sport, mainGoal: 'Prise de muscle' }, gym: {}, catalog, sessions: [], declared: null });
+  const day = r => r.program.programs.x.days[0].activities;
+  const sets = r => day(r).filter(a => a.type === 'strength').reduce((n, a) => n + a.sets.length, 0);
+  const cardio = day(fat).find(a => a.type === 'cardio');
+  assert.ok(cardio.durationMinutes >= 30, 'cardio long : ' + cardio.durationMinutes);
+  assert.equal(cardio.name, 'Vélo elliptique', 'machine la plus faite');
+  assert.ok(sets(fat) < sets(mass) / 2, 'musculation d’entretien');
+  assert.equal(day(fat).filter(a => a.type === 'strength').length, 4, 'un exercice par groupe');
+  for (const d of fat.program.programs.x.days) assert.ok(PR.estimateDayMinutes(d) <= 65, d.id + ' : ' + PR.estimateDayMinutes(d));
+  assert.ok(fat.notes.some(n => /250 min/.test(n)));
 });
