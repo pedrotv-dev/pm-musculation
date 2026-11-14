@@ -58,19 +58,34 @@ await step('avant la 1re série : « Changer l’ordre des machines » → ↑ s
   await page.waitForSelector('[data-page="accueil"]:not([hidden])');
 });
 
-await step('trajet à vélo (15 min aller) dans Réglages → compté dans les 150 min de l’OMS (remarque du calcul + « Ma semaine »)', async () => {
+await step('trajet à vélo 15 min : affiché comme trajet actif tant que l’allure n’est pas confirmée ; compté une fois « allure modérée » cochée', async () => {
   await page.click('#open-settings');
   const f = page.locator('.pm-sport-fold'); if (!(await f.evaluate(d => d.open))) await f.locator('summary').click();
   await page.selectOption('#pm-sport-commute', 'velo');
   await page.selectOption('#pm-sport-commute-min', '15');
   await f.locator('button:has-text("Enregistrer mon profil sportif")').click();
   await f.locator('.pm-coach-status[data-state="ok"]').waitFor();
-  const s = await db(async id => (await import('./js/sport-profile.js')).getSportProfile(id), id);
-  assert.deepEqual([s.commuteMode, s.commuteMin], ['velo', 15]);
+  let s = await db(async id => (await import('./js/sport-profile.js')).getSportProfile(id), id);
+  assert.deepEqual([s.commuteMode, s.commuteMin, s.commuteModerate], ['velo', 15, false]);
   await page.click('.nav-btn[data-go="programme"]');
   await page.click(coach + ' button:has-text("Calculer ma semaine")');
   await page.waitForSelector(coach + ' .pm-engine-out:not([hidden])');
-  assert.match(await page.locator(coach + ' .pm-engine-out').innerText(), /Trajet à vélo : 90 min par semaine/);
+  assert.match(await page.locator(coach + ' .pm-engine-out').innerText(), /Trajet actif à vélo : 90 min par semaine.*si ton allure est au moins modérée/s);
+  await page.click('#open-settings');
+  await page.waitForSelector('.pm-sport-fold');
+  await page.locator('.pm-sport-fold').evaluate(d => { d.open = true; });
+  const pace = page.locator('label:has(#pm-sport-commute-moderate)');
+  await pace.waitFor({ state: 'visible' });
+  if (!(await page.isChecked('#pm-sport-commute-moderate'))) await pace.click();
+  assert.equal(await page.isChecked('#pm-sport-commute-moderate'), true);
+  await f.locator('button:has-text("Enregistrer mon profil sportif")').click();
+  await f.locator('.pm-coach-status[data-state="ok"]').waitFor();
+  s = await db(async id => (await import('./js/sport-profile.js')).getSportProfile(id), id);
+  assert.equal(s.commuteModerate, true);
+  await page.click('.nav-btn[data-go="programme"]');
+  await page.click(coach + ' button:has-text("Calculer ma semaine")');
+  await page.waitForSelector(coach + ' .pm-engine-out:not([hidden])');
+  assert.match(await page.locator(coach + ' .pm-engine-out').innerText(), /90 min par semaine \(aller-retour\), comptées comme activité modérée/);
 });
 
 await step('aucune requête externe (simulation locale) ; aucune erreur JavaScript', async () => {

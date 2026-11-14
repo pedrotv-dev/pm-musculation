@@ -91,7 +91,7 @@ function usageSection(profile, ui) {
     row('Garder l’écran allumé pendant l’entraînement', isWakeLockSupported()
       ? 'L’écran ne s’éteint pas tant que la séance est en cours sur l’écran de séance (libéré en pause, à la fin et quand l’application passe en arrière-plan). Tant que l’écran reste allumé, aucun son n’est joué pendant le repos : ta musique n’est pas baissée.'
       : 'Non disponible sur ce navigateur : l’écran s’éteindra selon les réglages du téléphone.', 'keepAwake', isWakeLockSupported()),
-    row('Alerte de fin de repos, écran verrouillé', 'Si l’écran peut se verrouiller, joue un son système pendant le repos (silence, puis trois bips à la fin) pour te prévenir même téléphone verrouillé. Suit le volume « médias » ; pendant ce son, le téléphone peut baisser ou mettre en pause la musique d’une autre application : garde l’écran allumé (option ci-dessus) ou décoche si ça te gêne.', 'lockAlert'),
+    row('Alerte de fin de repos, écran verrouillé', 'Joue un son pendant le repos (silence, puis bips à la fin) pour sonner même téléphone verrouillé. Sur iPhone, ce son met en PAUSE ta musique (YouTube Music, Spotify…) pendant chaque repos et iOS ne la relance pas : décoche si tu écoutes de la musique. Décoché : écran allumé, les bips baissent la musique un instant sans la couper.', 'lockAlert'),
     row('Bouton retour du téléphone', 'Revient d’un niveau dans l’application (ferme un dialogue, retourne à la machine, à l’accueil…) au lieu de la quitter. À l’accueil, « retour » quitte normalement.', 'backButton'));
 }
 
