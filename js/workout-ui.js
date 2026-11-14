@@ -696,6 +696,8 @@ function lastLoadHint(T, a) {
   if (newer) box.append(newer);
   return box;
 }
+const cardioDrafts = new Map(); // « idSéance/clé » → { champ: texte saisi }
+
 function renderSets(card, a) {
   const T = targetNow(); // cible capturée au rendu : les rappels (même après une attente) visent CETTE séance
   const current = a.sets.find(s => !s.done);
@@ -910,22 +912,29 @@ function renderMachine(a) {
     renderSets(card, a);
     if (a.status === 'done') card.append(feelRow(a));
   } else {
-    const dur = inputField('minutes', a.actual?.durationMinutes ?? a.planned?.durationMinutes ?? 10, { kind: 'kg' });
+    // brouillon des champs (retours 13/11) : une saisie non validée survit à un nouveau rendu de l'écran
+    const dkey = (S.session?.id || '') + '/' + a.key;
+    const draft = cardioDrafts.get(dkey) || {};
+    const keep = (f, k) => { f.input.addEventListener('input', () => { const d = cardioDrafts.get(dkey) || {}; d[k] = f.input.value; cardioDrafts.set(dkey, d); }); return f; };
+    const dur = keep(inputField('minutes', a.actual?.durationMinutes ?? a.planned?.durationMinutes ?? 10, { kind: 'kg' }), 'durationMinutes');
+    if (draft.durationMinutes !== undefined) dur.input.value = draft.durationMinutes;
     const grid = el('div', 'pm-cardio-grid');
     grid.append(dur.wrap);
     const treadmill = a.name === 'Tapis de course';
     const cardioMachine = (S.catalog.list || []).find(m => m.kind === 'cardio' && m.name === a.name);
     const metricFields = metricsFor(cardioMachine).map(m => {
-      const v = a.actual?.[m.key] ?? a.planned?.[m.key];
+      // valeur : réelle, sinon celle de la dernière fois (prefill), sinon celle du programme
+      const v = a.actual ? a.actual[m.key] : (a.prefill?.metrics?.[m.key] ?? a.planned?.[m.key]);
       const unit = m.key === 'speed' ? (treadmill ? m.unit : '') : m.unit;
-      const f = inputField(m.label + (unit ? ' (' + unit + ')' : ''), v ?? '', { kind: m.integer ? 'reps' : 'kg' });
-      if (v === undefined) f.input.value = '';
+      const f = keep(inputField(m.label + (unit ? ' (' + unit + ')' : ''), v ?? '', { kind: m.integer ? 'reps' : 'kg' }), m.key);
+      if (v === undefined || v === null) f.input.value = '';
+      if (draft[m.key] !== undefined) f.input.value = draft[m.key];
       f.input.placeholder = '—';
       grid.append(f.wrap);
       return { m, input: f.input };
     });
     card.append(grid);
-    card.append(el('p', 'pm-muted pm-cardio-hint', 'Réglages facultatifs : laisse vide ce que tu ne veux pas noter.'));
+    card.append(el('p', 'pm-muted pm-cardio-hint', (!a.actual && a.prefill?.metrics ? 'Réglages de ta dernière fois (' + formatDateFr(a.prefill.date) + '). ' : '') + 'Réglages facultatifs : laisse vide ce que tu ne veux pas noter.'));
     const confirmDone = btn(a.status === 'done' ? 'Fait ✓ — modifier' : 'Fait ✓', 'pm-validate', () => {
       const v = parseNum(dur.input.value);
       if (!Number.isFinite(v) || v < 0 || v > 300) { setStatus('Durée invalide (0 à 300 minutes).', 'error'); return; }
@@ -941,6 +950,7 @@ function renderMachine(a) {
       }
       commitTo(T, (p, id) => completeActivity(p, id, a.key, { done: true, actual }), {
         after: () => {
+          cardioDrafts.delete(dkey);
           fx('activity-done', { kind: 'cardio' });
           toast('Enregistré : ' + fmtNum(v) + ' min' + (metricsText(actual) ? ' · ' + metricsText(actual, { speedUnit: treadmill }) : ''));
         }

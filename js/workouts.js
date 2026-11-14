@@ -41,7 +41,7 @@ import {
 } from '../storage.js';
 import { mondayOf } from './programs.js';
 import { isPerSide, expandSides, nextSide } from './machine-rules.js';
-import { cleanMetrics } from './cardio.js';
+import { cleanMetrics, lastCardioMetrics } from './cardio.js';
 import { isRealProfile } from './profiles.js';
 import { lastPerformance, knownLoads, planLoads } from './last-loads.js';
 
@@ -362,10 +362,14 @@ export function startWorkout(profileId, { dayId, weekStart, now = new Date(), st
     // V2 : charges réelles mémorisées (option `lastLoads`, demandée par l'écran de séance) — séries de travail
     // préremplies d'après la dernière séance terminée du profil (séries validées seulement, voir last-loads.js).
     // Rien n'est validé ; le programme reste dans `planned` ; `prefill` décrit la décision (affichage, retour possible).
-    if (lastLoads && activities.some(a => a.type === 'strength')) {
+    if (lastLoads && activities.length) {
       const past = (await backend(profileId, store).list(profileId).catch(() => [])).map(r => r && r.data).filter(s => s && isClosed(s));
       for (const a of activities) {
-        if (a.type !== 'strength') continue;
+        if (a.type !== 'strength') { // cardio : réglages de la dernière fois (retours 13/11), le programme reste dans `planned`
+          const last = lastCardioMetrics(past, a.name);
+          if (last) a.prefill = { reason: 'last', metrics: last.metrics, date: last.date, sessionId: last.sessionId };
+          continue;
+        }
         const lastFor = side => lastPerformance(past, a.machineId, { side });
         const ref = lastFor(null);
         if (!ref) continue;
