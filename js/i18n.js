@@ -30,7 +30,8 @@ const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  * milieu d'un mot) : « Série 2 / 3 » se traduit avec l'entrée « Série ».
  */
 export function makeTranslator(dict) {
-  const map = new Map(Object.entries(dict || {}).filter(([k, v]) => k && typeof v === 'string' && v.trim() && v !== k));
+  // une entrée identique (« PM Musculation ») protège le texte : jamais retraduit par morceaux (« Musculation »)
+  const map = new Map(Object.entries(dict || {}).filter(([k, v]) => k && typeof v === 'string' && v.trim()));
   const parts = [...map.keys()].filter(k => k.trim().length >= 3).sort((a, b) => b.length - a.length);
   const re = parts.length ? new RegExp('(?<![A-Za-zÀ-ÿ])(?:' + parts.map(esc).join('|') + ')(?![A-Za-zÀ-ÿ])', 'g') : null;
   return text => {

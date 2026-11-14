@@ -10,7 +10,8 @@ const keep = s => {
   const t = s.trim();
   if (t.length < 2 || !/[A-Za-zÀ-ÿ]{2}/.test(t)) return;
   if (/^[a-z0-9_-]+$/.test(t) && !/[éèàùêç]/.test(t)) return;             // identifiants, classes, clés
-  if (/^(pm-|\.|#|\[|\/|\.\/|\.\.\/|data-|aria-|https?:|blob:|image\/|audio\/|application\/)/.test(t)) return;
+  if (/^(pm-|\.\/|\.\.\/|data-|aria-|https?:|blob:|image\/|audio\/|application\/)/.test(t)) return;
+  if (/^(\.|#|\[|\/)/.test(t) && !/\s/.test(t)) return;                          // sélecteurs, chemins (pas une phrase « . Suite… »)
   if (/^[a-z-]+(\s+[a-z-]+)*$/.test(t) && !/[éèàùêç]/.test(t) && !/\b(de|la|le|les|un|une|et|du|des|en|à|au|ou|par|pour|sur|sans|avec)\b/.test(t)) return; // listes de classes
   if (/[{};=<>]|=>/.test(t) && !/[éèàù]/.test(t)) return;                     // code, sélecteurs
   if (/\n\s*\S/.test(t) && /[;{}()]|\bconst\b|\breturn\b/.test(t)) return;     // morceau de code capturé entre deux accents graves
@@ -29,6 +30,8 @@ for (const m of html.matchAll(/(?:aria-label|placeholder|title|alt)="([^"]+)"/g)
 const path = root + 'i18n/en.json';
 const prev = fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, 'utf8')) : {};
 const next = {};
+// textes composés à l'exécution (ex. « RPE 7-8 (2 à 3 en réserve) ») ajoutés à la main : gardés s'ils sont traduits
+for (const k of Object.keys(prev)) if (prev[k] && prev[k].trim()) out.add(k);
 for (const k of [...out].sort((a, b) => a.localeCompare(b, 'fr'))) next[k] = prev[k] || '';
 fs.writeFileSync(path, JSON.stringify(next, null, 1) + '\n');
 console.log(Object.keys(next).length + ' textes, ' + Object.values(next).filter(Boolean).length + ' traduits → i18n/en.json');

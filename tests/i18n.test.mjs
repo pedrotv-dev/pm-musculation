@@ -12,6 +12,9 @@ test('traduction exacte, par morceaux, texte inconnu inchangé', () => {
   assert.equal(tr('Biennale'), 'Biennale', 'jamais au milieu d’un mot');
   assert.equal(tr('Vide'), 'Vide', 'traduction vide : français conservé');
   assert.equal(tr('42'), '42');
+  const tb = makeTranslator({ 'PM Musculation': 'PM Musculation', 'Musculation': 'Strength training' });
+  assert.equal(tb('PM Musculation'), 'PM Musculation', 'nom protégé');
+  assert.equal(tb('Musculation'), 'Strength training');
 });
 
 test('i18n/en.json : objet { texte: traduction } valide', () => {
