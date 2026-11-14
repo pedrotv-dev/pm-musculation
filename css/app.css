@@ -474,7 +474,7 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-tour-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .pm-tour-actions .pm-validate { min-height: 44px; padding: 0 22px; width: auto; white-space: nowrap; }
 .pm-tour-skip { min-height: 44px; }
-.pm-tour-replay { display: inline-block; justify-self: start; align-self: start; text-align: left; margin-top: 4px; min-height: 32px; padding: 0; font-size: .85rem; }
+.pm-tour-replay { display: inline-flex; align-items: center; justify-self: start; align-self: start; text-align: left; margin-top: 0; min-height: 44px; padding: 0; font-size: .85rem; }
 @media (prefers-reduced-motion: reduce) { .pm-tour-spot { transition: none; } }
 
 /* inscription : choix en cartes (libellé + explication), boutons Retour / Suivant toujours visibles */
