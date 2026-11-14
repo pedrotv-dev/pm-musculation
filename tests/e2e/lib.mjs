@@ -121,3 +121,28 @@ export async function commuteStepUI(page, commute = 'Voiture ou moto', minutes =
   if (['À pied', 'À vélo'].includes(commute)) await page.selectOption('#pm-ob-commute-min', minutes);
   await page.click(ob + ' button:has-text("Suivant")');
 }
+
+/**
+ * « Générer mon programme » (onglet Programme) : clique, accepte le remplacement d'un programme existant si demandé,
+ * attend l'aperçu de la semaine, puis renvoie le programme ENREGISTRÉ au format d'import ({ weekStart, programs: { id: { days } } }).
+ */
+export async function generateUI(page, profileId = null, { scope = '[data-page="programme"] .pm-coach-section' } = {}) {
+  await page.click(scope + ' button:has-text("Générer mon programme")');
+  const sum = page.locator(scope + ' .pm-engine-out:not([hidden]) .pm-gen-sum');
+  const replace = page.locator('.pm-modal .pm-modal-btn:has-text("Remplacer")');
+  await Promise.race([sum.waitFor(), replace.waitFor()]);
+  if (await replace.isVisible().catch(() => false)) await replace.click();
+  await sum.waitFor();
+  return page.evaluate(async id => {
+    id = id || document.documentElement.dataset.pmProfile;
+    const week = document.getElementById('pm-gen-week').value;
+    const p = id === 'demo' ? null : await (await import('./storage.js')).getProgram(id, week); // démo : rien en base
+    return { schemaVersion: 1, weekStart: week, programs: { [id]: { days: p ? p.days : [] } } };
+  }, profileId);
+}
+
+/** Import par fichier quand « Générer » a déjà enregistré la semaine : accepte le remplacement s'il est demandé. */
+export async function acceptReplace(page) {
+  const b = page.locator('.pm-modal:has-text("Remplacer le programme") .pm-modal-btn:has-text("Remplacer")');
+  if (await b.waitFor({ timeout: 1500 }).then(() => true, () => false)) await b.click();
+}

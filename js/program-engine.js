@@ -216,6 +216,46 @@ export function lastFeel(sessions, machineId) {
 }
 
 /**
+ * Répartition de la semaine AVANT de remplir les journées. Contraintes : nombre de jours. Choix : objectif et mode cardio
+ * (`sport.cardioMode` : 'normal' | 'more' | 'only'). Types de journée :
+ *  - 'strength' : renforcement (cardio de fin éventuel selon l'objectif) ;
+ *  - 'mixed'    : renforcement d'entretien puis cardio (perte de graisse) ;
+ *  - 'endurance': cardio en bloc principal + endurance musculaire (endurance) ;
+ *  - 'cardio'   : séance de cardio dédiée.
+ * Renforcement au moins 2 jours par semaine quand c'est possible [WHO20]. Perte de graisse : le cardio a une vraie place
+ * (séances dédiées dès 3 jours) [DON09][WIL12] ; ex. 5 jours → 3 renforcement + 2 cardio.
+ */
+export function weekLayout(sport = {}, n = 3) {
+  const mode = sport.cardioMode || 'normal';
+  if (mode === 'only') return Array(n).fill('cardio');
+  let kinds, sCount;
+  if (sport.mainGoal === 'Perte de graisse') {
+    sCount = n <= 2 ? n : n <= 4 ? 2 : 3;
+    if (mode === 'more' && n >= 3) sCount = Math.max(2, sCount - 1);
+    kinds = ['mixed', 'cardio'];
+  } else if (sport.mainGoal === 'Endurance') {
+    sCount = Math.min(2, n);
+    kinds = ['endurance', 'cardio'];
+  } else {
+    sCount = n;
+    if (mode === 'more' && n >= 4) sCount = n - 1; // un jour cardio, au moins 3 de renforcement
+    kinds = ['strength', 'cardio'];
+  }
+  // jours de renforcement espacés dans la semaine, cardio entre eux (ex. 5 jours : R C R C R)
+  const strengthAt = new Set(Array.from({ length: sCount }, (_, i) => Math.round((i + 0.5) * n / sCount - 0.5)));
+  return Array.from({ length: n }, (_, i) => (strengthAt.has(i) ? kinds[0] : kinds[1]));
+}
+
+/** Médiane des dernières durées de cardio faites (minutes), ou null sans historique. */
+export function recentCardioMinutes(sessions = [], last = 5) {
+  const stamp = s => String(s.endedAt || s.date || '');
+  const mins = [...sessions].sort((a, b) => stamp(b).localeCompare(stamp(a)))
+    .flatMap(s => (s.activities || []).filter(a => a.type === 'cardio' && a.status === 'done').map(a => a.actual?.durationMinutes ?? a.planned?.durationMinutes))
+    .filter(m => Number.isFinite(m) && m > 0).slice(0, last).sort((a, b) => a - b);
+  return mins.length ? mins[Math.floor((mins.length - 1) / 2)] : null;
+}
+
+/**
  * Durée estimée d'un exercice (minutes), même calcul que l'aperçu du programme (programs.js, estimateDayMinutes) :
  * 2 min d'installation + 45 s par série + repos ENTRE les séries (le repos après la dernière se passe à changer de machine).
  */
@@ -241,7 +281,10 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
     + '. La charge pourra augmenter au prochain calcul du programme, quand toutes tes séries atteignent le haut de la fourchette.');
   if (!(sport.days && sport.days.length)) notes.push('Aucun jour disponible renseigné : lundi, mercredi, vendredi par défaut.');
   const dose = dosage(sport);
-  const split = dose.cardioFirst ? Array(days.length).fill('cardioFull') : splitFor(days.length, sport.level);
+  const layout = weekLayout(sport, days.length);
+  const strengthSplit = splitFor(layout.filter(k => k === 'strength').length || 1, sport.level);
+  let si = 0;
+  const split = layout.map(k => (k === 'strength' ? strengthSplit[si++] : k === 'cardio' ? 'cardio' : 'cardioFull'));
   const maxMin = Number(sport.durationMin) || 60;
   const parity = weekParity(weekStart);
   const seen = new Map(); // template -> nombre d'occurrences (variante A / B au sein de la semaine)
@@ -254,9 +297,24 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
   const plan = [];
   const reductions = [];
   let trimmed = 0;
+  const warmMin = warm ? 6 : 0; // 5 min + 1 min de transition (session-time.js)
+  // séance cardio dédiée : tout le créneau ; avec un historique, départ = durée habituelle + 5 min (progression de la durée
+  // de 5 à 10 min toutes les 1 à 2 semaines [ACSM-GETP]) ; sans historique : proposition de départ modifiable
+  const fullBlock = Math.max(10, Math.floor((maxMin - warmMin - 1) / 5) * 5);
+  const usual = recentCardioMinutes(sessions);
+  const cardioDayMin = usual ? Math.min(fullBlock, Math.max(10, Math.ceil((usual + 5) / 5) * 5)) : fullBlock;
+  const cardioDays = layout.filter(k => k === 'cardio').length;
+  const mixedDays = layout.filter(k => k === 'mixed').length;
 
   const out = days.map((day, i) => {
     const key = split[i];
+    const kind = layout[i];
+    if (kind === 'cardio') {
+      const acts = [];
+      if (warm) acts.push({ type: 'warmup', name: warm.name, durationMinutes: 5 });
+      if (finisher) acts.push({ type: 'cardio', name: finisher.name, durationMinutes: cardioDayMin });
+      return { id: day, name: 'Cardio', activities: acts };
+    }
     const t = TEMPLATES[key];
     const occ = seen.get(key) || 0; seen.set(key, occ + 1);
     const variant = (occ + parity) % 2; // A / B
@@ -291,17 +349,29 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
     // de l'objectif hebdomadaire ; le reste se fait hors de la salle (marche, vélo…)
     // perte de graisse : le cardio passe d'abord (jusqu'à 60 min), la musculation d'entretien garde au moins
     // un exercice par groupe (renforcement ≥ 2 j/sem, OMS) [DON09][WIL12][WHO20]
-    const perDay = dose.weeklyCardio ? Math.ceil(dose.weeklyCardio / days.length / 5) * 5 : 0;
-    const warmMin = warm ? 6 : 0; // 5 min + 1 min de transition (session-time.js)
-    const strengthNeed = dose.cardioFirst ? [...majors, ...pool.slice(rot, rot + 1)].reduce((n, c) => n + c.min, 0) : 0;
-    const cardioTarget = !finisher || !dose.weeklyCardio ? 0 : dose.cardioFirst
-      ? Math.max(10, Math.min(60, perDay, Math.floor((maxMin - warmMin - strengthNeed - 1) / 5) * 5))
-      : Math.min(30, Math.round(dose.weeklyCardio / days.length / 5) * 5);
-    const cardioFloor = dose.cardioFirst ? cardioTarget : cardioTarget ? 10 : 0;
+    // mixte (perte de graisse) : part de l'objectif hebdomadaire qui reste après les séances cardio dédiées ;
+    // endurance : le cardio est le bloc principal (tout le temps qui reste après 1 exercice par groupe)
+    const cardioPriority = kind === 'mixed' || kind === 'endurance';
+    const left = Math.max(0, (dose.weeklyCardio || 0) - cardioDays * cardioDayMin);
+    const perDay = kind === 'endurance' ? 60 : mixedDays ? Math.ceil(left / mixedDays / 5) * 5 : 0;
+    const strengthNeed = cardioPriority ? [...majors, ...pool.slice(rot, rot + 1)].reduce((n, c) => n + c.min, 0) : 0;
+    const moreCardio = sport.cardioMode === 'more';
+    const cardioTarget = !finisher ? 0 : cardioPriority
+      ? Math.max(10, Math.min(60, perDay || 10, kind === 'endurance' && usual ? Math.ceil((usual + 5) / 5) * 5 : 60, Math.floor((maxMin - warmMin - strengthNeed - 1) / 5) * 5))
+      : moreCardio ? 20 : dose.weeklyCardio ? Math.min(30, Math.round(dose.weeklyCardio / days.length / 5) * 5) : 0;
+    let cardioFloor = cardioPriority ? cardioTarget : cardioTarget ? 10 : 0;
+    // jour de renforcement sur un créneau court : les gros exercices (jambes, poussée, tirage) passent avant le cardio ;
+    // d'abord 2 séries au lieu de 3 (plusieurs séries restent supérieures à une [KRI10]), puis plus de cardio du tout
+    if (!cardioPriority) {
+      const room = () => maxMin - warmMin - (cardioFloor ? cardioFloor + 1 : 0);
+      const need = () => majors.reduce((n, c) => n + c.min, 0);
+      if (need() > room()) for (const c of [...majors, ...pool]) if (c.sets > 2) { c.sets = 2; c.min = strengthMinutes(c.id, c.sets, c.rest); }
+      if (need() > room()) cardioFloor = 0;
+    }
     let budget = maxMin - warmMin - (cardioFloor ? cardioFloor + 1 : 0);
     const keep = new Set();
     for (const c of order) {
-      if (keep.size && c.min > budget) continue;
+      if (keep.size && c.min > budget && !majors.includes(c)) continue; // gros exercices toujours candidats : le contrôle final ajuste
       keep.add(c); budget -= c.min;
     }
     const acts = [];
@@ -313,16 +383,36 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
       acts.push({ type: 'strength', machineId: c.id, shared: false, restSeconds: c.rest, sets: Array.from({ length: c.sets }, () => ({ kg: load.kg, reps })) });
     }
     const cardioMin = cardioTarget ? Math.min(cardioTarget, Math.floor((budget + cardioFloor) / 5) * 5) : 0;
-    if (cardioMin >= 10) acts.push({ type: 'cardio', name: finisher.name, durationMinutes: cardioMin });
+    if (cardioMin >= 10 && finisher) acts.push({ type: 'cardio', name: finisher.name, durationMinutes: cardioMin });
+    else if (cardioPriority && finisher) {
+      // séance mixte courte : le cardio garde sa place en début de séance ; ses 5 premières minutes, à allure douce,
+      // servent d'échauffement (5 à 10 min d'aérobie légère [ACSM09]) au lieu d'un échauffement séparé
+      const free = Math.floor((maxMin * 60 - daySeconds({ activities: acts.filter(a => a.type !== 'warmup') }) - 60) / 300) * 5;
+      if (free >= 10) {
+        const w = acts.findIndex(a => a.type === 'warmup'); if (w >= 0) acts.splice(w, 1);
+        acts.unshift({ type: 'cardio', name: finisher.name, durationMinutes: Math.min(free, cardioTarget || free) });
+        reductions.push(`${day} : cardio en début de séance (ses 5 premières minutes à allure douce servent d’échauffement)`);
+      }
+    }
     // contrôle APRÈS construction, avec le calcul de l'aperçu : la durée maximale est une contrainte
     const cut = [];
     const dayNow = () => ({ activities: acts });
     while (daySeconds(dayNow()) > maxMin * 60) {
       const cardioAct = acts.find(a => a.type === 'cardio');
       const strengthActs = acts.filter(a => a.type === 'strength');
-      const minCardio = dose.cardioFirst ? 10 : 10;
-      if (cardioAct && cardioAct.durationMinutes - 5 >= minCardio && (dose.cardioFirst ? strengthActs.length <= majors.length : true)) { cardioAct.durationMinutes -= 5; cut.push('cardio −5 min'); continue; }
+      if (cardioAct && cardioAct.durationMinutes - 5 >= 10 && (cardioPriority ? strengthActs.length <= majors.length : true)) { cardioAct.durationMinutes -= 5; cut.push('cardio −5 min'); continue; }
       const lastKept = [...order].reverse().find(c => keep.has(c) && acts.some(a => a.machineId === c.id));
+      const isMajor = lastKept && majors.includes(lastKept);
+      // créneau court : 2 séries au lieu de 3 sur les gros exercices AVANT d'en retirer un (plusieurs séries > une [KRI10])
+      // séance mixte courte : plutôt que retirer un gros exercice, le cardio passe en début de séance et ses 5 premières
+      // minutes, à allure douce, servent d'échauffement (échauffement = 5 à 10 min d'aérobie légère [ACSM09])
+      const warmAct = acts.find(a => a.type === 'warmup');
+      if (isMajor && cardioPriority && warmAct && cardioAct) {
+        acts.splice(acts.indexOf(warmAct), 1); acts.splice(acts.indexOf(cardioAct), 1); acts.unshift(cardioAct);
+        cut.push('cardio en début de séance (ses 5 premières minutes servent d’échauffement)'); continue;
+      }
+      const big = isMajor && strengthActs.find(a => a.sets.length > 2);
+      if (big) { big.sets.pop(); const p = plan.find(x => x.day === day && x.machineId === big.machineId); if (p) p.sets = big.sets.length; cut.push((byId.get(big.machineId)?.name || big.machineId) + ' en ' + big.sets.length + ' séries'); continue; }
       if (lastKept && strengthActs.length > 1) {
         keep.delete(lastKept); acts.splice(acts.findIndex(a => a.machineId === lastKept.id), 1);
         plan.splice(plan.findIndex(p => p.day === day && p.machineId === lastKept.id), 1);
@@ -333,7 +423,8 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
     }
     if (cut.length) reductions.push(`${day} : ${cut.join(', ')}`);
     trimmed += cands.length - keep.size;
-    return { id: day, name: t.name + (seen.get(key) > 1 || split.filter(s => s === key).length > 1 ? (variant ? ' B' : ' A') : ''), activities: acts };
+    const label = kind === 'endurance' ? 'Cardio + endurance musculaire' : t.name;
+    return { id: day, name: label + (seen.get(key) > 1 || split.filter(s => s === key).length > 1 ? (variant ? ' B' : ' A') : ''), activities: acts };
   });
 
   // bilan factuel de la semaine : séries par muscle, travail DIRECT (machine ciblant ce muscle) et INDIRECT (muscles
@@ -360,11 +451,20 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
   if (dose.commuteWeekly) notes.push(sport.commuteModerate === true
     ? `Trajet ${sport.commuteMode === 'velo' ? 'à vélo' : 'à pied'} : ${dose.commuteWeekly} min par semaine (aller-retour), comptées comme activité modérée (allure confirmée dans ton profil).`
     : `Trajet actif ${sport.commuteMode === 'velo' ? 'à vélo' : 'à pied'} : ${dose.commuteWeekly} min par semaine (aller-retour). Elles comptent dans le repère de l’OMS si ton allure est au moins modérée (tu peux parler mais pas chanter) : à confirmer dans ton profil.`);
-  if (dose.cardioFirst) notes.push('Perte de graisse : le cardio a la plus grande part du temps de séance ; la musculation (un exercice par groupe, 2 séries) se fait avant, pour garder ton muscle.');
+  const count = k => layout.filter(x => x === k).length;
+  const strengthDaysN = count('strength') + count('mixed') + count('endurance');
+  const layoutText = [strengthDaysN && `${strengthDaysN} séance${strengthDaysN > 1 ? 's' : ''} de renforcement${count('mixed') ? ' (avec cardio)' : ''}`,
+    count('cardio') && `${count('cardio')} séance${count('cardio') > 1 ? 's' : ''} cardio`].filter(Boolean).join(' · ');
+  if (sport.cardioMode === 'only') notes.push('Cardio seul : toutes tes séances sont des séances cardio. Le renforcement (au moins 2 jours par semaine, OMS) n’est pas prévu.');
+  else if (dose.cardioFirst) notes.push('Perte de graisse : la semaine fait une vraie place au cardio (séances cardio dédiées dès 3 jours) ; la musculation (un exercice par groupe, 2 séries) garde ton muscle.');
+  if (sport.cardioMode === 'more' && !cardioWeek) notes.push(`Plus de cardio : pas de place dans des séances de ${maxMin} min sans retirer la musculation. Allonge la durée ou choisis « Cardio seul ».`);
+  if (count('cardio') && !usual) notes.push(`Séances cardio : ${cardioDayMin} min proposées comme point de départ (aucun historique). Modifie la durée si c’est trop ou pas assez.`);
+  else if ((count('cardio') || count('endurance')) && usual) notes.push(`Cardio : départ à partir de ta durée habituelle (${usual} min) + 5 min ; la durée progresse de 5 à 10 min toutes les 1 à 2 semaines (ACSM).`);
   if (dose.weeklyCardio && cardioWeek < dose.weeklyCardio) notes.push(dose.cardioFirst
     ? `Cardio à la salle : ${cardioWeek} min cette semaine. Repère : dès 150 min par semaine, et vers 250 min pour une perte plus nette (ACSM). C’est un objectif progressif : marche ou vélo hors salle peuvent compléter si tu le souhaites.`
     : `Cardio à la salle : ${cardioWeek} min. Repère de l’OMS : 150 min d’activité modérée par semaine ; marche ou vélo hors salle comptent aussi${dose.commuteCounted ? ' (ton trajet est déjà compté)' : ''}.`);
-  const summary = { volume, muscles, cardioWeek, commuteWeekly: dose.commuteWeekly, commuteCounted: dose.commuteCounted };
+  const summary = { volume, muscles, cardioWeek, commuteWeekly: dose.commuteWeekly, commuteCounted: dose.commuteCounted, layout, layoutText,
+    minutes: out.map(d => Math.round(daySeconds(d) / 60)) };
   if (reductions.length) notes.push(`Durée maximale ${maxMin} min : contenu réduit pour tenir — ${reductions.join(' ; ')}.`);
   if (trimmed) notes.push(`Séances de ${maxMin} min : ${trimmed} exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).`);
   const repsUp = plan.filter(p => p.reason === 'reps');

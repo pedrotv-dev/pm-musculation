@@ -4,7 +4,7 @@
 // orienté endurance → sauvegardes individuelles → hors connexion → semaine suivante calculée.
 // node tests/e2e/v2-recette-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, watch, step, summary, createProfileApi } from './lib.mjs';
+import { serve, launch, watch, step, summary, createProfileApi, generateUI, acceptReplace } from './lib.mjs';
 
 const srv = await serve();
 const { browser } = await launch();
@@ -58,7 +58,7 @@ const importReply = async text => {
   await page.fill('.pm-textarea', text);
   await page.click('.pm-action-verify');
   await page.waitForSelector('.pm-action-save:not([disabled])');
-  await page.click('.pm-action-save');
+  await page.click('.pm-action-save'); await acceptReplace(page);
 };
 const finish = async (feeling, note, partial) => {
   await page.click(screen + ' .pm-footer button:has-text("Terminer")');
@@ -96,7 +96,7 @@ await step('1.1 lundi 9 novembre : création du profil « Alex fictif » depuis 
 await step('1.2 profil sportif incomplet : le calcul n’apparaît pas, ce qui manque est listé', async () => {
   await goCoach();
   await page.waitForSelector(coach + ' .pm-coach-missing');
-  assert.equal(await page.locator(coach + ' button:has-text("Calculer ma semaine")').count(), 0);
+  assert.equal(await page.locator(coach + ' button:has-text("Générer mon programme")').count(), 0);
   await goProfil();
 });
 
@@ -121,13 +121,11 @@ await step('1.3 profil sportif, poids actuel et poids cible ; machines de la sal
   assert.equal(await noOverflow(), true);
 });
 
-await step('1.4 « Calculer ma semaine » apparaît ; semaine calculée (60 min max, Calf Press à éviter exclue)', async () => {
+await step('1.4 « Générer mon programme » apparaît ; semaine calculée (60 min max, Calf Press à éviter exclue)', async () => {
   await goCoach();
-  await page.waitForSelector(coach + ' button:has-text("Calculer ma semaine")');
+  await page.waitForSelector(coach + ' button:has-text("Générer mon programme")');
   await page.getByLabel('Semaine à préparer').selectOption('2026-11-09');
-  await page.click(coach + ' button:has-text("Calculer ma semaine")');
-  await page.waitForSelector('.pm-action-save:not([disabled])');
-  const ex = JSON.parse(await page.inputValue('.pm-textarea'));
+  const ex = await generateUI(page);
   const ids = Object.values(ex.programs)[0].days.flatMap(d => d.activities.map(a => a.machineId).filter(Boolean));
   assert.ok(ids.length && !ids.includes('calf-press'));
   for (const d of Object.values(ex.programs)[0].days) assert.ok(await db(d => import('./js/programs.js').then(P => P.estimateDayMinutes(d)), d) <= 62, d.id);
@@ -135,13 +133,13 @@ await step('1.4 « Calculer ma semaine » apparaît ; semaine calculée (60 min 
 
 await step('1.5 import d’un fichier de programme (semaine en cours) → accueil : « Séance du jour »', async () => {
   programAlex = weekA(alex, '2026-11-09');
-  await page.waitForSelector('.pm-import[open]');
-  await page.click('.pm-import-manual'); // fichier de programme fictif à la place de la semaine calculée
+  if (!(await page.locator('.pm-import[open]').count())) await page.click('.pm-import summary');
+  if (await page.locator('.pm-import-manual').isVisible()) await page.click('.pm-import-manual'); // fichier de programme fictif à la place de la semaine calculée
   await page.fill('.pm-textarea', reply(programAlex));
   await page.click('.pm-action-verify');
   await page.waitForSelector('.pm-action-save:not([disabled])');
   assert.match(await text('.pm-preview'), /Durée estimée : environ \d+ min/);
-  await page.click('.pm-action-save');
+  await page.click('.pm-action-save'); await acceptReplace(page);
   await page.waitForFunction(async id => !!(await (await import('./storage.js')).getProgram(id, '2026-11-09')), alex);
   await page.click('.nav-btn[data-go="accueil"]');
   await page.waitForSelector(home + ' .pm-next-card h3:has-text("Séance du jour")');
@@ -357,7 +355,7 @@ await step('4.1 deuxième profil « Sam fictif » (endurance, perte de graisse) 
   await f.locator('#pm-sport-weight').fill('64,2');
   await saveSport(f);
   await goCoach();
-  await page.waitForSelector(coach + ' button:has-text("Calculer ma semaine")');
+  await page.waitForSelector(coach + ' button:has-text("Générer mon programme")');
 });
 
 await step('4.2 Sam : programme différent, séance faite ; aucune référence de charge venant d’Alex', async () => {
@@ -481,9 +479,7 @@ await step('5.4 mise à jour PWA pendant la séance : jamais proposée en séanc
 await step('6.1 Alex : semaine du 23 novembre calculée — Leg Press depuis la vraie charge (82,5 kg), jours et durée respectés, importable', async () => {
   await goCoach();
   await page.getByLabel('Semaine à préparer').selectOption('2026-11-23');
-  await page.click(coach + ' button:has-text("Calculer ma semaine")');
-  await page.waitForSelector('.pm-action-save:not([disabled])');
-  const ex = JSON.parse(await page.inputValue('.pm-textarea'));
+  const ex = await generateUI(page);
   assert.equal(ex.weekStart, '2026-11-23');
   const days = ex.programs[alex].days;
   assert.deepEqual(days.map(d => d.id), ['lundi', 'mercredi', 'vendredi']);
@@ -498,9 +494,7 @@ await step('6.2 Sam (endurance) : 2 séances lundi + jeudi, 15-20 répétitions 
   await page.waitForFunction(id => document.documentElement.dataset.pmProfile === id, sam);
   await goCoach();
   await page.getByLabel('Semaine à préparer').selectOption('2026-11-23');
-  await page.click(coach + ' button:has-text("Calculer ma semaine")');
-  await page.waitForSelector('.pm-action-save:not([disabled])');
-  const ex = JSON.parse(await page.inputValue('.pm-textarea'));
+  const ex = await generateUI(page);
   assert.deepEqual(Object.keys(ex.programs), [sam], 'aucune donnée d’Alex');
   const days = ex.programs[sam].days;
   assert.deepEqual(days.map(d => d.id), ['lundi', 'jeudi']);

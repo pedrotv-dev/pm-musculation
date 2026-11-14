@@ -1,7 +1,7 @@
 // V3 — semaine CALCULÉE par le moteur (règles sourcées) + ajustement IA simulé, puis import par le chemin existant.
 // Chromium 390 px, horloge simulée, données FICTIVES. node tests/e2e/v3-engine-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, watch, step, summary, createProfileUI } from './lib.mjs';
+import { serve, launch, watch, step, summary, createProfileUI, generateUI } from './lib.mjs';
 
 const srv = await serve();
 const { browser } = await launch();
@@ -21,22 +21,13 @@ await step('profil fictif par l’inscription guidée (contrainte écrite : évi
   await db(async id => { const S = await import('./js/sport-profile.js'); const s = await S.getSportProfile(id); await S.saveSportProfile(id, { ...s, constraints: 'Je veux éviter le Shoulder Press' }); }, id);
 });
 
-await step('Programme → « Calculer ma semaine » : semaine calculée, IA simulée, aperçu d’import prêt, rien d’importé sans appui', async () => {
+await step('Programme → « Générer mon programme » : semaine enregistrée et affichée (durées, Démarrer), aucune Shoulder Press (contrainte écrite)', async () => {
   await page.click('.nav-btn[data-go="programme"]');
-  await page.click(coach + ' button:has-text("Calculer ma semaine")');
-  await page.waitForSelector(coach + ' .pm-engine-out:not([hidden])');
-  const t = await page.locator(coach + ' .pm-engine-out').innerText();
-  assert.match(t, /3 séance\(s\)/);
-  assert.match(t, /Shoulder Press/, 'ajustement IA lié à la contrainte écrite');
-  assert.equal(await db(async id => (await (await import('./storage.js')).listPrograms(id)).length, id), 0, 'pas encore importé');
-  await page.waitForSelector('button:has-text("Importer ce programme")');
-});
-
-await step('« Importer ce programme » → semaine enregistrée, aucune machine « Shoulder Press », séance du jour prête', async () => {
-  await page.click('button:has-text("Importer ce programme")');
-  await page.waitForFunction(async id => (await (await import('./storage.js')).listPrograms(id)).length === 1, id);
-  const ids = await db(async id => { const r = (await (await import('./storage.js')).listPrograms(id))[0]; const d = r.data || r; return JSON.stringify(d); }, id);
-  assert.doesNotMatch(ids, /shoulder-press/);
+  const ex = await generateUI(page);
+  assert.match(await page.locator(coach + ' .pm-gen-sum').innerText(), /3 séances de renforcement/);
+  assert.equal(await page.locator(coach + ' .pm-gen-day').count(), 3);
+  assert.doesNotMatch(JSON.stringify(ex), /shoulder-press/);
+  assert.equal(await db(async id => (await (await import('./storage.js')).listPrograms(id)).length, id), 1);
   await page.click('.nav-btn[data-go="accueil"]');
   await page.waitForSelector('[data-page="accueil"] .pm-next-card, [data-page="accueil"] h3:has-text("Prochaine séance")');
 });
@@ -68,9 +59,8 @@ await step('trajet à vélo 15 min : affiché comme trajet actif tant que l’al
   let s = await db(async id => (await import('./js/sport-profile.js')).getSportProfile(id), id);
   assert.deepEqual([s.commuteMode, s.commuteMin, s.commuteModerate], ['velo', 15, false]);
   await page.click('.nav-btn[data-go="programme"]');
-  await page.click(coach + ' button:has-text("Calculer ma semaine")');
-  await page.waitForSelector(coach + ' .pm-engine-out:not([hidden])');
-  assert.match(await page.locator(coach + ' .pm-engine-out').innerText(), /Trajet actif à vélo : 90 min par semaine.*si ton allure est au moins modérée/s);
+  await generateUI(page);
+  assert.match(await page.locator(coach + ' .pm-gen-why').evaluate(n => n.textContent), /Trajet actif à vélo : 90 min par semaine.*si ton allure est au moins modérée/s);
   await page.click('#open-settings');
   await page.waitForSelector('.pm-sport-fold');
   await page.locator('.pm-sport-fold').evaluate(d => { d.open = true; });
@@ -83,9 +73,8 @@ await step('trajet à vélo 15 min : affiché comme trajet actif tant que l’al
   s = await db(async id => (await import('./js/sport-profile.js')).getSportProfile(id), id);
   assert.equal(s.commuteModerate, true);
   await page.click('.nav-btn[data-go="programme"]');
-  await page.click(coach + ' button:has-text("Calculer ma semaine")');
-  await page.waitForSelector(coach + ' .pm-engine-out:not([hidden])');
-  assert.match(await page.locator(coach + ' .pm-engine-out').innerText(), /90 min par semaine \(aller-retour\), comptées comme activité modérée/);
+  await generateUI(page);
+  assert.match(await page.locator(coach + ' .pm-gen-why').evaluate(n => n.textContent), /90 min par semaine \(aller-retour\), comptées comme activité modérée/);
 });
 
 await step('aucune requête externe (simulation locale) ; aucune erreur JavaScript', async () => {
