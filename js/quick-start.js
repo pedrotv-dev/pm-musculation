@@ -17,12 +17,13 @@ export function chips(legend, name, options, { multiple = false, value = null, h
   box.append(el('legend', 'pm-qs-legend', legend));
   if (hint) box.append(el('p', 'pm-muted pm-qs-hint', hint));
   const row = el('div', 'pm-qs-chips');
-  for (const [v, label, aria] of options) {
-    const l = el('label', 'pm-qs-chip');
+  for (const [v, label, aria, desc] of options) {
+    const l = el('label', 'pm-qs-chip' + (desc ? ' pm-qs-card' : ''));
     const i = el('input'); i.type = multiple ? 'checkbox' : 'radio'; i.name = name; i.value = String(v);
     if (multiple ? (value || []).includes(v) : value === v) i.checked = true;
     if (aria) i.setAttribute('aria-label', aria);
     l.append(i, el('span', '', label));
+    if (desc) l.append(el('small', 'pm-qs-desc', desc)); // carte : libellé + une ligne d'explication
     row.append(l);
   }
   box.append(row);
