@@ -221,7 +221,10 @@ await step('second profil : étape facultative PASSÉE (rien de bloquant) → pr
 });
 
 await step('320 px sans débordement ; aucune requête externe ; Pierre et Manon intacts ; aucune erreur JS', async () => {
-  await page.reload(); await page.waitForSelector('#bottom-nav:not([hidden])'); // séance libre d'Eve laissée en cours (reprise possible)
+  await page.reload(); // séance libre d'Eve laissée en cours : selon le moment, l'écran de séance peut se rouvrir (reprise)
+  await page.waitForSelector('#bottom-nav:not([hidden]), #pm-workout-screen:not([hidden])');
+  if (await page.locator('#pm-workout-screen:not([hidden])').count()) await page.click('#pm-workout-screen .pm-bar-actions button:has-text("Quitter")');
+  await page.waitForSelector('#bottom-nav:not([hidden])');
   await page.setViewportSize({ width: 320, height: 640 });
   await page.click('.nav-btn[data-go="programme"]'); assert.equal(await noOverflow(), true);
   await page.click('.nav-btn[data-go="accueil"]'); assert.equal(await noOverflow(), true);
