@@ -72,7 +72,8 @@ await step('trajet à vélo 15 min : affiché comme trajet actif tant que l’al
   await page.waitForSelector(coach + ' .pm-engine-out:not([hidden])');
   assert.match(await page.locator(coach + ' .pm-engine-out').innerText(), /Trajet actif à vélo : 90 min par semaine.*si ton allure est au moins modérée/s);
   await page.click('#open-settings');
-  if (!(await f.evaluate(d => d.open))) await f.locator('summary').click();
+  await page.waitForSelector('.pm-sport-fold');
+  await page.locator('.pm-sport-fold').evaluate(d => { d.open = true; });
   const pace = page.locator('label:has(#pm-sport-commute-moderate)');
   await pace.waitFor({ state: 'visible' });
   if (!(await page.isChecked('#pm-sport-commute-moderate'))) await pace.click();
