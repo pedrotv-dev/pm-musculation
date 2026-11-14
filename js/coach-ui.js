@@ -4,17 +4,17 @@
  */
 import { el, btn, add, dialog, confirmDialog, toast, formatDateFr, fmtNum, localISODate } from './dom.js';
 import { getProfileInfo, isRealProfile, isLegacyProfile, updateProfile, deleteProfile, PROFILE_COLORS, NAME_MAX, GOAL_MAX } from './profiles.js';
-import { GOALS, LEVELS, SENIORITY, LEVEL_OF_SENIORITY, DAYS, DURATIONS, COMMUTES, COMMUTE_MINUTES, INTENSITIES, FATIGUE, SLEEP, MEASURES, TEXT_MAX, getSportProfile, saveSportProfile, getGym, saveGym, missingEssentials, weightOrNull } from './sport-profile.js';
+import { GOALS, LEVELS, SENIORITY, LEVEL_OF_SENIORITY, DAYS, DURATIONS, COMMUTES, COMMUTE_MINUTES, CARDIO_MODES, INTENSITIES, FATIGUE, SLEEP, MEASURES, TEXT_MAX, getSportProfile, saveSportProfile, getGym, saveGym, missingEssentials, weightOrNull } from './sport-profile.js';
 import { loadCatalog } from './catalog.js';
 import { listWorkouts, getDemoProgram } from './workouts.js';
 import { listBodyWeights, recordBodyWeight } from './weights.js';
-import { listPrograms } from '../storage.js';
-import { mondayOf } from './programs.js';
+import { listPrograms, getProgram } from '../storage.js';
+import { mondayOf, importProgram, estimateDayMinutes } from './programs.js';
 import { addDays } from './stats.js';
 import { getDeclaredLoads } from './declared-loads.js';
 import { generateWeek } from './program-engine.js';
 import { buildAiRequest, askCoach, applyAiAdjustments } from './coach-ai.js';
-import { aiTransport, AI_MODE } from './ai-config.js';
+import { aiTransport } from './ai-config.js';
 import { isClosed } from './stats.js';
 
 const panel = (title, intro) => { const box = el('article', 'panel pm-profile-section'); box.append(el('h3', '', title)); if (intro) box.append(el('p', 'pm-muted', intro)); return box; };
@@ -249,12 +249,12 @@ function missingBlock(missing) {
   wrap.append(list, el('p', 'pm-muted', 'Le reste (poids, mensurations, santé, performances de départ…) est facultatif. Pense aussi à vérifier « Mes machines » (Réglages ⚙︎).'));
   return wrap;
 }
-const gate = { refresh: null };
-if (typeof document !== 'undefined') document.addEventListener('pm:coach-changed', e => { if (gate.refresh && e.detail?.profile === C.profile) gate.refresh(); });
+const gate = { refresh: null, generating: false };
+if (typeof document !== 'undefined') document.addEventListener('pm:coach-changed', e => { if (gate.refresh && !gate.generating && e.detail?.profile === C.profile) gate.refresh(); }); // pendant « Générer » : l'aperçu reste affiché
 /** « Préparer ma semaine » (onglet Programme) ; tant que le profil sportif est incomplet : ce qui manque, avec un lien vers chaque champ. */
 export function coachSection(profile) {
   if (C.profile !== profile) { C.week = null; C.profile = profile; }
-  const box = panel('Préparer ma semaine', 'Appuie sur « Calculer ma semaine » : l’appli construit ta semaine à partir de ton profil sportif, de tes machines et de tes vraies charges, selon les recommandations publiées.');
+  const box = panel('Préparer ma semaine', 'Choisis ton objectif, tes jours et ta durée : l’appli construit ta semaine (renforcement et cardio) à partir de tes machines et de tes vraies charges, selon les recommandations publiées.');
   box.classList.add('pm-coach-section');
   const body = el('div', 'pm-coach-body');
   box.append(body);
@@ -280,44 +280,127 @@ export function prepareWeek(week) {
 }
 const step = (n, label) => add(el('p', 'pm-coach-step'), el('span', 'pm-coach-step-n', n), document.createTextNode(label));
 /**
- * V3 · « Préparer ma semaine » : la semaine est CALCULÉE par le code (règles sourcées, docs/v3-sources.md), puis ajustée
- * par l'IA (Gemini via Firebase ; simulation locale tant qu'il n'est pas configuré). L'aperçu d'import s'ouvre ensuite :
- * rien n'est enregistré sans « Importer ce programme ».
+ * « Générer mon programme » : 1) objectif ; 2) jours et durée (réglages déjà renseignés repris) ; 3) un appui → la semaine est
+ * calculée par le code (règles sourcées, docs/v3-sources.md), enregistrée et affichée tout de suite : contenu de la semaine
+ * en un coup d'œil, durée de chaque séance, bouton Démarrer. Depuis l'aperçu : changer une machine, déplacer un jour,
+ * « Plus de cardio », sans refaire la configuration.
  */
 function generator(profile) {
   const thisWeek = mondayOf();
   const weeks = [[thisWeek, 'Semaine en cours'], [addDays(thisWeek, 7), 'Semaine prochaine'], [addDays(thisWeek, 14), 'Dans deux semaines']];
   if (!weeks.some(([w]) => w === C.week)) C.week = weeks[1][0];
-  const week = select(weeks.map(([w, l]) => [w, l + ' · ' + formatDateFr(w)]), C.week, 'Semaine');
+  const out = el('div', 'pm-engine-out'); out.hidden = true;
+  const st = status();
+  const form = el('div', 'pm-gen-form');
+  let sport = null;
+  const goal = select(GOALS.map(g => [g, g]), null, 'Choisir'); goal.id = 'pm-gen-goal';
+  const dur = select(DURATIONS.map(d => [d, d + ' min']), null, 'Choisir'); dur.id = 'pm-gen-duration';
+  const mode = select(CARDIO_MODES, 'normal', 'Équilibré selon mon objectif'); mode.id = 'pm-gen-cardio';
+  mode.querySelector('option[value=""]').remove();
+  const week = select(weeks.map(([w, l]) => [w, l + ' · ' + formatDateFr(w)]), C.week, 'Semaine'); week.id = 'pm-gen-week';
   week.querySelector('option[value=""]').disabled = true;
-  const engineOut = el('div', 'pm-engine-out'); engineOut.hidden = true;
-  week.addEventListener('change', () => { C.week = week.value; engineOut.hidden = true; });
-  const useAi = el('input'); useAi.type = 'checkbox'; useAi.checked = true; useAi.id = 'pm-engine-ai';
-  const aiLabel = add(el('label', 'pm-check'), useAi, document.createTextNode(AI_MODE === 'gemini' ? ' Ajuster avec Gemini (selon ce que tu as écrit dans ton profil)' : ' Ajuster avec l’IA — simulation locale (Gemini pas encore branché)'));
-  const engineSt = status();
-  const calc = btn('Calculer ma semaine', 'pm-validate pm-engine-calc', async () => {
-    calc.disabled = true; engineOut.hidden = true;
+  week.addEventListener('change', () => { C.week = week.value; });
+  const daysBox = el('div', 'pm-gen-days');
+  let dayChecks = checks(DAYS, [], d => cap(d).slice(0, 3));
+  daysBox.append(dayChecks.box);
+  getSportProfile(profile).then(sp => {
+    sport = sp; goal.value = sp.mainGoal || ''; dur.value = sp.durationMin ? String(sp.durationMin) : ''; mode.value = sp.cardioMode || 'normal';
+    dayChecks = checks(DAYS, sp.days || [], d => cap(d).slice(0, 3)); daysBox.replaceChildren(dayChecks.box);
+  }).catch(() => {});
+  const gen = btn('Générer mon programme', 'pm-validate pm-engine-calc', () => run({}));
+
+  /** Calcule, enregistre et affiche la semaine. `patch` : changements de réglages (ex. { cardioMode:'more' }). */
+  async function run(patch) {
+    gen.disabled = true; say(st, ''); gate.generating = true;
     try {
+      const days = dayChecks.values();
+      if (!goal.value) throw new Error('Choisis ton objectif.');
+      if (!days.length) throw new Error('Choisis au moins un jour.');
+      if (!dur.value) throw new Error('Choisis la durée disponible.');
+      const base = sport || await getSportProfile(profile);
+      const sameDays = (base.days || []).length === days.length && days.every(d => (base.days || []).includes(d));
+      // mêmes jours : la fréquence choisie (parfois moins de séances que de jours) est gardée ; sinon une séance par jour coché
+      const frequency = sameDays && base.frequency ? Math.min(base.frequency, days.length) : days.length;
+      const next = { ...base, mainGoal: goal.value, days, frequency, durationMin: Number(dur.value), cardioMode: mode.value, ...patch };
+      delete next.silent;
+      if (profile !== 'demo') sport = await saveSportProfile(profile, next); else sport = next;
+      mode.value = sport.cardioMode;
       const inp = await coachInput(profile, C.week);
       const sessions = (inp.sessions || []).filter(isClosed);
-      const w = generateWeek({ profileId: profile, weekStart: C.week, sport: inp.sport, gym: inp.gym, catalog: inp.catalog, sessions, declared: inp.declared });
-      let program = w.program, advice = '', changes = [];
-      if (useAi.checked) {
-        const r = await askCoach(buildAiRequest({ sport: inp.sport, plan: w.plan, program, profileId: profile, sessions, catalog: inp.catalog, gym: inp.gym }), { transport: aiTransport() });
-        if (r.ok) { const a = applyAiAdjustments(program, r.response, { profileId: profile, catalog: inp.catalog, gym: inp.gym }); program = a.program; advice = a.advice; changes = a.applied; }
-        else advice = 'IA indisponible : plan calculé conservé.';
+      const w = generateWeek({ profileId: profile, weekStart: C.week, sport, gym: inp.gym, catalog: inp.catalog, sessions, declared: inp.declared });
+      // machines à éviter écrites dans le profil : remplacement par une voisine, en code (aucune IA requise)
+      const adj = await askCoach(buildAiRequest({ sport, plan: w.plan, program: w.program, profileId: profile, sessions, catalog: inp.catalog, gym: inp.gym }), { transport: aiTransport() });
+      const program = adj.ok ? applyAiAdjustments(w.program, adj.response, { profileId: profile, catalog: inp.catalog, gym: inp.gym }).program : w.program;
+      if (profile !== 'demo') {
+        const had = await getProgram(profile, C.week).catch(() => null);
+        if (had && !patch.silent && !(await confirmDialog('Un programme existe déjà pour la semaine du ' + formatDateFr(C.week) + '. Le remplacer ? Tes séances déjà faites sont conservées.', { ok: 'Remplacer' }))) { gen.disabled = false; return; }
+        await importProgram(profile, program, { knownMachineIds: inp.catalog.map(m => m.id) });
+        document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile } }));
       }
-      const days = program.programs[profile].days;
-      engineOut.replaceChildren(
-        el('p', 'pm-engine-sum', days.length + ' séance(s) : ' + days.map(d => d.id.charAt(0).toUpperCase() + d.id.slice(1, 3) + '. ' + d.name).join(' · ')),
-        ...(changes.length ? [el('p', 'pm-muted', 'Ajustements IA : ' + changes.map(c => c.reason).join(' '))] : []),
-        ...(advice ? [el('p', 'pm-muted', advice)] : []),
-        add(el('ul', 'pm-engine-notes'), ...w.notes.map(n => el('li', '', n))));
-      engineOut.hidden = false;
-      document.dispatchEvent(new CustomEvent('pm:import-text', { detail: { text: JSON.stringify(program), source: 'engine' } }));
-      say(engineSt, 'Semaine calculée ✓ Vérifie l’aperçu ci-dessous puis « Importer ce programme ».', 'ok');
-    } catch (e) { say(engineSt, 'Calcul impossible : ' + (e.message || e), 'error'); }
-    finally { calc.disabled = false; }
-  });
-  return [field('Semaine à préparer', week), aiLabel, calc, engineSt, engineOut];
+      show(program, w, inp);
+      say(st, 'Programme prêt ✓', 'ok');
+    } catch (e) { say(st, (e.message || 'Génération impossible.'), 'error'); }
+    finally { gen.disabled = false; gate.generating = false; }
+  }
+
+  /** Aperçu : la semaine en un coup d'œil, chaque séance (durée, contenu, Démarrer), retouches sans reconfigurer. */
+  function show(program, w, inp) {
+    const names = new Map(inp.catalog.map(m => [m.id, m.name]));
+    const days = program.programs[profile].days;
+    const cardioMin = days.flatMap(d => d.activities).filter(a => a.type === 'cardio').reduce((n, a) => n + a.durationMinutes, 0);
+    const kinds = days.map(d => (d.activities.some(a => a.type === 'strength') ? 'r' : 'c'));
+    const nR = kinds.filter(k => k === 'r').length, nC = kinds.filter(k => k === 'c').length;
+    const sum = [nR && `${nR} séance${nR > 1 ? 's' : ''} de renforcement`, nC && `${nC} séance${nC > 1 ? 's' : ''} cardio`, `${cardioMin} min de cardio prévues`].filter(Boolean).join(' · ');
+    const save = async () => {
+      if (profile !== 'demo') { await importProgram(profile, program, { knownMachineIds: inp.catalog.map(m => m.id) }); document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile } })); }
+      show(program, w, inp);
+    };
+    const cards = days.map(d => {
+      const card = el('section', 'pm-gen-day'); card.dataset.day = d.id;
+      const head = el('div', 'pm-gen-dayhead');
+      add(head, add(el('div', ''), el('strong', '', cap(d.id) + ' — ' + d.name), el('span', 'pm-muted pm-gen-min', ' · ' + estimateDayMinutes(d) + ' min')),
+        btn('Démarrer', 'pm-validate pm-gen-start', () => document.dispatchEvent(new CustomEvent('pm:start-workout', { detail: { profileId: profile, weekStart: program.weekStart, dayId: d.id } }))));
+      const list = el('ul', 'pm-gen-list');
+      for (const a of d.activities) {
+        const li = el('li', 'pm-gen-item');
+        if (a.type !== 'strength') { li.append(el('span', '', (a.type === 'warmup' ? 'Échauffement · ' : 'Cardio · ') + a.name + ' — ' + a.durationMinutes + ' min')); list.append(li); continue; }
+        const kg = a.sets[0].kg > 0 ? fmtNum(a.sets[0].kg) + ' kg' : 'À régler sur la machine';
+        li.append(el('span', '', (names.get(a.machineId) || a.machineId) + ' — ' + a.sets.length + ' × ' + a.sets[0].reps + ' · ' + kg));
+        // changer de machine : même groupe musculaire, disponible, pas déjà dans la séance
+        const group = inp.catalog.find(m => m.id === a.machineId)?.muscleGroup;
+        const alts = inp.catalog.filter(m => m.kind === 'strength' && !m.deprecated && m.id !== a.machineId && m.muscleGroup === group
+          && !(inp.gym.avoid || []).includes(m.id) && (inp.gym.available == null || inp.gym.available.includes(m.id)) && !d.activities.some(x => x.machineId === m.id));
+        if (alts.length) {
+          const pick = el('select', 'pm-select pm-gen-swap'); pick.setAttribute('aria-label', 'Changer ' + (names.get(a.machineId) || a.machineId));
+          pick.append(new Option('Changer', ''), ...alts.map(m => new Option(m.name, m.id)));
+          pick.addEventListener('change', () => { if (!pick.value) return; a.machineId = pick.value; a.sets.forEach(x => { x.kg = 0; }); save().catch(e => say(st, e.message, 'error')); });
+          li.append(pick);
+        }
+        list.append(li);
+      }
+      // déplacer le jour vers un jour libre
+      const free = DAYS.filter(x => !days.some(y => y.id === x));
+      if (free.length) {
+        const move = el('select', 'pm-select pm-gen-move'); move.setAttribute('aria-label', 'Déplacer la séance du ' + d.id);
+        move.append(new Option('Déplacer au…', ''), ...free.map(x => new Option(cap(x), x)));
+        move.addEventListener('change', () => {
+          if (!move.value) return;
+          d.id = move.value; days.sort((x, y) => DAYS.indexOf(x.id) - DAYS.indexOf(y.id));
+          save().catch(e => say(st, e.message, 'error'));
+        });
+        card.append(head, list, move);
+      } else card.append(head, list);
+      return card;
+    });
+    const more = sport?.cardioMode === 'only' ? null : btn(sport?.cardioMode === 'more' ? 'Encore plus : cardio seul' : 'Plus de cardio', 'pm-secondary pm-gen-more', () => run({ cardioMode: sport?.cardioMode === 'more' ? 'only' : 'more', silent: true }));
+    const why = el('details', 'pm-fold pm-gen-why');
+    why.append(el('summary', 'pm-fold-title', 'Pourquoi ce programme ?'), add(el('ul', 'pm-engine-notes'), ...w.notes.map(n => el('li', '', n))));
+    out.replaceChildren(el('p', 'pm-engine-sum pm-gen-sum', sum), ...cards, ...(more ? [more] : []), why);
+    out.hidden = false;
+    out.scrollIntoView({ block: 'start' });
+  }
+
+  add(form, field('1. Ton objectif', goal), add(el('div', 'pm-coach-field'), el('p', 'pm-coach-label', '2. Tes jours'), daysBox),
+    field('Durée disponible par séance', dur), field('Cardio', mode), field('Semaine à préparer', week));
+  return [form, gen, st, out];
 }

@@ -61,7 +61,7 @@ await step('« Compléter : niveau » ouvre Réglages sur le champ ; enregistrer
   await f.locator('.pm-coach-status[data-state="ok"]').waitFor();
   await f.locator('.pm-to-coach').click();
   assert.equal(await visiblePage(), 'programme');
-  await page.waitForSelector(coach + ' button:has-text("Calculer ma semaine")');
+  await page.waitForSelector(coach + ' button:has-text("Générer mon programme")');
 });
 
 await step('Réglages : 5 rubriques, aucune préparation de semaine ; fonctions avancées toujours présentes', async () => {

@@ -3,7 +3,7 @@
 // suppression refusée pendant une séance), programme incomplet (1 séance au lieu de 5) refusé puis accepté en exception.
 // node tests/e2e/v2-evolution-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, watch, step, summary, createProfileApi } from './lib.mjs';
+import { serve, launch, watch, step, summary, createProfileApi, generateUI } from './lib.mjs';
 
 const srv = await serve();
 const { browser } = await launch();
@@ -132,9 +132,7 @@ await step('fréquence : profil 5 séances (mardi → samedi), JSON d’UNE séa
 await step('semaine calculée de Pierre2 : 5 séances (mardi → samedi), charges importées utilisées (82,5 kg)', async () => {
   await page.click('.nav-btn[data-go="programme"]'); await page.waitForSelector('[data-page="programme"] .pm-coach-section h3');
   await page.getByLabel('Semaine à préparer').selectOption('2026-11-23');
-  await page.click('.pm-coach-section button:has-text("Calculer ma semaine")');
-  await page.waitForSelector('.pm-action-save:not([disabled])');
-  const ex = JSON.parse(await page.inputValue('.pm-textarea'));
+  const ex = await generateUI(page);
   const days = ex.programs[pierre2].days;
   assert.deepEqual(days.map(d => d.id), ['mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']);
   const lp = days.flatMap(d => d.activities).find(a => a.machineId === 'leg-press');

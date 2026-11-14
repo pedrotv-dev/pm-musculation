@@ -5,7 +5,7 @@
 // vérification de toutes les données ; second profil indépendant ; séance libre ; démo inchangée.
 // node tests/e2e/v2-complete-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, watch, step, summary, createProfileUI, createProfileApi } from './lib.mjs';
+import { serve, launch, watch, step, summary, createProfileUI, createProfileApi, generateUI, acceptReplace } from './lib.mjs';
 
 const srv = await serve();
 const { browser } = await launch();
@@ -94,15 +94,13 @@ await step('4 · machines : Leg Press indisponible, Calf Press à éviter', asyn
 await step('5 · semaine calculée : jours, machines dispo (Leg Press indisponible, Calf Press à éviter), un seul profil ; rien d’importé sans appui', async () => {
   await goCoach();
   await page.getByLabel('Semaine à préparer').selectOption(week);
-  await page.click('button:has-text("Calculer ma semaine")');
-  await page.waitForSelector('.pm-action-save:not([disabled])');
-  const ex = JSON.parse(await page.inputValue('.pm-textarea'));
+  const ex = await generateUI(page);
   assert.deepEqual(Object.keys(ex.programs), [alex]);
   assert.equal(ex.weekStart, week);
   const ids = ex.programs[alex].days.flatMap(d => d.activities.map(a => a.machineId).filter(Boolean));
   assert.ok(ids.length > 0);
   assert.ok(!ids.includes('leg-press') && !ids.includes('calf-press'), 'machine indisponible et machine à éviter exclues');
-  assert.equal(await db(async ([id, w]) => !!(await (await import('./storage.js')).getProgram(id, w)), [alex, week]), false);
+  assert.equal(await db(async ([id, w]) => !!(await (await import('./storage.js')).getProgram(id, w)), [alex, week]), true, '« Générer » enregistre la semaine');
 });
 
 await step('6-7 · import du JSON fictif : vérifié, avertissement (Leg Press indisponible), puis enregistré', async () => {
@@ -114,7 +112,7 @@ await step('6-7 · import du JSON fictif : vérifié, avertissement (Leg Press i
   await page.waitForSelector('.pm-action-save:not([disabled])');
   assert.match(await page.locator('#pm-import-feedback').innerText(), /Leg Press n’est pas dans tes machines disponibles/);
   assert.match(await page.locator('#pm-import-feedback').innerText(), /contient 1 séance alors que ton profil sportif en demande 3/);
-  await page.click('.pm-action-save');
+  await page.click('.pm-action-save'); await acceptReplace(page);
   await page.click('.pm-modal:has-text("Programme incomplet") .pm-modal-btn:has-text("Importer quand même")'); // V2-EVOLUTION-1 : moins de séances que la fréquence du profil → exception explicite
   await page.waitForFunction(async ([id, w]) => !!(await (await import('./storage.js')).getProgram(id, w)), [alex, week]);
 });
@@ -155,8 +153,7 @@ await step('11 · historique : la séance apparaît', async () => {
 await step('12 · semaine suivante calculée : la charge réelle de la séance (Chest Press 32,5 kg × 10) sert de référence', async () => {
   await goCoach();
   await page.getByLabel('Semaine à préparer').selectOption(await db(async w => (await import('./js/stats.js')).addDays(w, 7), week));
-  await page.click('button:has-text("Calculer ma semaine")');
-  await page.waitForSelector('.pm-engine-out:not([hidden])');
+  await generateUI(page);
   const r = await db(async id => { const W = await import('./js/workouts.js'); const St = await import('./js/stats.js'); const E = await import('./js/program-engine.js');
     return E.proposeLoad('chest-press', { sessions: (await W.listWorkouts(id)).filter(St.isClosed), low: 8, high: 12 }); }, alex);
   assert.deepEqual([r.kg, r.reason], [32.5, 'same'], '10 répétitions < 12 : même charge (double progression)');
@@ -256,8 +253,7 @@ await step('démo : fonctionne, rien en base ; profil sportif Démo en mémoire 
   await page.evaluate(() => document.dispatchEvent(new CustomEvent('pm:select-profile', { detail: { profile: 'demo' } })));
   await page.waitForFunction(() => document.documentElement.dataset.pmProfile === 'demo');
   await goCoach();
-  await page.click('button:has-text("Calculer ma semaine")');
-  await page.waitForSelector('.pm-engine-out:not([hidden])');
+  await generateUI(page);
   assert.equal(await db(async () => (await import('./storage.js')).countProfileRows(['demo'])), 0);
 });
 
