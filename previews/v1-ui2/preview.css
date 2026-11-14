@@ -1,0 +1,21 @@
+/* Mise en page propre aux aperçus ; aucun token ni composant existant redéfini. */
+.ui2-notice { margin-bottom:var(--space-5); }
+.ui2-actions { display:flex; flex-wrap:wrap; gap:var(--space-2); margin-bottom:var(--space-5); }
+.ui2-actions > * { flex:1 1 auto; }
+.ui2-head { display:flex; align-items:center; gap:var(--space-4); margin-bottom:var(--space-4); }
+.ui2-photo { width:84px; height:84px; object-fit:contain; flex:none; }
+.ui2-head > div { min-width:0; }
+.ui2-heading { margin-bottom:var(--space-5); }
+.ui2-stats { margin-top:var(--space-4); }
+.ui2-list { flex-wrap:wrap; }
+.ui2-list > span { overflow-wrap:anywhere; }
+.ui2-guide { display:flex; align-items:center; gap:var(--space-4); }
+.ui2-guide img { width:56px; height:56px; object-fit:contain; }
+.ui2-full { width:100%; }
+.ui2-empty { margin-top:var(--space-4); }
+a.secondary { text-decoration:none; }
+a:focus-visible { outline:3px solid var(--turq); outline-offset:2px; }
+
+.ui2-heading:focus { outline:none; }
+.ui2-fill { width:60%; }
+.ui2-fill-empty { width:0; }
