@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 // L'aperçu ne contient QUE ce dont l'application a besoin (pas de documents, d'outils, de tests ni de maquettes : 25 Mo de moins).
-const INCLUDE = new Set(['index.html', 'manifest.webmanifest', 'storage.js', 'sw.js', 'css', 'js', 'data', 'assets']);
+const INCLUDE = new Set(['index.html', 'manifest.webmanifest', 'storage.js', 'sw.js', 'css', 'js', 'data', 'assets', 'i18n']);
 
 export class PreviewError extends Error {}
 

@@ -427,17 +427,19 @@ export function acknowledgeRest(profileId, opts = {}) {
 }
 
 /**
- * A appeler quand l'utilisateur change de machine / d'activite : arrete le chrono (en cours, en pause ou
- * termine) sauf s'il appartient a la meme activite (`activityKey`, sinon `machineId`).
+ * A appeler quand l'utilisateur change de machine / d'activite. Retours 13/11 : un repos EN COURS (ou en pause)
+ * continue sur la machine suivante (on se deplace pendant le repos) ; seul un repos TERMINE d'une autre activite
+ * (`activityKey`, sinon `machineId`) est nettoye.
  */
 export function onActivityChange(profileId, { activityKey, machineId, now } = {}) {
-  return operate(profileId, { now }, ({ st }) => {
+  return operate(profileId, { now }, ({ cfg, st, now: t }) => {
     if (!st) return null;
     const c = st.ctx;
     let same = false;
     if (activityKey != null && c.activityKey != null) same = String(activityKey) === c.activityKey;
     else if (machineId != null && c.machineId != null) same = String(machineId) === c.machineId;
-    return same ? null : { state: null, extra: { stopped: true } };
+    if (same || computeRestView(st, cfg, t).status !== 'finished') return null;
+    return { state: null, extra: { stopped: true } };
   });
 }
 

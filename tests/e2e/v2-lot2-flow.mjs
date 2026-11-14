@@ -4,7 +4,7 @@
 // Puis : semaine bientôt finie → « Préparer la semaine prochaine ». Aucune requête externe ; Pierre et Manon jamais touchés.
 // node tests/e2e/v2-lot2-flow.mjs
 import assert from 'node:assert/strict';
-import { serve, launch, watch, step, summary } from './lib.mjs';
+import { serve, launch, watch, step, summary, commuteStepUI } from './lib.mjs';
 
 const srv = await serve();
 const { browser } = await launch();
@@ -51,7 +51,7 @@ await step('étape 1 (prénom) puis inscription guidée : pas d’Accueil ni de 
   david = await db(() => document.documentElement.dataset.pmProfile);
   await page.waitForSelector(ob);
   assert.equal(await obTitle(), 'Ton objectif principal');
-  assert.match(await page.locator(ob + ' .eyebrow').innerText(), /ÉTAPE 2 \/ 7/i);
+  assert.match(await page.locator(ob + ' .eyebrow').innerText(), /ÉTAPE 2 \/ 8/i);
   for (const sel of ['#bottom-nav', '#open-settings', '[data-page="accueil"]']) assert.equal(await page.locator(sel).isVisible(), false, sel + ' masqué');
   assert.ok(await page.locator(ob + ' .pm-mascot').count() === 1, 'Korv présent (ASCENT)');
 });
@@ -91,6 +91,16 @@ await step('intensité Hard avec 3 mois d’ancienneté, mardi + jeudi (fréquen
   await page.waitForSelector(ob + ' #pm-ob-title:has-text("Durée")');
   assert.match(await page.locator(ob).innerText(), /une limite, pas une durée à remplir/);
   await obChip('75 min'); await obNext();
+  // étape « trajet » : la durée n'est demandée qu'à pied ou à vélo, et elle est obligatoire alors
+  await page.waitForSelector(ob + ' #pm-ob-title:has-text("salle")');
+  assert.equal(await page.locator('#pm-ob-commute-min').isVisible(), false, 'voiture/aucun choix : pas de durée');
+  await obNext();
+  assert.match(await page.locator(ob + ' .pm-coach-status').innerText(), /moyen de transport/);
+  await obChip('À vélo');
+  assert.equal(await page.locator('#pm-ob-commute-min').isVisible(), true);
+  await obNext();
+  assert.match(await page.locator(ob + ' .pm-coach-status').innerText(), /durée du trajet/);
+  await page.selectOption('#pm-ob-commute-min', '15'); await obNext();
   await page.waitForSelector(ob + ' #pm-ob-title:has-text("facultatif")');
 });
 
@@ -199,6 +209,7 @@ await step('second profil : étape facultative PASSÉE (rien de bloquant) → pr
   await page.waitForSelector(ob + ' #pm-ob-title:has-text("jours")'); await obChip('Lun'); await obChip('Mer'); await obChip('Ven');
   await page.selectOption('#pm-ob-freq', '2'); await obNext(); // moins de séances que de jours disponibles
   await page.waitForSelector(ob + ' #pm-ob-title:has-text("Durée")'); await obChip('45 min'); await obNext();
+  await commuteStepUI(page, 'Transports en commun');
   await page.waitForSelector(ob + ' #pm-ob-title:has-text("facultatif")');
   await page.click(ob + ' button:has-text("Passer cette étape")');
   await page.waitForSelector(home + ' .pm-welcome-card');
@@ -210,7 +221,10 @@ await step('second profil : étape facultative PASSÉE (rien de bloquant) → pr
 });
 
 await step('320 px sans débordement ; aucune requête externe ; Pierre et Manon intacts ; aucune erreur JS', async () => {
-  await page.reload(); await page.waitForSelector('#bottom-nav:not([hidden])'); // séance libre d'Eve laissée en cours (reprise possible)
+  await page.reload(); // séance libre d'Eve laissée en cours : selon le moment, l'écran de séance peut se rouvrir (reprise)
+  await page.waitForSelector('#bottom-nav:not([hidden]), #pm-workout-screen:not([hidden])');
+  if (await page.locator('#pm-workout-screen:not([hidden])').count()) await page.click('#pm-workout-screen .pm-bar-actions button:has-text("Quitter")');
+  await page.waitForSelector('#bottom-nav:not([hidden])');
   await page.setViewportSize({ width: 320, height: 640 });
   await page.click('.nav-btn[data-go="programme"]'); assert.equal(await noOverflow(), true);
   await page.click('.nav-btn[data-go="accueil"]'); assert.equal(await noOverflow(), true);

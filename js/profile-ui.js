@@ -2,6 +2,7 @@
  * PM Musculation — Réglages (icône ⚙︎, page « profil ») : mon profil, séance et chrono, profils, données, à propos.
  * LOT 1 : les sections existantes sont regroupées en 5 rubriques ; « Préparer ma semaine » est dans Programme.
  */
+import { LANGS } from './i18n.js';
 import { getRestConfig, setRestConfig, stopRest } from './rest-timer.js';
 import { listWorkouts, resetDemoWorkouts } from './workouts.js';
 import { resetDemoWeights } from './weights.js';
@@ -108,9 +109,18 @@ function effectsSection(profile, ui) {
     return wrap;
   };
   return section('Ambiance', 'Animations et sons de l’application, propres à ce profil. Tout peut être coupé.',
+    langField(),
     row('Animations', 'Effets visuels (confettis, pulsations…). Elles se coupent aussi toutes seules si ton téléphone est réglé sur « réduire les animations ».', 'animations'),
     row('Petits bruitages', 'Sons discrets quand tu valides une série, annules, termines une machine…', 'sfx'),
     row('Jingles', 'Petites mélodies pour une séance terminée, un niveau gagné, un succès, un record.', 'jingles'));
+}
+
+/** Langue de l'interface (tout l'appareil) : js/i18n.js lie le <select data-pm-lang> et recharge la page. */
+function langField() {
+  const sel = el('select', 'pm-select'); sel.id = 'pm-settings-lang'; sel.dataset.pmLang = '';
+  for (const [v, l] of LANGS) sel.append(new Option(l, v));
+  const lab = el('label', 'pm-coach-label', 'Langue · Language'); lab.htmlFor = sel.id;
+  return add(el('div', 'pm-coach-field'), lab, sel);
 }
 
 function backupSection(profile) {

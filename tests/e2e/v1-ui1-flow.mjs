@@ -27,7 +27,7 @@ const openDemoHistoryDetail = async page => {
 
 for (const [w, h] of SIZES) {
   console.log(`\n${w}×${h} (barre de défilement classique)`);
-  const context = await browser.newContext({ viewport: { width: w, height: h } });
+  const context = await browser.newContext({ locale: 'fr-FR', viewport: { width: w, height: h } });
   const page = await context.newPage(); page.setDefaultTimeout(15000);
   const errors = watch(page);
 
@@ -69,7 +69,7 @@ for (const [label, share, expected] of [
   ['partage réussi', 'ok', /^\d+ séance\(s\) exportée\(s\)\.$/],
   ['téléchargement (pas de partage)', null, /^\d+ séance\(s\) exportée\(s\)\.$/]
 ]) {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true });
+  const context = await browser.newContext({ locale: 'fr-FR', viewport: { width: 390, height: 844 }, acceptDownloads: true });
   await context.addInitScript(mode => {
     if (!mode) return;
     navigator.canShare = () => true;

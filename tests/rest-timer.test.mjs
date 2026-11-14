@@ -230,19 +230,14 @@ test('arret manuel et fermeture du message', async () => {
   assert.equal((await R.acknowledgeRest('pierre', { now: sec(5) })).status, 'running');
 });
 
-test('changement de machine : arrete le chrono, pas la meme machine', async () => {
+test('changement de machine : le repos en cours continue, un repos termine est nettoye', async () => {
   reset();
   await R.onSetValidated('pierre', ctx());
   assert.equal((await R.onActivityChange('pierre', { activityKey: 'a2', now: sec(10) })).status, 'running'); // meme activite
-  const stopped = await R.onActivityChange('pierre', { activityKey: 'a3', machineId: 'lat-pulldown', now: sec(11) });
-  assert.deepEqual([stopped.status, stopped.stopped], ['idle', true]);
-  // meme machine mais autre activite -> arret (l'activite prime)
-  await R.onSetValidated('pierre', ctx());
-  assert.equal((await R.onActivityChange('pierre', { activityKey: 'a5', machineId: 'chest-press', now: sec(12) })).status, 'idle');
-  // sans activityKey : comparaison par machine
-  await R.onSetValidated('pierre', ctx({ activityKey: undefined }));
-  assert.equal((await R.onActivityChange('pierre', { machineId: 'chest-press', now: sec(13) })).status, 'running');
-  assert.equal((await R.onActivityChange('pierre', { machineId: 'seated-row', now: sec(14) })).status, 'idle');
+  assert.equal((await R.onActivityChange('pierre', { activityKey: 'a3', machineId: 'lat-pulldown', now: sec(11) })).status, 'running');
+  await R.pauseRest('pierre', { now: sec(12) });
+  assert.equal((await R.onActivityChange('pierre', { activityKey: 'a5', now: sec(13) })).status, 'paused');
+  await R.stopRest('pierre', { now: sec(14) });
   // un repos termine est aussi nettoye
   await R.onSetValidated('pierre', ctx({ now: sec(100) }));
   assert.equal((await R.getRestState('pierre', { now: sec(200) })).status, 'finished');

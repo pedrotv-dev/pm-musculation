@@ -62,3 +62,21 @@ export function metricsFor(machine) {
   const keys = machine && Array.isArray(machine.metrics) ? machine.metrics : null;
   return keys ? CARDIO_METRICS.filter(m => keys.indexOf(m.key) !== -1) : CARDIO_METRICS.slice();
 }
+
+/**
+ * Retours 13/11 : réglages (inclinaison, vitesse, niveau) de la DERNIÈRE fois où cette activité de cardio (même nom)
+ * a été faite, dans les séances terminées `past`. null si aucun. Le prochain passage repart de là, pas du programme.
+ */
+export function lastCardioMetrics(past, name) {
+  if (!name) return null;
+  const sorted = [...(past || [])].sort((a, b) => String(b.endedAt || b.date || '').localeCompare(String(a.endedAt || a.date || '')));
+  for (const s of sorted) {
+    for (const a of s.activities || []) {
+      if (a.type === 'strength' || a.name !== name || a.status !== 'done' || !a.actual) continue;
+      const m = {};
+      for (const k of CARDIO_METRICS) if (isNum(a.actual[k.key])) m[k.key] = a.actual[k.key];
+      if (Object.keys(m).length) return { metrics: m, date: s.date, sessionId: s.id };
+    }
+  }
+  return null;
+}

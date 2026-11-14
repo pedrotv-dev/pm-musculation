@@ -169,6 +169,25 @@ export function restAudioCovers(endsAt) {
   if (!S.audio || !S.endsAt || S.failed || !endsAt || Math.abs(S.endsAt - endsAt) > 2000) return false;
   return S.audio.ended || (!S.audio.paused && S.audio.currentTime * 1000 >= S.beepAtMs - 1500);
 }
+/**
+ * Retours 13/11 (iPhone muet) : fin de repos au premier plan. Safari bloque un AudioContext créé hors geste et le
+ * coupe avec le bouton silencieux ; on rejoue donc la mélodie dans l'élément <audio> déjà débloqué au premier geste,
+ * en session « playback ». Renvoie false si l'élément n'est pas débloqué (le bip Web Audio sert alors de repli).
+ */
+export function playEndChime() {
+  if (typeof Audio !== 'function' || !S.unlocked || S.unlocking) return false;
+  const a = element(); if (!a) return false;
+  release();
+  try {
+    S.url = URL.createObjectURL(new Blob([buildRestWav(0)], { type: 'audio/wav' }));
+    sessionType('playback');
+    a.src = S.url; a.volume = 1; a.currentTime = 0;
+    const p = a.play();
+    if (p && typeof p.catch === 'function') p.catch(() => { sessionType('ambient'); });
+    return true;
+  } catch (_) { return false; }
+}
+
 /** Coupe tout (fin de séance, changement de profil). */
 export function stopRestAudio() { if (S.endsAt || S.url) release(); }
 
