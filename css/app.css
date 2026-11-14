@@ -464,3 +464,27 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 /* langue (premier écran) */
 .pm-lang-pick { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-size: .85rem; color: var(--muted, #9aa); margin-bottom: 8px; }
 .pm-lang-pick .pm-select { width: auto; min-height: 44px; }
+
+/* guide du mode Démo : zone éclairée + bulle */
+.pm-tour { position: fixed; inset: 0; z-index: 9000; }
+.pm-tour-spot { position: fixed; border-radius: 16px; box-shadow: 0 0 0 9999px rgba(4, 8, 10, .74); outline: 2px solid var(--mint, #2de2c3); transition: top .25s ease, left .25s ease, width .25s ease, height .25s ease; pointer-events: none; }
+.pm-tour-bubble { position: fixed; left: 16px; right: 16px; max-width: 420px; margin: 0 auto; background: var(--panel, #12191c); border: 1px solid var(--mint, #2de2c3); border-radius: 16px; padding: 14px 16px; box-shadow: 0 12px 32px rgba(0,0,0,.5); color: var(--text, #eef); }
+.pm-tour-count { margin: 0 0 4px; font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--mint, #2de2c3); }
+.pm-tour-text { margin: 0 0 12px; line-height: 1.45; }
+.pm-tour-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.pm-tour-actions .pm-validate { min-height: 44px; padding: 0 22px; width: auto; white-space: nowrap; }
+.pm-tour-skip { min-height: 44px; }
+.pm-tour-replay { display: inline-flex; align-items: center; justify-self: start; align-self: start; text-align: left; margin-top: 0; min-height: 44px; padding: 0; font-size: .85rem; }
+@media (prefers-reduced-motion: reduce) { .pm-tour-spot { transition: none; } }
+
+/* inscription : choix en cartes (libellé + explication), boutons Retour / Suivant toujours visibles */
+.pm-qs-chips:has(.pm-qs-card) { flex-direction: column; gap: 8px; }
+.pm-qs-card { display: grid; width: 100%; border-radius: 14px; border: 1px solid var(--ascent-rim, var(--stroke)); background: var(--surface); padding: 10px 14px; gap: 2px; }
+.pm-qs-card span { min-height: 0; padding: 0; border: 0; background: none; border-radius: 0; font-size: 15px; }
+.pm-qs-card .pm-qs-desc { color: var(--muted); font-size: 13px; line-height: 1.35; }
+.pm-qs-card:has(input:checked) { border-color: rgba(20,230,199,.75); background: rgba(20,230,199,.12); }
+.pm-qs-card input:checked + span { background: none; color: var(--turq); }
+.pm-qs-card:has(input:focus-visible) { outline: 3px solid var(--turq); outline-offset: 2px; }
+.pm-qs-card input:focus-visible + span { outline: none; }
+.pm-onboarding .pm-ob-actions { position: sticky; bottom: 0; z-index: 2; margin: 18px -16px -16px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg, #0b1012) 70%, transparent); }
+.pm-ob-actions .pm-secondary { min-height: 48px; padding: 0 18px; }

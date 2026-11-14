@@ -16,6 +16,12 @@ import { chips } from './quick-start.js';
 
 export const STEPS = 8;
 const DAY_SHORT = { lundi: 'Lun', mardi: 'Mar', mercredi: 'Mer', jeudi: 'Jeu', vendredi: 'Ven', samedi: 'Sam', dimanche: 'Dim' };
+// une ligne d'explication sous chaque choix (inscription)
+const GOAL_DESC = { 'Prise de muscle': 'Gagner du volume musculaire : 8 à 12 répétitions.', 'Perte de graisse': 'Muscu + cardio pour brûler plus, sans perdre de muscle.',
+  Renforcement: 'Être plus solide au quotidien, dos et articulations compris.', Force: 'Soulever plus lourd : séries courtes, charges lourdes.',
+  Endurance: 'Tenir plus longtemps : plus de répétitions, repos courts.', 'Remise en forme': 'Reprendre en douceur et retrouver la forme.' };
+const SENIORITY_DESC = { lt3m: 'Tu découvres les machines.', '3to12m': 'Tu connais les bases et tu progresses.', gt1y: 'Tu t’entraînes régulièrement depuis longtemps.' };
+const INTENSITY_DESC = { moderee: 'Tu finis chaque série avec de la marge.', soutenue: 'Ça pique sur les dernières répétitions.', elevee: 'Presque à fond à chaque série.' };
 const SAY = ['Salut ! Je suis Korv. On fait connaissance ?', 'Ton cap principal : je m’en souviendrai.', 'Depuis quand tu pousses de la fonte ?',
   'Ton ancienneté ne décide pas pour toi : l’intensité, c’est ton choix.', 'Quels jours tu viens à la salle ?', 'Combien de temps tu as, au maximum ?',
   'Et pour venir à la salle ?', 'Le reste est facultatif. Tu peux passer.'];
@@ -92,17 +98,17 @@ export function showOnboarding(root, profileId, { onDone } = {}) {
       add(actions, next('Suivant', async () => { const v = input.value.replace(/\s+/g, ' ').trim(); if (!v) throw new Error('Indique un prénom ou un pseudo.'); await updateProfile(profileId, { name: v }); }));
     } else if (n === 2) {
       title.textContent = 'Ton objectif principal';
-      const c = chips('Objectif principal', 'pm-ob-goal', GOALS.map(g => [g, g]), { value: mainGoalOf(sport) });
+      const c = chips('Objectif principal', 'pm-ob-goal', GOALS.map(g => [g, g, null, GOAL_DESC[g]]), { value: mainGoalOf(sport) });
       add(box, el('p', 'pm-muted', 'Tu pourras ajouter des objectifs secondaires plus tard, dans Réglages.'), c.box);
       add(actions, next('Suivant', async () => { const g = c.read(); if (!g) throw new Error('Choisis un objectif.'); await saveSport(profileId, { mainGoal: g, goals: sport.goals.filter(x => x !== g) }); }));
     } else if (n === 3) {
       title.textContent = 'Ton ancienneté en musculation';
-      const c = chips('Ancienneté', 'pm-ob-seniority', SENIORITY.map(([k, l]) => [k, l]), { value: sport.seniority });
+      const c = chips('Ancienneté', 'pm-ob-seniority', SENIORITY.map(([k, l]) => [k, l, null, SENIORITY_DESC[k]]), { value: sport.seniority });
       add(box, el('p', 'pm-muted', 'Elle règle la technique et la prudence de progression. Elle ne limite pas l’intensité : c’est l’étape suivante.'), c.box);
       add(actions, next('Suivant', async () => { const v = c.read(); if (!v) throw new Error('Choisis ton ancienneté.'); await saveSport(profileId, { seniority: v, level: LEVEL_OF_SENIORITY[v] }); }));
     } else if (n === 4) {
       title.textContent = 'L’intensité que tu veux';
-      const c = chips('Intensité souhaitée', 'pm-ob-intensity', INTENSITIES.map(([k, l]) => [k, l]), { value: sport.intensity || 'soutenue' });
+      const c = chips('Intensité souhaitée', 'pm-ob-intensity', INTENSITIES.map(([k, l]) => [k, l, null, INTENSITY_DESC[k]]), { value: sport.intensity || 'soutenue' });
       add(box, el('p', 'pm-muted', 'RPE : effort ressenti de 1 à 10. Hard (RPE 8-9) est possible même avec peu d’ancienneté.'), c.box);
       add(actions, next('Suivant', async () => { const v = c.read(); if (!v) throw new Error('Choisis une intensité.'); await saveSport(profileId, { intensity: v }); }));
     } else if (n === 5) {

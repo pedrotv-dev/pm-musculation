@@ -103,12 +103,12 @@ function weekCard(sessions, catalogList, sport) {
   };
   add(card, el('h3', '', 'Ma semaine'),
     bar('Jours de renforcement', f.strengthDays, 2, 'j'),
-    bar(trip ? 'Activité modérée (cardio + trajets)' : 'Cardio enregistré à la salle', f.cardioMinutes + trip * f.strengthDays, 150, 'min'));
+    bar(trip ? 'Activité modérée (cardio + trajets)' : 'Cardio enregistré à la salle', f.cardioMinutes + trip * f.strengthDays, sport?.mainGoal === 'Perte de graisse' ? 250 : 150, 'min'));
   if (sport?.mainGoal === 'Prise de muscle') {
     const names = { legs: 'Jambes', push: 'Poussée', pull: 'Tirage' };
     for (const k of ['legs', 'push', 'pull']) card.append(bar('Séries · ' + names[k], f.volume[k], 10, 'séries'));
   }
-  card.append(el('p', 'pm-week-src', 'Repères : OMS 2020 (renforcement ≥ 2 jours, 150 min d’activité modérée par semaine, marche et vélo compris)' + (sport?.mainGoal === 'Prise de muscle' ? ' ; Schoenfeld 2017 (≈ 10 séries par muscle et par semaine).' : '.')));
+  card.append(el('p', 'pm-week-src', 'Repères : OMS 2020 (renforcement ≥ 2 jours, 150 min d’activité modérée par semaine, marche et vélo compris)' + (sport?.mainGoal === 'Prise de muscle' ? ' ; Schoenfeld 2017 (≈ 10 séries par muscle et par semaine).' : sport?.mainGoal === 'Perte de graisse' ? ' ; ACSM 2009 (plus de 250 min par semaine pour perdre du poids).' : '.')));
   return card;
 }
 /** Séance libre (V2) : sans programme, machines ajoutées pendant la séance. */

@@ -236,6 +236,7 @@ export function homeHero(p, { name, seed = '', demo = false } = {}) {
   const h = el('h2', 'pm-hero-title', 'Salut ' + name + ' ');
   const wave = el('span', 'pm-hero-wave', '👋'); wave.setAttribute('aria-hidden', 'true'); h.append(wave);
   add(text, h, el('p', 'pm-hero-sub', demo ? 'Mode démo : tout est fictif et reste en mémoire.' : 'Prêt à continuer l’ascension ?'));
+  if (demo) { const replay = el('button', 'pm-link pm-tour-replay', 'Revoir le guide'); replay.type = 'button'; text.append(replay); }
   // Korv grand format (assets/ascent/korv-accueil-*.webp) ; si l'image manque : la mascotte habituelle
   const variant = streak >= 2 ? 'heureux' : streak === 1 && !p.streak.thisWeekDone ? 'motive' : 'neutre';
   const korv = el('div', 'pm-hero-korv');

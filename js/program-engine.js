@@ -60,6 +60,8 @@ export const siblingsOf = id => (Object.values(SLOTS).flat().find(alts => alts.i
 /** Séances type : liste de [rôle, nombre d'emplacements]. */
 const TEMPLATES = Object.freeze({
   full: { name: 'Corps entier', blocks: [['legs', 2], ['push', 2], ['pull', 2], ['core', 1]] },
+  // perte de graisse : musculation d'entretien (un gros exercice par groupe), le temps va au cardio [DON09][WIL12]
+  cardioFull: { name: 'Cardio + corps entier', blocks: [['legs', 1], ['push', 1], ['pull', 1], ['core', 1]] },
   upper: { name: 'Haut du corps', blocks: [['push', 3], ['pull', 3]] },
   lower: { name: 'Bas du corps', blocks: [['legs', 5], ['core', 1]] },
   push: { name: 'Poussée', blocks: [['push', 3], ['core', 1]] },
@@ -95,7 +97,7 @@ export function dosage(sport = {}) {
     'Prise de muscle': { sets: 3, low: 8, high: 12, restMain: 120, restAcc: 90 },
     Renforcement: { sets: 3, low: 8, high: 12, restMain: 120, restAcc: 90 },
     Endurance: { sets: 2, low: 15, high: 20, restMain: 60, restAcc: 45 },
-    'Perte de graisse': { sets: 3, low: 10, high: 15, restMain: 90, restAcc: 60 },
+    'Perte de graisse': { sets: 2, low: 10, high: 15, restMain: 90, restAcc: 60, cardioFirst: true },
     'Remise en forme': { sets: 3, low: 10, high: 15, restMain: 90, restAcc: 60 }
   })[sport.mainGoal] || { sets: 3, low: 8, high: 12, restMain: 120, restAcc: 90 };
   const d = { ...base };
@@ -104,7 +106,8 @@ export function dosage(sport = {}) {
   // par séance donnent le meilleur gain de force [RHE03]. L'intensité se règle par l'effort ressenti (RPE) choisi.
   if (sport.level === 'debutant' && sport.mainGoal !== 'Endurance') { d.low = 8; d.high = 12; }
   // OMS : 150 min d'aérobie modérée / semaine ; une partie à la salle, le reste (marche, vélo…) hors séance
-  d.weeklyCardio = ({ 'Perte de graisse': 150, Endurance: 150, 'Remise en forme': 150 })[sport.mainGoal] || 0;
+  // perte de graisse : plus de 250 min/sem pour une perte de poids nette [DON09] ; sinon 150 min (OMS) [WHO20]
+  d.weeklyCardio = ({ 'Perte de graisse': 250, Endurance: 150, 'Remise en forme': 150 })[sport.mainGoal] || 0;
   // trajet actif (marche, vélo) aller-retour, les jours de séance : compte dans l'activité modérée [WHO20]
   d.commuteWeekly = 0;
   if (ACTIVE_COMMUTES.includes(sport.commuteMode) && sport.commuteMin) d.commuteWeekly = sport.commuteMin * 2 * Math.max(1, Number(sport.frequency) || (sport.days || []).length || 1);
@@ -202,13 +205,17 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
   notes.push('Effort visé à chaque série : ' + (effort ? effort[1].replace(/^[^—]*— /, '') : 'RPE 7-8 (2 à 3 répétitions en réserve)')
     + '. Si tu fais plus de répétitions que prévu à cet effort, la charge montera à la séance suivante.');
   if (!(sport.days && sport.days.length)) notes.push('Aucun jour disponible renseigné : lundi, mercredi, vendredi par défaut.');
-  const split = splitFor(days.length, sport.level);
   const dose = dosage(sport);
+  const split = dose.cardioFirst ? Array(days.length).fill('cardioFull') : splitFor(days.length, sport.level);
   const maxMin = Number(sport.durationMin) || 60;
   const parity = weekParity(weekStart);
   const seen = new Map(); // template -> nombre d'occurrences (variante A / B au sein de la semaine)
   const warm = cardio.find(m => m.id === 'recumbent-bike') || cardio.find(m => m.id === 'elliptical') || cardio[0] || null;
-  const finisher = cardio.find(m => m.id === 'rowing-machine') || cardio.find(m => m.id === 'treadmill') || warm;
+  // cardio de fin : la machine que la personne fait le plus (séances terminées), sinon rameur, tapis, échauffement
+  const usedCardio = new Map();
+  for (const ses of sessions) for (const a of ses.activities || []) if (a.type === 'cardio' && a.status === 'done' && a.name) usedCardio.set(a.name, (usedCardio.get(a.name) || 0) + 1);
+  const favourite = [...usedCardio].sort((a, b) => b[1] - a[1]).map(([n]) => cardio.find(m => m.name === n)).find(Boolean);
+  const finisher = favourite || cardio.find(m => m.id === 'rowing-machine') || cardio.find(m => m.id === 'treadmill') || warm;
   const plan = [];
   let trimmed = 0;
 
@@ -236,8 +243,14 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
     // durée maximale : on garde d'abord le premier exercice de chaque groupe, puis le deuxième… jusqu'au budget
     // la musculation passe d'abord (renforcement ≥ 2 j/sem, OMS) ; le cardio prend le temps restant, jusqu'à sa part
     // de l'objectif hebdomadaire ; le reste se fait hors de la salle (marche, vélo…)
-    const cardioTarget = finisher && dose.weeklyCardio ? Math.min(30, Math.round(dose.weeklyCardio / days.length / 5) * 5) : 0;
-    const cardioFloor = cardioTarget ? 10 : 0;
+    // perte de graisse : le cardio passe d'abord (jusqu'à 60 min), la musculation d'entretien garde au moins
+    // un exercice par groupe (renforcement ≥ 2 j/sem, OMS) [DON09][WIL12][WHO20]
+    const perDay = dose.weeklyCardio ? Math.ceil(dose.weeklyCardio / days.length / 5) * 5 : 0;
+    const strengthNeed = dose.cardioFirst ? cands.filter(c => c.rank === 0).reduce((n, c) => n + c.min, 0) : 0;
+    const cardioTarget = !finisher || !dose.weeklyCardio ? 0 : dose.cardioFirst
+      ? Math.max(10, Math.min(60, perDay, Math.floor((maxMin - (warm ? 6 : 0) - strengthNeed - 1) / 5) * 5)) // +1 min de transition par activité (estimateDayMinutes)
+      : Math.min(30, Math.round(dose.weeklyCardio / days.length / 5) * 5);
+    const cardioFloor = dose.cardioFirst ? cardioTarget : cardioTarget ? 10 : 0;
     let budget = maxMin - (warm ? 5 : 0) - cardioFloor;
     const keep = new Set();
     for (const c of [...cands].sort((x, y) => x.rank - y.rank || x.b - y.b)) {
@@ -270,8 +283,11 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
     const low = Object.entries(volume).filter(([r, n]) => r !== 'core' && n < 10).map(([r, n]) => ROLE_LABEL[r] + ' ' + n);
     if (low.length) notes.push('Volume sous ~10 séries par semaine, repère des études sur la prise de muscle : ' + low.join(', ') + '. Plus de temps par séance ou une séance de plus aiderait.');
   }
-  if (dose.commuteWeekly) notes.push(`Trajet ${sport.commuteMode === 'velo' ? 'à vélo' : 'à pied'} : ${dose.commuteWeekly} min par semaine (aller-retour), comptées dans les 150 min d'activité modérée recommandées par l'OMS.`);
-  if (dose.weeklyCardio && cardioWeek < dose.weeklyCardio) notes.push(`Cardio à la salle : ${cardioWeek} min. Pour atteindre les 150 min de l'OMS${dose.commuteWeekly ? ' avec ton trajet' : ''}, complète avec ${dose.weeklyCardio - cardioWeek} min (marche rapide, vélo…).`);
+  if (dose.commuteWeekly) notes.push(`Trajet ${sport.commuteMode === 'velo' ? 'à vélo' : 'à pied'} : ${dose.commuteWeekly} min par semaine (aller-retour), comptées dans ton objectif d'activité de la semaine (OMS : le transport actif compte).`);
+  const goalMin = dose.cardioFirst ? 250 : 150;
+  const goalSrc = dose.cardioFirst ? 'recommandées pour perdre du poids (ACSM)' : 'de l\'OMS';
+  if (dose.cardioFirst) notes.push('Perte de graisse : le cardio passe en premier, la musculation (un exercice par groupe, 2 séries) sert à garder ton muscle.');
+  if (dose.weeklyCardio && cardioWeek < dose.weeklyCardio) notes.push(`Cardio à la salle : ${cardioWeek} min. Pour atteindre les ${goalMin} min ${goalSrc}${dose.commuteWeekly ? ' avec ton trajet' : ''}, complète avec ${dose.weeklyCardio - cardioWeek} min (marche rapide, vélo…).`);
   const summary = { volume, cardioWeek, commuteWeekly: dose.commuteWeekly };
   if (trimmed) notes.push(`Séances de ${maxMin} min : ${trimmed} exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps.`);
   const unknown = plan.filter(p => p.reason === 'unknown').map(p => byId.get(p.machineId)?.name || p.machineId);
