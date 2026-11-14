@@ -447,3 +447,16 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 
 /* retours 13/11 : réordonner les machines avant la première série */
 .pm-reorder-cta { width: 100%; margin-top: 12px; }
+
+/* V3 · éditeur de programme */
+.pm-editor { margin-top: 14px; }
+.pm-editor-body { display: grid; gap: 12px; padding-top: 10px; }
+.pm-ed-day { border: 1px solid var(--line, rgba(255,255,255,.12)); border-radius: 14px; padding: 12px; display: grid; gap: 10px; }
+.pm-ed-dayhead { display: grid; gap: 6px; }
+.pm-ed-dayhead h3 { margin: 0; }
+.pm-ed-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.pm-ed-item { display: grid; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--line, rgba(255,255,255,.08)); }
+.pm-ed-itemhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pm-ed-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.pm-ed-cell { display: grid; gap: 4px; font-size: .8rem; color: var(--muted, #9aa); }
+.pm-ed-num { width: 100%; min-height: 44px; text-align: center; }

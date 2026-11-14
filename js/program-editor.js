@@ -19,9 +19,12 @@ const DAY_LABEL = { lundi: 'Lundi', mardi: 'Mardi', mercredi: 'Mercredi', jeudi:
 export const newStrength = machineId => ({ type: 'strength', machineId, shared: false, restSeconds: 90, sets: [{ kg: 0, reps: 10 }, { kg: 0, reps: 10 }, { kg: 0, reps: 10 }] });
 export const newCardio = (name, durationMinutes = 10, type = 'cardio') => ({ type, name, durationMinutes });
 
-/** Brouillon modifiable à partir d'un programme enregistré (copie : l'original n'est jamais touché). */
+/**
+ * Brouillon modifiable à partir d'un programme (copie : l'original n'est jamais touché). Accepte la forme enregistrée
+ * (`{days}`, js/programs.js) et le format d'import (`{programs: {[profil]: {days}}}`).
+ */
 export function draftFrom(program, profileId) {
-  const days = program?.programs?.[profileId]?.days;
+  const days = program?.programs?.[profileId]?.days ?? program?.days;
   return { days: Array.isArray(days) ? JSON.parse(JSON.stringify(days)) : [] };
 }
 

@@ -13,6 +13,7 @@ import { getDemoProgram } from './workouts.js';
 import { el as node, add, clear as wipe, btn } from './dom.js';
 import { loadCatalog } from './catalog.js';
 import { coachSection } from './coach-ui.js';
+import { programEditor } from './program-editor.js';
 import { isPerSide } from './machine-rules.js';
 import { metricsText } from './cardio.js';
 import { PROFILE_STORAGE_KEY, isKnownProfile, isRealProfile, getProfileInfo } from './profiles.js';
@@ -131,7 +132,7 @@ const fileName = node('span', 'pm-file-choice', 'Aucun fichier sélectionné');
 const tip = node('p', 'pm-info', 'Programme calculé par l’appli ou fichier de programme (JSON) : seul le bloc JSON est lu.');
 const importContent = node('div', 'pm-import-content');
 // semaine calculée : saisie manuelle masquée, mais toujours accessible d'un appui
-const manualBtn = btn('Importer un fichier ou un JSON à la place', 'pm-link pm-import-manual', () => { importCard.dataset.source = ''; resetPreview(); paste.focus(); });
+const manualBtn = btn('Importer un fichier ou un JSON à la place', 'pm-link pm-import-manual', () => { importCard.dataset.source = ''; state.origin = null; resetPreview(); paste.focus(); });
 const inputArea = node('div', 'pm-input-grid');
 const actionArea = node('div', 'pm-actions');
 
@@ -182,7 +183,7 @@ add(infoCard, weekHeader, historyView);
 // « Préparer ma semaine » est ici, juste au-dessus de l'import :
 // préparer, copier, coller et importer se font dans le même onglet.
 const coachSlot = node('div', 'pm-coach-slot');
-const drawCoach = () => { coachSlot.replaceChildren(...(isKnownProfile(state.profile) ? [coachSection(state.profile)] : [])); };
+const drawCoach = () => { coachSlot.replaceChildren(...(isKnownProfile(state.profile) ? [coachSection(state.profile)] : []), ...(isRealProfile(state.profile) ? [programEditor(state.profile)] : [])); };
 parent.replaceChildren(node('div', 'eyebrow', 'Entraînement'), node('h2', '', 'Programme'),
   node('p', 'description', 'Choisis une journée pour consulter les exercices, charges et répétitions.'),
   infoCard, coachSlot, importCard);
@@ -449,7 +450,7 @@ async function saveImport() {
     const sport = await getSportProfile(profile).catch(() => null);
     const issues = sport ? frequencyIssues(state.preview.program.days.map(d => d.id), sport, { weekStart, currentMonday: mondayOf() }) : [];
     if (!sameProfile(profile, generation) || !state.preview) return;
-    if (issues.length && !(await confirmDialog(issues.join(' ') + ' Le programme ne respecte pas ta fréquence. Refuser (et recalculer un programme complet), ou l’importer quand même à titre d’exception ?', { title: 'Programme incomplet', ok: 'Importer quand même (exception)', cancel: 'Refuser ce programme' }))) {
+    if (issues.length && state.origin !== 'editor' && !(await confirmDialog(issues.join(' ') + ' Le programme ne respecte pas ta fréquence. Refuser (et recalculer un programme complet), ou l’importer quand même à titre d’exception ?', { title: 'Programme incomplet', ok: 'Importer quand même (exception)', cancel: 'Refuser ce programme' }))) {
       notify('Import refusé : programme incomplet. Recalcule ta semaine avec les ' + sport.frequency + ' séances prévues.', 'info'); return;
     }
     if (!sameProfile(profile, generation) || !state.preview) return;
@@ -547,7 +548,8 @@ document.addEventListener('pm:import-text', event => {
   if (importCard.hidden) return;
   const text = String(event.detail?.text || '');
   importCard.open = true;
-  importCard.dataset.source = event.detail?.source === 'engine' && text ? 'engine' : '';
+  state.origin = event.detail?.source || null; // 'editor' : jours choisis par l'utilisateur, pas de refus de fréquence
+  importCard.dataset.source = ['engine', 'editor'].includes(event.detail?.source) && text ? 'engine' : ''; // saisie manuelle masquée
   if (!text) { paste.focus(); paste.scrollIntoView({ block: 'center' }); return; }
   paste.value = text; state.source = null; fileInput.value = ''; fileName.textContent = 'Aucun fichier sélectionné';
   resetPreview();

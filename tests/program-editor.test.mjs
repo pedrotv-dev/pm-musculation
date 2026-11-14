@@ -33,4 +33,5 @@ test('à partir d’un programme existant : copie, l’original reste intact', (
   d.days[0].activities.pop();
   assert.equal(orig.programs.x.days[0].activities.length, 1);
   assert.deepEqual(E.draftFrom(null, 'x'), { days: [] });
+  assert.equal(E.draftFrom({ days: orig.programs.x.days }, 'x').days[0].id, 'mardi', 'forme enregistrée');
 });
