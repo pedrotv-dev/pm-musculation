@@ -139,8 +139,10 @@ export function showOnboarding(root, profileId, { onDone } = {}) {
       commuteMin.append(new Option('Choisir', ''), ...COMMUTE_MINUTES.map(m => new Option(m + ' min', String(m))));
       commuteMin.value = sport.commuteMin ? String(sport.commuteMin) : '';
       const ml = el('label', 'pm-coach-label', 'Durée du trajet (aller)'); ml.htmlFor = commuteMin.id;
-      const minField = add(el('div', 'pm-coach-field'), ml, commuteMin,
-        el('p', 'pm-muted pm-qs-hint', 'Compté dans tes 150 min d’activité modérée de la semaine (OMS) : moins de cardio à faire à la salle.'));
+      const pace = el('input'); pace.type = 'checkbox'; pace.id = 'pm-ob-commute-moderate'; pace.checked = sport.commuteModerate === true;
+      const paceL = add(el('label', 'pm-check'), pace, document.createTextNode(' Allure au moins modérée (je peux parler mais pas chanter)'));
+      const minField = add(el('div', 'pm-coach-field'), ml, commuteMin, paceL,
+        el('p', 'pm-muted pm-qs-hint', 'Si l’allure est au moins modérée, le trajet compte dans tes 150 min d’activité de la semaine (OMS). Sinon il est affiché comme trajet actif.'));
       const sync = () => { minField.hidden = !ACTIVE_COMMUTES.includes(commute.read()); };
       commute.row.addEventListener('change', sync); sync();
       add(box, el('p', 'pm-muted', 'À pied ou à vélo, ton trajet est déjà de l’exercice : il est pris en compte dans le calcul de ta semaine.'), commute.box, minField);
@@ -148,7 +150,7 @@ export function showOnboarding(root, profileId, { onDone } = {}) {
         const mode = commute.read(); if (!mode) throw new Error('Choisis ton moyen de transport.');
         const active = ACTIVE_COMMUTES.includes(mode);
         if (active && !commuteMin.value) throw new Error('Indique la durée du trajet.');
-        await saveSport(profileId, { commuteMode: mode, commuteMin: active ? commuteMin.value : '' });
+        await saveSport(profileId, { commuteMode: mode, commuteMin: active ? commuteMin.value : '', commuteModerate: active ? pace.checked : null });
       }));
     } else {
       title.textContent = 'Pour aller plus loin (facultatif)';

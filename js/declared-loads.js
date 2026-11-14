@@ -91,7 +91,7 @@ export function currentReference(sessions, declared, machineId, { excludeId = nu
   const real = lastPerformance(sessions, machineId, { excludeId });
   const d = declared?.machines?.[machineId] || null;
   const dDate = d && d.at ? d.at.slice(0, 10) : '';
-  if (real && (!d || real.date >= dDate)) return { source: 'real', kg: real.kg, reps: real.reps, date: real.date };
+  if (real && (!d || real.date >= dDate)) return { source: 'real', kg: real.kg, reps: real.reps, date: real.date, sets: real.sets };
   if (d) return { source: 'declared', kg: d.kg, reps: d.reps, date: dDate || null };
   return null;
 }

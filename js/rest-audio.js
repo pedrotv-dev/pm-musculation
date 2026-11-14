@@ -65,8 +65,16 @@ function sessionType(type) {
 }
 /** Écran maintenu allumé et page visible : le fichier « silence + bips » n'apporte rien et baisserait la musique. */
 export function restAudioNeeded() {
+  // iPhone / iPad : Safari refuse de lancer un son une fois l'écran verrouillé (page cachée) ; le fichier doit donc
+  // démarrer AU DÉBUT du repos, écran allumé, pour sonner écran verrouillé (retours 14/11)
+  if (isIOS()) return true;
   const visible = typeof document === 'undefined' || !document.visibilityState || document.visibilityState === 'visible';
   return !(visible && isAwakeActive());
+}
+/** iPhone, iPad (y compris iPad « bureau » : Mac tactile). */
+export function isIOS() {
+  if (typeof navigator === 'undefined') return false;
+  return /iPhone|iPad|iPod/.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }
 const SILENT_CLIP = () => URL.createObjectURL(new Blob([buildRestWav(0.05)], { type: 'audio/wav' }));
 
@@ -180,7 +188,7 @@ export function playEndChime() {
   release();
   try {
     S.url = URL.createObjectURL(new Blob([buildRestWav(0)], { type: 'audio/wav' }));
-    sessionType('playback');
+    sessionType('transient'); // Safari : la musique d'une autre appli baisse pendant les bips puis reprend
     a.src = S.url; a.volume = 1; a.currentTime = 0;
     const p = a.play();
     if (p && typeof p.catch === 'function') p.catch(() => { sessionType('ambient'); });

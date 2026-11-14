@@ -93,7 +93,8 @@ function welcomeCard(profile) {
 function weekCard(sessions, catalogList, sport) {
   const f = weekFacts(sessions, catalogList, mondayOf());
   // trajet à pied ou à vélo (aller-retour), compté les jours de séance enregistrés (OMS 2020 : transport actif)
-  const trip = ACTIVE_COMMUTES.includes(sport?.commuteMode) && sport?.commuteMin ? sport.commuteMin * 2 : 0;
+  // trajet compté seulement si l'allure est confirmée au moins modérée (OMS) ; sinon simple trajet actif, non compté
+  const trip = ACTIVE_COMMUTES.includes(sport?.commuteMode) && sport?.commuteMin && sport?.commuteModerate === true ? sport.commuteMin * 2 : 0;
   const card = el('article', 'panel pm-week-card');
   const bar = (label, value, target, unit) => {
     const pct = Math.min(100, Math.round(value / target * 100));

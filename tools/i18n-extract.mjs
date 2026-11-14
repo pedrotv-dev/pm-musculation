@@ -18,12 +18,42 @@ const keep = s => {
   if (/\b(const|let|function|return|await|throw new)\b|\)\s*=>|\);|\w\.\w+\(/.test(t)) return;
   out.add(t);
 };
-const lit = /'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`((?:[^`\\$]|\\.|\$(?!\{))*)`/g;
-for (const f of files) {
-  const src = fs.readFileSync(root + f, 'utf8').replace(/^\s*(\/\/|\*|\/\*\*).*$/gm, ''); // commentaires de ligne
-  for (const m of src.matchAll(lit)) keep(m[1] ?? m[2] ?? m[3] ?? '');
-  for (const m of src.matchAll(/`((?:[^`\\]|\\.)*)`/g)) for (const part of m[1].split(/\$\{[^}]*\}/)) keep(part); // morceaux des gabarits
+/** Littéraux de chaîne d'un fichier JS (' " et gabarits ` découpés autour des ${…}), commentaires ignorés. */
+function literals(src) {
+  const found = [];
+  let i = 0;
+  const n = src.length;
+  const readQuoted = q => { let out = ''; i++; while (i < n && src[i] !== q && src[i] !== '\n') { if (src[i] === '\\') { out += src[i] + (src[i + 1] || ''); i += 2; continue; } out += src[i++]; } i++; return out; };
+  const readTemplate = () => { // renvoie les morceaux de texte ; saute les ${ … } (accolades imbriquées)
+    let part = ''; i++;
+    while (i < n && src[i] !== '`') {
+      if (src[i] === '\\') { part += src[i] + (src[i + 1] || ''); i += 2; continue; }
+      if (src[i] === '$' && src[i + 1] === '{') {
+        found.push(part); part = ''; i += 2; let depth = 1;
+        while (i < n && depth) {
+          const c = src[i];
+          if (c === "'" || c === '"') { found.push(readQuoted(c)); continue; }
+          if (c === '`') { readTemplate(); continue; }
+          if (c === '{') depth++; else if (c === '}') depth--;
+          i++;
+        }
+        continue;
+      }
+      part += src[i++];
+    }
+    i++; found.push(part);
+  };
+  while (i < n) {
+    const c = src[i], d = src[i + 1];
+    if (c === '/' && d === '/') { while (i < n && src[i] !== '\n') i++; continue; }
+    if (c === '/' && d === '*') { const e = src.indexOf('*/', i + 2); i = e < 0 ? n : e + 2; continue; }
+    if (c === "'" || c === '"') { found.push(readQuoted(c)); continue; }
+    if (c === '`') { readTemplate(); continue; }
+    i++;
+  }
+  return found;
 }
+for (const f of files) for (const t of literals(fs.readFileSync(root + f, 'utf8'))) keep(t);
 const html = fs.readFileSync(root + 'index.html', 'utf8').replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<!--[\s\S]*?-->/g, '');
 for (const m of html.matchAll(/>([^<]+)</g)) keep(m[1].replace(/\s+/g, ' '));
 for (const m of html.matchAll(/(?:aria-label|placeholder|title|alt)="([^"]+)"/g)) keep(m[1]);
