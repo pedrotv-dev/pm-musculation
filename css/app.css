@@ -464,3 +464,15 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 /* langue (premier écran) */
 .pm-lang-pick { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-size: .85rem; color: var(--muted, #9aa); margin-bottom: 8px; }
 .pm-lang-pick .pm-select { width: auto; min-height: 44px; }
+
+/* guide du mode Démo : zone éclairée + bulle */
+.pm-tour { position: fixed; inset: 0; z-index: 9000; }
+.pm-tour-spot { position: fixed; border-radius: 16px; box-shadow: 0 0 0 9999px rgba(4, 8, 10, .74); outline: 2px solid var(--mint, #2de2c3); transition: top .25s ease, left .25s ease, width .25s ease, height .25s ease; pointer-events: none; }
+.pm-tour-bubble { position: fixed; left: 16px; right: 16px; max-width: 420px; margin: 0 auto; background: var(--panel, #12191c); border: 1px solid var(--mint, #2de2c3); border-radius: 16px; padding: 14px 16px; box-shadow: 0 12px 32px rgba(0,0,0,.5); color: var(--text, #eef); }
+.pm-tour-count { margin: 0 0 4px; font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--mint, #2de2c3); }
+.pm-tour-text { margin: 0 0 12px; line-height: 1.45; }
+.pm-tour-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.pm-tour-actions .pm-validate { min-height: 44px; padding: 0 22px; width: auto; white-space: nowrap; }
+.pm-tour-skip { min-height: 44px; }
+.pm-tour-replay { display: inline-block; justify-self: start; align-self: start; text-align: left; margin-top: 4px; min-height: 32px; padding: 0; font-size: .85rem; }
+@media (prefers-reduced-motion: reduce) { .pm-tour-spot { transition: none; } }
