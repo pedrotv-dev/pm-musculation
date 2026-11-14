@@ -53,7 +53,7 @@ test('aperçu : le même code, servi sous /preview/, prend d\'autres noms (base,
   assert.deepEqual([manifest.name, manifest.short_name], ['PM Musculation (aperçu)', 'PM Aperçu']);
   for (const dropped of ['tests', 'docs', 'tools', '.github', 'Ui', 'README.md', 'package.json']) assert.ok(!fs.existsSync(path.join(out, dropped)), dropped + ' ne doit pas être dans l\'aperçu');
   const shipped = fs.readdirSync(out).sort();
-  assert.deepEqual(shipped, ['assets', 'css', 'data', 'index.html', 'js', 'manifest.webmanifest', 'preview-info.json', 'storage.js', 'sw.js']);
+  assert.deepEqual(shipped, ['assets', 'css', 'data', 'i18n', 'index.html', 'js', 'manifest.webmanifest', 'preview-info.json', 'storage.js', 'sw.js']);
   // tout ce que le service worker précache est bien présent dans l'aperçu (hors ligne complet)
   const sw = fs.readFileSync(path.join(out, 'sw.js'), 'utf8');
   for (const f of [...sw.match(/const PRECACHE = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]).filter(f => f !== './')) assert.ok(fs.existsSync(path.join(out, f)), 'précaché mais absent de l\'aperçu : ' + f);

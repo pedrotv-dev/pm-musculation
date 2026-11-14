@@ -460,3 +460,7 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-ed-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .pm-ed-cell { display: grid; gap: 4px; font-size: .8rem; color: var(--muted, #9aa); }
 .pm-ed-num { width: 100%; min-height: 44px; text-align: center; }
+
+/* langue (premier écran) */
+.pm-lang-pick { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-size: .85rem; color: var(--muted, #9aa); margin-bottom: 8px; }
+.pm-lang-pick .pm-select { width: auto; min-height: 44px; }

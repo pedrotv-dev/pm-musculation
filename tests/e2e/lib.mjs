@@ -32,6 +32,9 @@ export async function launch(opts = {}) {
   if (opts.storageState) throw new Error('Les tests doivent démarrer sans état navigateur préexistant.');
   const browser = await chromium.launch();
   await diagnostics.instrument(browser);
+  // téléphone en français par défaut (l'appli suit la langue du téléphone ; tests de l'anglais : locale explicite)
+  const newContext = browser.newContext.bind(browser);
+  browser.newContext = (o = {}) => newContext({ locale: 'fr-FR', ...o });
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, ...opts });
   return { browser, context };
 }

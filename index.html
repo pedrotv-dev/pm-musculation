@@ -45,6 +45,8 @@
     <main id="main-content">
       <section id="screen-select" aria-labelledby="select-title">
         <!-- V2-UX-FINALISATION : aucun profil précréé. Titre et texte adaptés par js/app.js (installation neuve ou profils) -->
+        <label class="pm-lang-pick" for="pm-first-lang"><span>Langue · Language</span>
+          <select class="pm-select" id="pm-first-lang" data-pm-lang><option value="fr">Français</option><option value="en">English</option></select></label>
         <h2 id="select-title">Bienvenue sur PM Musculation</h2>
         <p class="description" id="select-intro">Crée ton profil en quelques étapes, ou essaie le mode Démo avec des données fictives. Tout reste sur ce téléphone : aucun compte.</p>
         <!-- Profils historiques : affichés SEULEMENT s'ils existent sur cet appareil (ancienne installation migrée) -->
@@ -102,6 +104,7 @@
 
   <!-- app.js doit rester le premier module : il fixe le profil actif avant les autres. -->
   <script type="module" src="./js/app.js"></script>
+  <script type="module" src="./js/i18n.js"></script>
   <script type="module" src="./js/program-ui.js"></script>
   <script type="module" src="./js/home-ui.js"></script>
   <script type="module" src="./js/workout-ui.js"></script>
