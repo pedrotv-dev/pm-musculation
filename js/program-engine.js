@@ -27,6 +27,7 @@ import { lastPerformance, knownLoads, isAssisted } from './last-loads.js';
 import { currentReference } from './declared-loads.js';
 import { stepWeight } from './machine-rules.js';
 import { ACTIVE_COMMUTES, INTENSITIES } from './sport-profile.js';
+import { activitySeconds, daySeconds } from './session-time.js';
 
 export const ENGINE_VERSION = 1;
 const DAY_ORDER = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
@@ -54,6 +55,17 @@ const SLOTS = Object.freeze({
 /** Exercices polyarticulaires (gros exercices) : repos plus long ; les autres sont des accessoires. */
 const COMPOUND = new Set(['chest-press', 'converging-chest-press', 'shoulder-press', 'converging-shoulder-press', 'lat-pulldown',
   'diverging-lat-pulldown', 'seated-row', 'diverging-seated-row', 'leg-press', 'dip-chin-assist', 'seated-dip']);
+/** Muscle travaillé en direct (sinon muscleGroup du catalogue) et muscles secondaires des polyarticulaires. */
+const MUSCLE_OF = { 'leg-press': 'Quadriceps', 'leg-extension': 'Quadriceps', 'seated-leg-curl': 'Ischios', 'prone-leg-curl': 'Ischios',
+  'hip-abduction-open-close': 'Fessiers', 'hip-abduction-close-open': 'Fessiers', 'rotary-hip': 'Fessiers', 'calf-press': 'Mollets',
+  'lat-pulldown': 'Dos', 'diverging-lat-pulldown': 'Dos', 'seated-row': 'Dos', 'diverging-seated-row': 'Dos', 'back-extension': 'Lombaires',
+  'chest-press': 'Pectoraux', 'converging-chest-press': 'Pectoraux', 'shoulder-press': 'Épaules', 'converging-shoulder-press': 'Épaules',
+  'seated-dip': 'Triceps', 'triceps-extension': 'Triceps', 'arm-curl': 'Biceps', 'rear-delt-pec-fly': 'Épaules', 'dip-chin-assist': 'Dos',
+  abdominal: 'Abdominaux', 'rotary-torso': 'Abdominaux' };
+const INDIRECT = { 'leg-press': ['Fessiers', 'Ischios'], 'chest-press': ['Épaules', 'Triceps'], 'converging-chest-press': ['Épaules', 'Triceps'],
+  'shoulder-press': ['Triceps'], 'converging-shoulder-press': ['Triceps'], 'seated-dip': ['Pectoraux', 'Épaules'],
+  'lat-pulldown': ['Biceps'], 'diverging-lat-pulldown': ['Biceps'], 'seated-row': ['Biceps', 'Épaules'], 'diverging-seated-row': ['Biceps', 'Épaules'],
+  'dip-chin-assist': ['Biceps'] };
 /** Machines interchangeables (même emplacement) : point de départ quand l'une n'a pas encore d'historique. */
 export const siblingsOf = id => (Object.values(SLOTS).flat().find(alts => alts.includes(id)) || []).filter(x => x !== id);
 
@@ -61,7 +73,7 @@ export const siblingsOf = id => (Object.values(SLOTS).flat().find(alts => alts.i
 const TEMPLATES = Object.freeze({
   full: { name: 'Corps entier', blocks: [['legs', 2], ['push', 2], ['pull', 2], ['core', 1]] },
   // perte de graisse : musculation d'entretien (un gros exercice par groupe), le temps va au cardio [DON09][WIL12]
-  cardioFull: { name: 'Cardio + corps entier', blocks: [['legs', 1], ['push', 1], ['pull', 1], ['core', 1]] },
+  cardioFull: { name: 'Cardio + corps entier', blocks: [['legs', 2], ['push', 1], ['pull', 1], ['core', 1]] },
   upper: { name: 'Haut du corps', blocks: [['push', 3], ['pull', 3]] },
   lower: { name: 'Bas du corps', blocks: [['legs', 5], ['core', 1]] },
   push: { name: 'Poussée', blocks: [['push', 3], ['core', 1]] },
@@ -93,7 +105,8 @@ export function splitFor(count, level) { // eslint-disable-line no-unused-vars
  */
 export function dosage(sport = {}) {
   const base = ({
-    Force: { sets: 4, low: 4, high: 6, restMain: 180, restAcc: 120 },
+    // force : lourd sur les gros exercices ; assistance (isolation, abdos) en 8-12, repos 2 min [ACSM09]
+    Force: { sets: 4, low: 4, high: 6, restMain: 180, restAcc: 120, accLow: 8, accHigh: 12 },
     'Prise de muscle': { sets: 3, low: 8, high: 12, restMain: 120, restAcc: 90 },
     Renforcement: { sets: 3, low: 8, high: 12, restMain: 120, restAcc: 90 },
     Endurance: { sets: 2, low: 15, high: 20, restMain: 60, restAcc: 45 },
@@ -111,7 +124,9 @@ export function dosage(sport = {}) {
   // trajet actif (marche, vélo) aller-retour, les jours de séance : compte dans l'activité modérée [WHO20]
   d.commuteWeekly = 0;
   if (ACTIVE_COMMUTES.includes(sport.commuteMode) && sport.commuteMin) d.commuteWeekly = sport.commuteMin * 2 * Math.max(1, Number(sport.frequency) || (sport.days || []).length || 1);
-  if (d.weeklyCardio) d.weeklyCardio = Math.max(0, d.weeklyCardio - d.commuteWeekly);
+  // trajet actif compté dans l'activité modérée SEULEMENT si l'allure est modérée (confirmée par l'utilisateur) [WHO20]
+  d.commuteCounted = sport.commuteModerate === true ? d.commuteWeekly : 0;
+  if (d.weeklyCardio) d.weeklyCardio = Math.max(0, d.weeklyCardio - d.commuteCounted);
   // compatibilité : repos « moyen »
   d.rest = d.restMain;
   return d;
@@ -159,14 +174,34 @@ export function proposeLoad(machineId, { sessions = [], declared = null, low, hi
   const known = knownLoads(sessions, machineId);
   const feel = lastFeel(sessions, machineId);
   const assisted = isAssisted(machineId);
-  if (ref.source === 'real' && feel !== 'hard' && ref.reps >= high) {
-    const next = stepWeight(ref.kg, known.length ? known : [ref.kg], assisted ? -1 : 1);
-    return { kg: next, reason: 'progression', from: ref.kg };
-  }
-  if (ref.source === 'real' && (feel === 'hard' || ref.reps < low - 2) && known.length > 1) {
-    return { kg: stepWeight(ref.kg, known, assisted ? 1 : -1), reason: 'lighter', from: ref.kg };
+  if (ref.source === 'real') {
+    // double progression [ACSM09] : décidée sur TOUTES les séries de travail faites à la charge de référence
+    // (pas la meilleure seule : 12/12/11 pour une cible de 12 ne déclenche pas de hausse)
+    const work = (ref.sets || []).filter(x => x.kg === ref.kg && !x.side);
+    const sideWork = (ref.sets || []).filter(x => x.kg === ref.kg);
+    const reps = (work.length ? work : sideWork).map(x => x.reps);
+    const minReps = reps.length ? Math.min(...reps) : ref.reps;
+    if (feel !== 'hard' && minReps >= high) {
+      const next = stepWeight(ref.kg, known.length ? known : [ref.kg], assisted ? -1 : 1);
+      if (assisted) return { kg: next, reason: 'progression', from: ref.kg };
+      const pct = Math.round((next / ref.kg - 1) * 100);
+      // cran réel de la machine : la hausse n'est retenue que si elle garde dans la fourchette (répétitions estimées
+      // à la nouvelle charge, équation d'Epley [EPL85]) ; sinon on progresse en répétitions à charge stable [PLO22]
+      const est = epleyReps(ref.kg, minReps, next);
+      if (est >= low) return { kg: next, reason: 'progression', from: ref.kg, pct };
+      return { kg: ref.kg, reason: 'reps', from: ref.kg, reps: Math.min(30, minReps + 1), nextKg: next, pct };
+    }
+    if ((feel === 'hard' || ref.reps < low - 2) && known.length > 1) {
+      return { kg: stepWeight(ref.kg, known, assisted ? 1 : -1), reason: 'lighter', from: ref.kg };
+    }
   }
   return { kg: ref.kg, reason: ref.source === 'declared' ? 'declared' : 'same' };
+}
+
+/** Répétitions estimées à `toKg` pour quelqu'un qui fait `reps` à `kg` (Epley : 1RM = kg × (1 + reps/30)) [EPL85]. */
+export function epleyReps(kg, reps, toKg) {
+  if (!(kg > 0) || !(toKg > 0)) return 0;
+  return Math.floor(30 * (kg * (1 + reps / 30) / toKg - 1));
 }
 
 /** Dernier ressenti noté pour cette machine (« easy » | « ok » | « hard » | null). */
@@ -184,7 +219,7 @@ export function lastFeel(sessions, machineId) {
  * Durée estimée d'un exercice (minutes), même calcul que l'aperçu du programme (programs.js, estimateDayMinutes) :
  * 2 min d'installation + 45 s par série + repos ENTRE les séries (le repos après la dernière se passe à changer de machine).
  */
-const strengthMinutes = (sets, rest) => (120 + sets * 45 + Math.max(0, sets - 1) * rest) / 60;
+const strengthMinutes = (id, sets, rest) => activitySeconds({ type: 'strength', machineId: id, sets: Array(sets).fill({}), restSeconds: rest }) / 60;
 
 /**
  * Génère la semaine.
@@ -203,7 +238,7 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
   const days = pickDays(sport.days && sport.days.length ? sport.days : ['lundi', 'mercredi', 'vendredi'], sport.frequency);
   const effort = INTENSITIES.find(([k]) => k === sport.intensity);
   notes.push('Effort visé à chaque série : ' + (effort ? effort[1].replace(/^[^—]*— /, '') : 'RPE 7-8 (2 à 3 répétitions en réserve)')
-    + '. Si tu fais plus de répétitions que prévu à cet effort, la charge montera à la séance suivante.');
+    + '. La charge pourra augmenter au prochain calcul du programme, quand toutes tes séries atteignent le haut de la fourchette.');
   if (!(sport.days && sport.days.length)) notes.push('Aucun jour disponible renseigné : lundi, mercredi, vendredi par défaut.');
   const dose = dosage(sport);
   const split = dose.cardioFirst ? Array(days.length).fill('cardioFull') : splitFor(days.length, sport.level);
@@ -217,6 +252,7 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
   const favourite = [...usedCardio].sort((a, b) => b[1] - a[1]).map(([n]) => cardio.find(m => m.name === n)).find(Boolean);
   const finisher = favourite || cardio.find(m => m.id === 'rowing-machine') || cardio.find(m => m.id === 'treadmill') || warm;
   const plan = [];
+  const reductions = [];
   let trimmed = 0;
 
   const out = days.map((day, i) => {
@@ -236,62 +272,105 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
       [...slots, ...extra].slice(0, count).forEach((id, rank) => { if (!cands.some(c => c.id === id)) cands.push({ id, rank, b }); });
     });
     for (const c of cands) {
-      c.sets = c.rank === 0 && COMPOUND.has(c.id) ? dose.sets : Math.max(2, Math.min(dose.sets, 3)); // volume plein : gros exercices seulement
+      c.main = c.rank === 0 && COMPOUND.has(c.id);
+      c.sets = c.main ? dose.sets : Math.max(2, Math.min(dose.sets, 3)); // volume plein : gros exercices seulement
       c.rest = COMPOUND.has(c.id) ? dose.restMain : dose.restAcc;
-      c.min = strengthMinutes(c.sets, c.rest);
+      c.low = !c.main && dose.accLow ? dose.accLow : dose.low;
+      c.high = !c.main && dose.accHigh ? dose.accHigh : dose.high;
+      c.min = strengthMinutes(c.id, c.sets, c.rest);
     }
+    // priorité : d'abord le gros exercice de chaque grand groupe (jambes, poussée, tirage) ; ensuite les autres (2e exercice
+    // d'un groupe, abdos) dans un ordre qui TOURNE d'un jour à l'autre : ce qui ne tient pas un jour passe le suivant
+    // (rowing et tirage vertical, ischios et abdos alternent au lieu d'être toujours retirés)
+    const majors = cands.filter(c => c.rank === 0 && c.b !== undefined && ['legs', 'push', 'pull'].includes(t.blocks[c.b][0]));
+    const pool = cands.filter(c => !majors.includes(c)).sort((x, y) => x.rank - y.rank || x.b - y.b);
+    const rot = pool.length ? i % pool.length : 0;
+    const order = [...majors, ...pool.slice(rot), ...pool.slice(0, rot)];
     // durée maximale : on garde d'abord le premier exercice de chaque groupe, puis le deuxième… jusqu'au budget
     // la musculation passe d'abord (renforcement ≥ 2 j/sem, OMS) ; le cardio prend le temps restant, jusqu'à sa part
     // de l'objectif hebdomadaire ; le reste se fait hors de la salle (marche, vélo…)
     // perte de graisse : le cardio passe d'abord (jusqu'à 60 min), la musculation d'entretien garde au moins
     // un exercice par groupe (renforcement ≥ 2 j/sem, OMS) [DON09][WIL12][WHO20]
     const perDay = dose.weeklyCardio ? Math.ceil(dose.weeklyCardio / days.length / 5) * 5 : 0;
-    const strengthNeed = dose.cardioFirst ? cands.filter(c => c.rank === 0).reduce((n, c) => n + c.min, 0) : 0;
+    const warmMin = warm ? 6 : 0; // 5 min + 1 min de transition (session-time.js)
+    const strengthNeed = dose.cardioFirst ? [...majors, ...pool.slice(rot, rot + 1)].reduce((n, c) => n + c.min, 0) : 0;
     const cardioTarget = !finisher || !dose.weeklyCardio ? 0 : dose.cardioFirst
-      ? Math.max(10, Math.min(60, perDay, Math.floor((maxMin - (warm ? 6 : 0) - strengthNeed - 1) / 5) * 5)) // +1 min de transition par activité (estimateDayMinutes)
+      ? Math.max(10, Math.min(60, perDay, Math.floor((maxMin - warmMin - strengthNeed - 1) / 5) * 5))
       : Math.min(30, Math.round(dose.weeklyCardio / days.length / 5) * 5);
     const cardioFloor = dose.cardioFirst ? cardioTarget : cardioTarget ? 10 : 0;
-    let budget = maxMin - (warm ? 5 : 0) - cardioFloor;
+    let budget = maxMin - warmMin - (cardioFloor ? cardioFloor + 1 : 0);
     const keep = new Set();
-    for (const c of [...cands].sort((x, y) => x.rank - y.rank || x.b - y.b)) {
+    for (const c of order) {
       if (keep.size && c.min > budget) continue;
       keep.add(c); budget -= c.min;
     }
-    trimmed += cands.length - keep.size;
     const acts = [];
     if (warm) acts.push({ type: 'warmup', name: warm.name, durationMinutes: 5 });
     for (const c of cands.filter(x => keep.has(x))) {
-      const load = proposeLoad(c.id, { sessions, declared, low: dose.low, high: dose.high });
-      const reps = load.reason === 'progression' ? dose.low : dose.high;
-      plan.push({ day, machineId: c.id, sets: c.sets, reps, kg: load.kg, reason: load.reason, from: load.from ?? null, sibling: load.sibling || null });
+      const load = proposeLoad(c.id, { sessions, declared, low: c.low, high: c.high });
+      const reps = load.reason === 'reps' ? load.reps : load.reason === 'progression' ? c.low : c.high;
+      plan.push({ day, machineId: c.id, sets: c.sets, reps, kg: load.kg, reason: load.reason, from: load.from ?? null, sibling: load.sibling || null, low: c.low, high: c.high, pct: load.pct ?? null, nextKg: load.nextKg ?? null });
       acts.push({ type: 'strength', machineId: c.id, shared: false, restSeconds: c.rest, sets: Array.from({ length: c.sets }, () => ({ kg: load.kg, reps })) });
     }
     const cardioMin = cardioTarget ? Math.min(cardioTarget, Math.floor((budget + cardioFloor) / 5) * 5) : 0;
     if (cardioMin >= 10) acts.push({ type: 'cardio', name: finisher.name, durationMinutes: cardioMin });
+    // contrôle APRÈS construction, avec le calcul de l'aperçu : la durée maximale est une contrainte
+    const cut = [];
+    const dayNow = () => ({ activities: acts });
+    while (daySeconds(dayNow()) > maxMin * 60) {
+      const cardioAct = acts.find(a => a.type === 'cardio');
+      const strengthActs = acts.filter(a => a.type === 'strength');
+      const minCardio = dose.cardioFirst ? 10 : 10;
+      if (cardioAct && cardioAct.durationMinutes - 5 >= minCardio && (dose.cardioFirst ? strengthActs.length <= majors.length : true)) { cardioAct.durationMinutes -= 5; cut.push('cardio −5 min'); continue; }
+      const lastKept = [...order].reverse().find(c => keep.has(c) && acts.some(a => a.machineId === c.id));
+      if (lastKept && strengthActs.length > 1) {
+        keep.delete(lastKept); acts.splice(acts.findIndex(a => a.machineId === lastKept.id), 1);
+        plan.splice(plan.findIndex(p => p.day === day && p.machineId === lastKept.id), 1);
+        cut.push(byId.get(lastKept.id)?.name || lastKept.id); continue;
+      }
+      if (cardioAct) { acts.splice(acts.indexOf(cardioAct), 1); cut.push('cardio'); continue; }
+      break;
+    }
+    if (cut.length) reductions.push(`${day} : ${cut.join(', ')}`);
+    trimmed += cands.length - keep.size;
     return { id: day, name: t.name + (seen.get(key) > 1 || split.filter(s => s === key).length > 1 ? (variant ? ' B' : ' A') : ''), activities: acts };
   });
 
-  // bilan factuel de la semaine : volume par groupe [SCH17v], cardio vs OMS [WHO20]
+  // bilan factuel de la semaine : séries par muscle, travail DIRECT (machine ciblant ce muscle) et INDIRECT (muscles
+  // secondaires des exercices polyarticulaires) affichés séparément [SCH17v] ; cardio vs repère [WHO20][DON09]
   const ROLE_LABEL = { legs: 'jambes', push: 'poussée (pectoraux, épaules, triceps)', pull: 'tirage (dos, biceps)', core: 'abdominaux' };
   const volume = { legs: 0, push: 0, pull: 0, core: 0 };
+  const muscles = {};
+  const addM = (m, k, n) => { muscles[m] = muscles[m] || { direct: 0, indirect: 0 }; muscles[m][k] += n; };
   let cardioWeek = 0;
   for (const d of out) for (const a of d.activities) {
-    if (a.type === 'strength') { const r = roleOf(byId.get(a.machineId) || { id: a.machineId }); if (r) volume[r] += a.sets.length; }
-    else if (a.type === 'cardio') cardioWeek += a.durationMinutes;
+    if (a.type === 'strength') {
+      const m = byId.get(a.machineId) || { id: a.machineId };
+      const r = roleOf(m); if (r) volume[r] += a.sets.length;
+      addM(MUSCLE_OF[a.machineId] || m.muscleGroup || 'Autre', 'direct', a.sets.length);
+      for (const sec of INDIRECT[a.machineId] || []) addM(sec, 'indirect', a.sets.length);
+    } else if (a.type === 'cardio') cardioWeek += a.durationMinutes;
   }
   if (sport.mainGoal === 'Prise de muscle') {
-    const low = Object.entries(volume).filter(([r, n]) => r !== 'core' && n < 10).map(([r, n]) => ROLE_LABEL[r] + ' ' + n);
-    if (low.length) notes.push('Volume sous ~10 séries par semaine, repère des études sur la prise de muscle : ' + low.join(', ') + '. Plus de temps par séance ou une séance de plus aiderait.');
+    const low = ['Pectoraux', 'Dos', 'Quadriceps', 'Ischios'].filter(m => (muscles[m]?.direct || 0) < 10)
+      .map(m => `${m.toLowerCase()} ${muscles[m]?.direct || 0} directes${muscles[m]?.indirect ? ' (+' + muscles[m].indirect + ' indirectes)' : ''}`);
+    if (low.length) notes.push('Séries par semaine sous ~10 en travail direct (repère des études sur la prise de muscle, pas un minimum) : ' + low.join(', ') + '. Plus de temps par séance ou une séance de plus aiderait.');
   }
-  if (dose.commuteWeekly) notes.push(`Trajet ${sport.commuteMode === 'velo' ? 'à vélo' : 'à pied'} : ${dose.commuteWeekly} min par semaine (aller-retour), comptées dans ton objectif d'activité de la semaine (OMS : le transport actif compte).`);
-  const goalMin = dose.cardioFirst ? 250 : 150;
-  const goalSrc = dose.cardioFirst ? 'recommandées pour perdre du poids (ACSM)' : 'de l\'OMS';
-  if (dose.cardioFirst) notes.push('Perte de graisse : le cardio passe en premier, la musculation (un exercice par groupe, 2 séries) sert à garder ton muscle.');
-  if (dose.weeklyCardio && cardioWeek < dose.weeklyCardio) notes.push(`Cardio à la salle : ${cardioWeek} min. Pour atteindre les ${goalMin} min ${goalSrc}${dose.commuteWeekly ? ' avec ton trajet' : ''}, complète avec ${dose.weeklyCardio - cardioWeek} min (marche rapide, vélo…).`);
-  const summary = { volume, cardioWeek, commuteWeekly: dose.commuteWeekly };
-  if (trimmed) notes.push(`Séances de ${maxMin} min : ${trimmed} exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps.`);
+  if (sport.mainGoal === 'Endurance') notes.push('Endurance : deux choses différentes. Endurance MUSCULAIRE = séries longues (15-20 répétitions, repos courts) [ACSM09] ; endurance CARDIO = minutes d’activité aérobie [WHO20]. Ton programme combine les deux.');
+  if (dose.commuteWeekly) notes.push(sport.commuteModerate === true
+    ? `Trajet ${sport.commuteMode === 'velo' ? 'à vélo' : 'à pied'} : ${dose.commuteWeekly} min par semaine (aller-retour), comptées comme activité modérée (allure confirmée dans ton profil).`
+    : `Trajet actif ${sport.commuteMode === 'velo' ? 'à vélo' : 'à pied'} : ${dose.commuteWeekly} min par semaine (aller-retour). Elles comptent dans le repère de l’OMS si ton allure est au moins modérée (tu peux parler mais pas chanter) : à confirmer dans ton profil.`);
+  if (dose.cardioFirst) notes.push('Perte de graisse : le cardio a la plus grande part du temps de séance ; la musculation (un exercice par groupe, 2 séries) se fait avant, pour garder ton muscle.');
+  if (dose.weeklyCardio && cardioWeek < dose.weeklyCardio) notes.push(dose.cardioFirst
+    ? `Cardio à la salle : ${cardioWeek} min cette semaine. Repère : dès 150 min par semaine, et vers 250 min pour une perte plus nette (ACSM). C’est un objectif progressif : marche ou vélo hors salle peuvent compléter si tu le souhaites.`
+    : `Cardio à la salle : ${cardioWeek} min. Repère de l’OMS : 150 min d’activité modérée par semaine ; marche ou vélo hors salle comptent aussi${dose.commuteCounted ? ' (ton trajet est déjà compté)' : ''}.`);
+  const summary = { volume, muscles, cardioWeek, commuteWeekly: dose.commuteWeekly, commuteCounted: dose.commuteCounted };
+  if (reductions.length) notes.push(`Durée maximale ${maxMin} min : contenu réduit pour tenir — ${reductions.join(' ; ')}.`);
+  if (trimmed) notes.push(`Séances de ${maxMin} min : ${trimmed} exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps (ils tournent d’un jour à l’autre).`);
+  const repsUp = plan.filter(p => p.reason === 'reps');
+  if (repsUp.length) notes.push('Progression en répétitions à charge stable (le cran suivant de la machine est trop grand pour rester dans la fourchette) : ' + [...new Set(repsUp.map(p => `${byId.get(p.machineId)?.name || p.machineId} ${p.kg} kg × ${p.reps} (cran suivant ${p.nextKg} kg, +${p.pct} %)`))].join(', ') + '.');
   const unknown = plan.filter(p => p.reason === 'unknown').map(p => byId.get(p.machineId)?.name || p.machineId);
-  if (unknown.length) notes.push('Charge à trouver à la première séance (aucun historique) : ' + [...new Set(unknown)].join(', ') + '.');
+  if (unknown.length) notes.push('Charge à trouver à la première séance (aucun historique) : ' + [...new Set(unknown)].join(', ') + '. Méthode : commence léger, fais une série d’échauffement, puis monte d’un cran à chaque série jusqu’à la charge qui te permet les répétitions prévues à l’effort visé (' + (effort ? effort[1].replace(/^[^—]*— /, '') : 'RPE 7-8') + '). Garde cette charge pour tes séries de travail.');
   const sib = plan.filter(p => p.reason === 'sibling');
   if (sib.length) notes.push('Charge à trouver, repère d’une machine voisine (non transposable telle quelle) : ' + [...new Set(sib.map(p => (byId.get(p.machineId)?.name || p.machineId) + ' — ' + (byId.get(p.sibling)?.name || p.sibling) + ' ' + p.from + ' kg'))].join(', ') + '.');
   if (!strength.length) notes.push('Aucune machine de musculation disponible : vérifie « Mes machines ».');

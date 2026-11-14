@@ -135,14 +135,60 @@ test('faits de la semaine : seulement le lundi → dimanche, séries validées p
   assert.deepEqual(f, { strengthDays: 2, volume: { legs: 3, push: 3, pull: 3, core: 0 }, cardioMinutes: 12 });
 });
 
-test('trajet actif (OMS) en perte de graisse (250 min, ACSM) : vélo 15 min aller × 2 × 3 séances = 90 min comptées ; voiture : rien', () => {
+test('trajet actif : compté pour l’OMS seulement si l’allure est confirmée modérée ; inconnue → affiché comme trajet actif', () => {
   const base = { mainGoal: 'Perte de graisse', level: 'intermediaire', frequency: 3, days: ['lundi', 'mercredi', 'vendredi'], durationMin: 60 };
-  const bike = E.dosage({ ...base, commuteMode: 'velo', commuteMin: 15 });
-  assert.deepEqual([bike.commuteWeekly, bike.weeklyCardio], [90, 160]);
-  const car = E.dosage({ ...base, commuteMode: 'voiture', commuteMin: 15 });
+  const unknown = E.dosage({ ...base, commuteMode: 'velo', commuteMin: 15 });
+  assert.deepEqual([unknown.commuteWeekly, unknown.commuteCounted, unknown.weeklyCardio], [90, 0, 250], 'allure inconnue : rien de déduit');
+  const moderate = E.dosage({ ...base, commuteMode: 'velo', commuteMin: 15, commuteModerate: true });
+  assert.deepEqual([moderate.commuteCounted, moderate.weeklyCardio], [90, 160]);
+  const car = E.dosage({ ...base, commuteMode: 'voiture', commuteMin: 15, commuteModerate: true });
   assert.deepEqual([car.commuteWeekly, car.weeklyCardio], [0, 250]);
   const { notes } = E.generateWeek({ profileId, weekStart: '2026-11-16', sport: { ...base, commuteMode: 'velo', commuteMin: 15 }, gym: {}, catalog });
-  assert.ok(notes.some(n => /Trajet à vélo : 90 min/.test(n)));
+  assert.ok(notes.some(n => /Trajet actif à vélo : 90 min/.test(n) && /si ton allure est au moins modérée/.test(n)));
+  assert.ok(!notes.some(n => /complète avec/.test(n)), 'pas de quota à rattraper');
+});
+
+const work = (id, date, kg, reps, extra = {}) => ({ id, date, endedAt: date + 'T12:00:00Z', status: 'completed', dayName: 'Séance',
+  activities: [{ type: 'strength', machineId: extra.machine || 'leg-press', planned: { sets: reps.map(() => ({ kg, reps: 12 })) }, sets: reps.map((r, i) => ({ id: 's' + i, kg, reps: r, done: true })), ...(extra.feel ? { feel: extra.feel } : {}) }] });
+
+test('double progression : décidée sur TOUTES les séries de travail (12/12/11 → pas de hausse ; 12/12/12 → hausse)', () => {
+  assert.equal(E.proposeLoad('leg-press', { sessions: [work('a', '2026-11-09', 70, [12, 12, 11])], low: 8, high: 12 }).reason, 'same');
+  const up = E.proposeLoad('leg-press', { sessions: [work('a', '2026-11-09', 70, [12, 12, 12])], low: 8, high: 12 });
+  assert.deepEqual([up.reason, up.from], ['progression', 70]);
+});
+
+test('cran trop grand (10 → 12,5 kg, +25 %) : progression en répétitions à charge stable, jamais hors fourchette', () => {
+  const s = [work('a', '2026-11-09', 10, [10, 10, 10], { machine: 'rotary-torso' })];
+  const r = E.proposeLoad('rotary-torso', { sessions: s, low: 8, high: 10 });
+  assert.deepEqual([r.reason, r.kg, r.reps, r.nextKg, r.pct], ['reps', 10, 11, 12.5, 25]);
+  const later = [work('b', '2026-11-16', 10, [18, 18, 18], { machine: 'rotary-torso' })];
+  const r2 = E.proposeLoad('rotary-torso', { sessions: later, low: 8, high: 10 });
+  assert.equal(r2.reason, 'progression', 'assez de répétitions : le cran garde dans la fourchette (Epley ≥ 8)');
+  assert.ok(E.epleyReps(10, 18, 12.5) >= 8 && E.epleyReps(10, 15, 12.5) < 8);
+});
+
+test('effort explicite « trop difficile » (ressenti noté) : pas de hausse même au haut de la fourchette', () => {
+  const s = [work('a', '2026-11-09', 70, [12, 12, 12], { feel: 'hard' })];
+  assert.notEqual(E.proposeLoad('leg-press', { sessions: s, low: 8, high: 12 }).reason, 'progression');
+});
+
+test('machine sans historique : charge non inventée, méthode de réglage à l’effort visé affichée', () => {
+  const sport = { mainGoal: 'Prise de muscle', level: 'intermediaire', intensity: 'moderee', frequency: 3, days: ['lundi', 'mercredi', 'vendredi'], durationMin: 60 };
+  const r = E.generateWeek({ profileId, weekStart: '2026-11-16', sport, gym: {}, catalog });
+  assert.ok(r.plan.every(p => p.kg === 0 && p.reason === 'unknown'));
+  assert.ok(r.notes.some(n => /Méthode : commence léger/.test(n) && /RPE 6-7/.test(n)));
+});
+
+test('durée maximale (même calcul que l’aperçu, machines par côté comprises) et machines exclues : 5 × 45 min, Shoulder Press absentes', () => {
+  const sport = { mainGoal: 'Endurance', level: 'intermediaire', intensity: 'soutenue', frequency: 5, days: ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'], durationMin: 45 };
+  const gym = { avoid: ['shoulder-press', 'converging-shoulder-press'] };
+  for (const week of ['2026-10-19', '2026-10-26', '2026-11-02']) {
+    const r = E.generateWeek({ profileId, weekStart: week, sport, gym, catalog });
+    for (const d of r.program.programs[profileId].days) {
+      assert.ok(minutesOf(d) <= 45, `${week} ${d.id} : ${minutesOf(d)} min`);
+      assert.ok(!d.activities.some(a => gym.avoid.includes(a.machineId)), 'machine exclue');
+    }
+  }
 });
 
 test('débutant : séance aussi fournie qu’un intermédiaire, effort visé (RPE) rappelé', () => {

@@ -31,12 +31,12 @@ export const MEASURES = Object.freeze([['heightCm', 'Taille', 'cm', 100, 250], [
 export const TEXT_MAX = 600;
 const HISTORY_MAX = 40;
 /** Champs dont les changements sont historisés (cités dans le bilan). */
-const TRACKED = Object.freeze({ mainGoal: 'objectif principal', goals: 'objectifs secondaires', goalNote: 'précision des objectifs', level: 'niveau', seniority: 'ancienneté', frequency: 'séances par semaine', days: 'jours disponibles', durationMin: 'durée maximale par séance', targetWeightKg: 'poids cible', intensity: 'intensité souhaitée', fatigue: 'fatigue', sleep: 'sommeil', avoid: 'mouvements à éviter', constraints: 'contraintes', preferences: 'préférences', commuteMode: 'trajet jusqu’à la salle', commuteMin: 'durée du trajet' });
+const TRACKED = Object.freeze({ mainGoal: 'objectif principal', goals: 'objectifs secondaires', goalNote: 'précision des objectifs', level: 'niveau', seniority: 'ancienneté', frequency: 'séances par semaine', days: 'jours disponibles', durationMin: 'durée maximale par séance', targetWeightKg: 'poids cible', intensity: 'intensité souhaitée', fatigue: 'fatigue', sleep: 'sommeil', avoid: 'mouvements à éviter', constraints: 'contraintes', preferences: 'préférences', commuteMode: 'trajet jusqu’à la salle', commuteMin: 'durée du trajet', commuteModerate: 'allure du trajet' });
 
 export const EMPTY_SPORT = Object.freeze({
   mainGoal: null, goals: [], goalNote: '', level: null, seniority: null, frequency: null, days: [], durationMin: null, targetWeightKg: null, measures: {}, initialPerf: '',
   intensity: null, fatigue: null, sleep: null, recoveryNote: '', avoid: '', constraints: '', preferences: '',
-  commuteMode: null, commuteMin: null,
+  commuteMode: null, commuteMin: null, commuteModerate: null,
   health: '', healthInBilan: false, updatedAt: null, history: []
 });
 export const EMPTY_GYM = Object.freeze({ available: null, avoid: [], note: '', updatedAt: null, history: [] });
@@ -139,6 +139,8 @@ export function sanitizeSport(raw = {}) {
     if (!COMMUTE_MINUTES.includes(m)) throw new Error('Durée du trajet non reconnue.');
     out.commuteMin = m;
   }
+  // allure du trajet : true (au moins modérée, compte pour l'OMS), false, ou null (inconnue)
+  out.commuteModerate = ACTIVE_COMMUTES.includes(out.commuteMode) && (r.commuteModerate === true || r.commuteModerate === false) ? r.commuteModerate : null;
   out.health = text(r.health, 'Santé');
   out.healthInBilan = r.healthInBilan === true;
   out.updatedAt = typeof r.updatedAt === 'string' ? r.updatedAt : null;

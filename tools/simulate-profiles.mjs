@@ -38,14 +38,15 @@ const groupOf = id => ({ Jambes: 'legs', Fessiers: 'legs', Pectoraux: 'push', É
 const factor = id => { let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) % 997; return 0.55 + (h % 50) / 100; };
 const round25 = kg => Math.max(2.5, Math.round(kg / 2.5) * 2.5);
 
-/** Répétitions réalisables à une charge donnée (approximation d'Epley inversée autour de 12 RM), plafonnées à 20. */
+/** Répétitions réalisables à une charge donnée (approximation d'Epley inversée autour de 12 RM), plafonnées à 30. */
 function repsAt(kg, cap12) {
   const oneRm = cap12 * (1 + 12 / 30);
-  return Math.max(3, Math.min(20, Math.floor(30 * (oneRm / kg - 1))));
+  return Math.max(3, Math.min(30, Math.floor(30 * (oneRm / kg - 1))));
 }
 
 const fmt = n => String(Math.round(n * 10) / 10).replace('.', ',');
 const out = [];
+const checks = { sessions: 0, overMax: [], bigSteps: [], belowLow: [], avoided: [] };
 const P = s => out.push(s);
 
 P('# Vérification du moteur de programme — profils fictifs simulés');
@@ -74,7 +75,7 @@ P('');
 P(fs.readFileSync(new URL('../docs/v3-sources.md', import.meta.url), 'utf8').split('\n').filter(l => l.startsWith('|')).join('\n'));
 P('');
 P('**Modèle de l\'athlète simulé** : pour chaque groupe musculaire, une charge faisable 12 fois (12 RM) la 1re semaine, qui progresse');
-P('chaque semaine d\'un pourcentage fixe ; répétitions obtenues à une charge = formule d\'Epley inversée (plafond 20). Première');
+P('chaque semaine d\'un pourcentage fixe ; répétitions obtenues à une charge = formule d\'Epley inversée (plafond 30). Première');
 P('séance sur une machine inconnue : l\'athlète choisit la charge qui lui permet le nombre de répétitions visé (charge « à trouver » dans l\'appli). Toutes les');
 P('séries prévues sont faites, la dernière avec une répétition de moins. Cardio : durée prévue faite.');
 P('');
@@ -94,6 +95,9 @@ for (const prof of PROFILES) {
     P(`### Semaine du ${week}${last ? ' (prochaine semaine, calculée après 5 semaines faites)' : ''}`);
     P('');
     for (const d of days) {
+      checks.sessions++;
+      if (estimateDayMinutes(d) > prof.sport.durationMin) checks.overMax.push(`${prof.label} ${week} ${d.id} : ${estimateDayMinutes(d)} min > ${prof.sport.durationMin}`);
+      for (const a of d.activities) if ((prof.gym?.avoid || []).includes(a.machineId)) checks.avoided.push(`${prof.label} ${week} ${d.id} : ${name(a.machineId)}`);
       P(`**${d.id} — ${d.name}** (durée estimée ${estimateDayMinutes(d)} min)`);
       P('');
       P('| Activité | Prévu | Raison de la charge | Fait (simulé) |');
@@ -110,13 +114,15 @@ for (const prof of PROFILES) {
         // 1re fois (« à trouver ») : charge choisie pour faire le nombre de répétitions visé (Epley inversée)
         const oneRm = cap * (1 + 12 / 30);
         const kg = a.sets[0].kg > 0 ? a.sets[0].kg : round25(oneRm / (1 + a.sets[0].reps / 30));
-        const reps = Math.min(repsAt(kg, cap), 20);
+        const reps = repsAt(kg, cap);
         const target = a.sets[0].reps;
         const done = a.sets.map((_, i) => ({ id: 's' + (i + 1), kg, reps: Math.max(1, Math.min(reps, target + 3) - (i === a.sets.length - 1 ? 1 : 0)), done: true }));
         // l'athlète s'arrête au haut de fourchette + 3 au plus ; la meilleure série sert de référence au moteur
-        const reason = { progression: `progression (${fmt(p.from)} → ${fmt(a.sets[0].kg)} kg)`, same: 'même charge (fourchette pas encore atteinte)', unknown: 'charge à trouver (1re fois)', sibling: `à trouver (repère : ${name(p.sibling)} ${fmt(p.from)} kg)`, lighter: `allégée (${fmt(p.from)} → ${fmt(a.sets[0].kg)} kg)`, declared: 'charge déclarée' }[p.reason] || p.reason || '';
+        const reason = { progression: `progression (${fmt(p.from)} → ${fmt(a.sets[0].kg)} kg, +${p.pct} %)`, reps: `répétitions +1 à charge stable (cran suivant ${fmt(p.nextKg)} kg = +${p.pct} %, hors fourchette)`, same: 'même charge (fourchette pas encore atteinte)', unknown: 'charge à trouver (1re fois)', sibling: `à trouver (repère : ${name(p.sibling)} ${fmt(p.from)} kg)`, lighter: `allégée (${fmt(p.from)} → ${fmt(a.sets[0].kg)} kg)`, declared: 'charge déclarée' }[p.reason] || p.reason || '';
         P(`| ${name(a.machineId)} | ${a.sets.length} × ${target} @ ${a.sets[0].kg > 0 ? fmt(a.sets[0].kg) + ' kg' : 'à trouver'} · repos ${a.restSeconds} s | ${reason} | ${last ? '—' : done.map(x => x.reps).join('/') + ' reps @ ' + fmt(kg) + ' kg'} |`);
         acts.push({ type: 'strength', machineId: a.machineId, planned: { sets: a.sets }, sets: done, status: 'done' });
+        if (!last && p.reason === 'progression' && p.from > 0 && a.sets[0].kg / p.from - 1 > 0.10) checks.bigSteps.push(`${prof.label} ${week} ${name(a.machineId)} : ${fmt(p.from)} → ${fmt(a.sets[0].kg)} kg (+${Math.round((a.sets[0].kg / p.from - 1) * 100)} %)`);
+        if (!last && a.sets[0].kg > 0 && Math.max(...done.map(x => x.reps)) < (p.low ?? 0)) checks.belowLow.push(`${prof.label} ${week} ${d.id} ${name(a.machineId)} : ${done.map(x => x.reps).join('/')} pour ${p.low}-${p.high}`);
         if (!last) { if (!history.has(a.machineId)) history.set(a.machineId, []); history.get(a.machineId).push({ week, kg, reps: Math.max(...done.map(x => x.reps)) }); }
       }
       P('');
@@ -126,7 +132,8 @@ for (const prof of PROFILES) {
       }
     }
     const vol = r.summary?.volume || {};
-    P(`Bilan du moteur : séries/semaine — jambes ${vol.legs ?? '?'}, poussée ${vol.push ?? '?'}, tirage ${vol.pull ?? '?'}, abdos ${vol.core ?? '?'} ; cardio à la salle ${r.summary?.cardioWeek ?? 0} min${r.summary?.commuteWeekly ? ` ; trajet actif ${r.summary.commuteWeekly} min` : ''}.`);
+    const mus = Object.entries(r.summary?.muscles || {}).map(([m, v]) => `${m} ${v.direct}${v.indirect ? ' (+' + v.indirect + ' ind.)' : ''}`).join(', ');
+    P(`Bilan du moteur : séries/semaine par muscle (directes, + indirectes) — ${mus} ; cardio à la salle ${r.summary?.cardioWeek ?? 0} min${r.summary?.commuteWeekly ? ` ; trajet actif ${r.summary.commuteWeekly} min (compté : ${r.summary.commuteCounted || 0})` : ''}.`);
     P('');
     P('Remarques affichées à l\'utilisateur :');
     for (const n of r.notes) P(`- ${n}`);
@@ -142,5 +149,13 @@ for (const prof of PROFILES) {
   }
   P('');
 }
+const sum = ['## Contrôles automatiques', '',
+  `- Séances générées : ${checks.sessions}`,
+  `- Séances au-dessus de la durée maximale : ${checks.overMax.length}` + checks.overMax.map(x => '\n  - ' + x).join(''),
+  `- Hausses de charge de plus de 10 % : ${checks.bigSteps.length}` + checks.bigSteps.map(x => '\n  - ' + x).join(''),
+  `- Meilleure série sous le bas de la fourchette (charge connue) : ${checks.belowLow.length}` + checks.belowLow.map(x => '\n  - ' + x).join(''),
+  `- Machines exclues présentes : ${checks.avoided.length}` + checks.avoided.map(x => '\n  - ' + x).join(''), ''];
+out.splice(out.indexOf('## Prompt à donner à ChatGPT'), 0, ...sum);
+console.log(sum.join('\n'));
 fs.writeFileSync(new URL('../docs/verification-moteur.md', import.meta.url), out.join('\n') + '\n');
 console.log('docs/verification-moteur.md : ' + out.length + ' lignes, ' + PROFILES.length + ' profils × ' + WEEKS.length + ' semaines');

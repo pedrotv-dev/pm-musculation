@@ -40,7 +40,7 @@ test('référence : déclarée sans séance ; séance réelle plus récente (mê
   };
   await run(7, 80, 10); await run(9, 70, 12);
   const sessions = await W.listWorkouts(id);
-  assert.deepEqual(D.currentReference(sessions, decl, 'leg-press'), { source: 'real', kg: 70, reps: 12, date: '2026-11-09' }, 'dernière chronologique, pas la max');
+  assert.deepEqual((({ sets, ...r }) => r)(D.currentReference(sessions, decl, 'leg-press')), { source: 'real', kg: 70, reps: 12, date: '2026-11-09' }, 'dernière chronologique, pas la max');
   assert.equal(personalRecords(sessions).find(r => r.machineId === 'leg-press').kg, 80, 'record conservé séparément');
   // déclaration PLUS RÉCENTE que la dernière séance : elle redevient la référence
   await D.saveDeclaredLoads(id, { complete: { 'leg-press': { kg: 75, reps: 10 } } }, { now: new Date('2026-11-10T08:00:00Z') });

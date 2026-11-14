@@ -26,10 +26,10 @@
  * Musculation : perSide facultatif (une serie = un cote ; defaut selon la machine, js/machine-rules.js).
  */
 
+import { daySeconds } from './session-time.js';
 import { saveProgram, getProgram, listPrograms } from '../storage.js';
 import { CARDIO_METRICS, metricError } from './cardio.js';
 import { isRealProfile } from './profiles.js';
-import { isPerSide } from './machine-rules.js';
 
 const PROGRAM_SCHEMA_VERSION = 1;
 
@@ -83,23 +83,11 @@ export function getProgramStatus(weekStart, date = new Date()) {
 }
 
 /**
- * Durée ESTIMÉE d'une journée de programme (minutes, arrondie aux 5 min) : échauffement et cardio (durée prévue + 1 min
- * de transition), musculation (≈ 45 s par série, repos entre les séries, ≈ 2 min d'installation / changement de
- * machine). Simple estimation : la durée réelle peut varier.
+ * Durée ESTIMÉE d'une journée de programme (minutes, arrondie à la minute) : même calcul que le moteur
+ * (js/session-time.js). L'ancien arrondi aux 5 min supérieures affichait 50 min pour une séance de 45 min 45 s.
  */
 export function estimateDayMinutes(day) {
-  let sec = 0;
-  for (const a of (day && day.activities) || []) {
-    if (a.type === 'strength') {
-      const n = (a.sets || []).length * (isPerSide(a.machineId, a.perSide) ? 2 : 1);
-      if (!n) continue;
-      sec += 120 + n * 45 + Math.max(0, n - 1) * (Number.isFinite(a.restSeconds) ? a.restSeconds : 90);
-    } else {
-      const min = Number.isFinite(a.durationMinutes) ? a.durationMinutes : Number.isFinite(a.durationSeconds) ? a.durationSeconds / 60 : 5;
-      sec += (min + 1) * 60;
-    }
-  }
-  return Math.max(5, Math.ceil(sec / 300) * 5);
+  return Math.max(1, Math.round(daySeconds(day) / 60));
 }
 
 // ---------------------------------------------------------------- lecture de la source
