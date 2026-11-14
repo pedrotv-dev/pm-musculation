@@ -26,6 +26,7 @@
 import { lastPerformance, knownLoads, isAssisted } from './last-loads.js';
 import { currentReference } from './declared-loads.js';
 import { stepWeight } from './machine-rules.js';
+import { ACTIVE_COMMUTES } from './sport-profile.js';
 
 export const ENGINE_VERSION = 1;
 const DAY_ORDER = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
@@ -103,6 +104,10 @@ export function dosage(sport = {}) {
   }
   // OMS : 150 min d'aérobie modérée / semaine ; une partie à la salle, le reste (marche, vélo…) hors séance
   d.weeklyCardio = ({ 'Perte de graisse': 150, Endurance: 150, 'Remise en forme': 150 })[sport.mainGoal] || 0;
+  // trajet actif (marche, vélo) aller-retour, les jours de séance : compte dans l'activité modérée [WHO20]
+  d.commuteWeekly = 0;
+  if (ACTIVE_COMMUTES.includes(sport.commuteMode) && sport.commuteMin) d.commuteWeekly = sport.commuteMin * 2 * Math.max(1, Number(sport.frequency) || (sport.days || []).length || 1);
+  if (d.weeklyCardio) d.weeklyCardio = Math.max(0, d.weeklyCardio - d.commuteWeekly);
   // compatibilité : repos « moyen »
   d.rest = d.restMain;
   return d;
@@ -258,8 +263,9 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
     const low = Object.entries(volume).filter(([r, n]) => r !== 'core' && n < 10).map(([r, n]) => ROLE_LABEL[r] + ' ' + n);
     if (low.length) notes.push('Volume sous ~10 séries par semaine, repère des études sur la prise de muscle : ' + low.join(', ') + '. Plus de temps par séance ou une séance de plus aiderait.');
   }
-  if (dose.weeklyCardio && cardioWeek < dose.weeklyCardio) notes.push(`Cardio à la salle : ${cardioWeek} min. L'OMS recommande 150 min d'activité modérée par semaine : complète avec ${dose.weeklyCardio - cardioWeek} min (marche rapide, vélo…).`);
-  const summary = { volume, cardioWeek };
+  if (dose.commuteWeekly) notes.push(`Trajet ${sport.commuteMode === 'velo' ? 'à vélo' : 'à pied'} : ${dose.commuteWeekly} min par semaine (aller-retour), comptées dans les 150 min d'activité modérée recommandées par l'OMS.`);
+  if (dose.weeklyCardio && cardioWeek < dose.weeklyCardio) notes.push(`Cardio à la salle : ${cardioWeek} min. Pour atteindre les 150 min de l'OMS${dose.commuteWeekly ? ' avec ton trajet' : ''}, complète avec ${dose.weeklyCardio - cardioWeek} min (marche rapide, vélo…).`);
+  const summary = { volume, cardioWeek, commuteWeekly: dose.commuteWeekly };
   if (trimmed) notes.push(`Séances de ${maxMin} min : ${trimmed} exercice(s) secondaire(s) en moins sur la semaine pour tenir le temps.`);
   const unknown = plan.filter(p => p.reason === 'unknown').map(p => byId.get(p.machineId)?.name || p.machineId);
   if (unknown.length) notes.push('Charge à trouver à la première séance (aucun historique) : ' + [...new Set(unknown)].join(', ') + '.');

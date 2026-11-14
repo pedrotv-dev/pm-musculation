@@ -131,3 +131,13 @@ test('faits de la semaine : seulement le lundi → dimanche, séries validées p
   const f = E.weekFacts(sessions, catalog, '2026-11-16');
   assert.deepEqual(f, { strengthDays: 2, volume: { legs: 3, push: 3, pull: 3, core: 0 }, cardioMinutes: 12 });
 });
+
+test('trajet actif (OMS) : vélo 15 min aller × 2 × 3 séances = 90 min comptées ; voiture : rien', () => {
+  const base = { mainGoal: 'Perte de graisse', level: 'intermediaire', frequency: 3, days: ['lundi', 'mercredi', 'vendredi'], durationMin: 60 };
+  const bike = E.dosage({ ...base, commuteMode: 'velo', commuteMin: 15 });
+  assert.deepEqual([bike.commuteWeekly, bike.weeklyCardio], [90, 60]);
+  const car = E.dosage({ ...base, commuteMode: 'voiture', commuteMin: 15 });
+  assert.deepEqual([car.commuteWeekly, car.weeklyCardio], [0, 150]);
+  const { notes } = E.generateWeek({ profileId, weekStart: '2026-11-16', sport: { ...base, commuteMode: 'velo', commuteMin: 15 }, gym: {}, catalog });
+  assert.ok(notes.some(n => /Trajet à vélo : 90 min/.test(n)));
+});

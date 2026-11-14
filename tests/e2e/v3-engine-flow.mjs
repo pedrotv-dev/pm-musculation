@@ -41,6 +41,21 @@ await step('« Importer ce programme » → semaine enregistrée, aucune machine
   await page.waitForSelector('[data-page="accueil"] .pm-next-card, [data-page="accueil"] h3:has-text("Prochaine séance")');
 });
 
+await step('trajet à vélo (15 min aller) dans Réglages → compté dans les 150 min de l’OMS (remarque du calcul + « Ma semaine »)', async () => {
+  await page.click('#open-settings');
+  const f = page.locator('.pm-sport-fold'); if (!(await f.evaluate(d => d.open))) await f.locator('summary').click();
+  await page.selectOption('#pm-sport-commute', 'velo');
+  await page.selectOption('#pm-sport-commute-min', '15');
+  await f.locator('button:has-text("Enregistrer mon profil sportif")').click();
+  await f.locator('.pm-coach-status[data-state="ok"]').waitFor();
+  const s = await db(async id => (await import('./js/sport-profile.js')).getSportProfile(id), id);
+  assert.deepEqual([s.commuteMode, s.commuteMin], ['velo', 15]);
+  await page.click('.nav-btn[data-go="programme"]');
+  await page.click(coach + ' button:has-text("Calculer ma semaine")');
+  await page.waitForSelector(coach + ' .pm-engine-out:not([hidden])');
+  assert.match(await page.locator(coach + ' .pm-engine-out').innerText(), /Trajet à vélo : 90 min par semaine/);
+});
+
 await step('aucune requête externe (simulation locale) ; aucune erreur JavaScript', async () => {
   assert.deepEqual(external.filter(u => !u.startsWith('blob:')), []);
   assert.deepEqual(errors, []);

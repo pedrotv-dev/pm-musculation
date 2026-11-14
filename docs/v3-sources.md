@@ -14,6 +14,7 @@ publications reconnues. Ce qui n'a pas de source n'est pas codé. Les abréviati
 | Volume par muscle affiché chaque semaine ; repère d'environ 10 séries par muscle et par semaine en prise de muscle | [SCH17v] |
 | Progression : répétitions visées atteintes → cran de charge suivant de la machine (hausse de 2 à 10 %) | [ACSM09] |
 | Cardio : objectif 150 min d'activité modérée par semaine (salle + hors salle) ; renforcement ≥ 2 jours par semaine | [WHO20] |
+| Trajet jusqu'à la salle à pied ou à vélo (aller-retour, jours de séance) : compté dans ces 150 min ; voiture, transports et trottinette : non | [WHO20] (transport actif) |
 | Douleur signalée : aucun conseil médical, renvoi vers un professionnel de santé | principe de prudence (non médical) |
 
 **Ce que le moteur refuse de faire faute de preuve :**

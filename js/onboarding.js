@@ -9,7 +9,7 @@
  */
 import { el, btn, add, toast, fmtNum, parseNum, localISODate } from './dom.js';
 import { getProfileInfo, profileRecord, updateProfile, isRealProfile, NAME_MAX } from './profiles.js';
-import { GOALS, SENIORITY, LEVEL_OF_SENIORITY, INTENSITIES, DAYS, DURATIONS, MEASURES, getSportProfile, saveSportProfile, mainGoalOf, weightOrNull } from './sport-profile.js';
+import { GOALS, SENIORITY, LEVEL_OF_SENIORITY, INTENSITIES, DAYS, DURATIONS, MEASURES, COMMUTES, COMMUTE_MINUTES, getSportProfile, saveSportProfile, mainGoalOf, weightOrNull } from './sport-profile.js';
 import { recordBodyWeight } from './weights.js';
 import { renderMascot } from './mascot.js';
 import { chips } from './quick-start.js';
@@ -137,14 +137,21 @@ export function showOnboarding(root, profileId, { onDone } = {}) {
       const grid = el('div', 'pm-coach-grid');
       const ms = MEASURES.map(([k, label, unit]) => { const i = el('input', 'pm-input'); i.type = 'text'; i.inputMode = 'decimal'; i.value = sport.measures?.[k] ? fmtNum(sport.measures[k]) : ''; grid.append(field(label + ' (' + unit + ')', i, 'pm-ob-m-' + k)); return [k, i]; });
       fold.append(grid);
-      add(box, el('p', 'pm-muted', 'Tout est facultatif et reste sur ce téléphone. Ces informations affinent la demande de programme.'),
+      // trajet jusqu'à la salle : marche et vélo comptent dans l'activité modérée de la semaine (OMS 2020)
+      const commute = chips('Trajet jusqu’à la salle', 'pm-ob-commute', COMMUTES.map(([k, l]) => [k, l]), { value: sport.commuteMode });
+      const commuteMin = el('select', 'pm-select');
+      commuteMin.append(new Option('Durée de l’aller', ''), ...COMMUTE_MINUTES.map(m => new Option(m + ' min', String(m))));
+      commuteMin.value = sport.commuteMin ? String(sport.commuteMin) : '';
+      add(box, el('p', 'pm-muted', 'Tout est facultatif et reste sur ce téléphone. Ces informations affinent le calcul de ton programme.'),
+        commute.box, field('Durée du trajet (aller)', commuteMin, 'pm-ob-commute-min'),
         field('Poids actuel (kg)', weight, 'pm-ob-weight'), fold, field('Informations complémentaires', info, 'pm-ob-info'),
         field('Contraintes physiques', cons, 'pm-ob-constraints'), field('Préférences personnelles', prefs, 'pm-ob-prefs'));
       add(actions, btn('Terminer', 'pm-validate', () => go(n + 1, async () => {
         const kg = weightOrNull(weight.value.trim(), 'Poids actuel');
         const measures = { ...(sport.measures || {}) };
         for (const [k, i] of ms) { const raw = i.value.trim(); if (raw === '') delete measures[k]; else measures[k] = parseNum(raw); }
-        await saveSport(profileId, { goalNote: info.value, constraints: cons.value, preferences: prefs.value, measures });
+        const mode = commute.read() || null;
+        await saveSport(profileId, { goalNote: info.value, constraints: cons.value, preferences: prefs.value, measures, commuteMode: mode, commuteMin: mode ? commuteMin.value : '' });
         if (kg !== null) await recordBodyWeight(profileId, kg, localISODate());
       })), btn('Passer cette étape', 'pm-link', () => go(n + 1)));
     }
