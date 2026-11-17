@@ -39,7 +39,7 @@ await step('import (interface) du programme de la semaine du 16 novembre → acc
   await page.fill('.pm-textarea', reply);
   await page.click('.pm-action-verify');
   await page.waitForSelector('.pm-action-save:not([disabled])');
-  assert.match(await page.locator('.pm-preview').innerText(), /Durée estimée : environ \d+ min( · dont \d+ min de repos)? \(estimation\)/);
+  assert.match(await page.locator('.pm-preview').innerText(), /Durée estimée : \d+ min au total( : \d+ min d’exercice \+ \d+ min de repos)?/);
   await page.click('.pm-action-save');
   await page.waitForFunction(async id => !!(await (await import('./storage.js')).getProgram(id, '2026-11-16')), alex);
   await page.click('.nav-btn[data-go="accueil"]');

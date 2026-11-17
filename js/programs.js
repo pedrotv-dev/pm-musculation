@@ -86,10 +86,10 @@ export function getProgramStatus(weekStart, date = new Date()) {
  * Durée ESTIMÉE d'une journée de programme (minutes, arrondie à la minute) : même calcul que le moteur
  * (js/session-time.js). L'ancien arrondi aux 5 min supérieures affichait 50 min pour une séance de 45 min 45 s.
  */
-/** « 57 min · dont 18 min de repos » : durée totale estimée et part des repos entre les séries. */
+/** « 57 min au total : 39 min d'exercice + 18 min de repos » : durée totale estimée, repos entre les séries COMPRIS. */
 export function estimateDayText(day) {
-  const rest = Math.round(dayRestSeconds(day) / 60);
-  return estimateDayMinutes(day) + ' min' + (rest ? ' · dont ' + rest + ' min de repos' : '');
+  const total = estimateDayMinutes(day), rest = Math.min(total, Math.round(dayRestSeconds(day) / 60));
+  return total + ' min au total' + (rest ? ' : ' + (total - rest) + ' min d’exercice + ' + rest + ' min de repos' : '');
 }
 export function estimateDayMinutes(day) {
   return Math.max(1, Math.round(daySeconds(day) / 60));
