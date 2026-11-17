@@ -74,7 +74,7 @@ function drawDays(container, program, activeDay, choose) {
   }
   const day = program.days.find(d => d.id === chosen);
   const heading = node('h3', '', day.name || 'Séance du ' + day.id);
-  body.append(heading, node('p', 'pm-muted', 'Durée estimée : environ ' + estimateDayText(day) + ' (estimation)'));
+  body.append(heading, node('p', 'pm-muted', 'Durée estimée : ' + estimateDayText(day)));
   const week = state.selectedWeek;
   const future = state.profile !== 'demo' && week && getProgramStatus(week) === 'upcoming';
   if (future) body.append(node('p', 'pm-muted pm-upcoming-note', 'Programme à venir : il s’activera automatiquement le lundi ' + week.split('-').reverse().join('/') + '.'));
@@ -359,7 +359,7 @@ function drawPreview(preview) {
   for (const day of preview.program.days) {
     const block = node('div', 'pm-preview-day');
     block.append(node('h4', '', day.id[0].toUpperCase() + day.id.slice(1) + (day.name ? ' · ' + day.name : '')),
-      node('p', 'pm-preview-sub', 'Durée estimée : environ ' + estimateDayText(day) + ' (estimation)'));
+      node('p', 'pm-preview-sub', 'Durée estimée : ' + estimateDayText(day)));
     day.activities.forEach((a, i) =>
       block.append(node('p', '', (i + 1) + '. ' + nameOf(a) + ' — ' + metaOf(a))));
     previewView.append(block);

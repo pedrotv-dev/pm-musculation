@@ -4,9 +4,9 @@
  */
 import { el, btn, add, dialog, confirmDialog, toast, formatDateFr, fmtNum, localISODate } from './dom.js';
 import { getProfileInfo, isRealProfile, isLegacyProfile, updateProfile, deleteProfile, PROFILE_COLORS, NAME_MAX, GOAL_MAX } from './profiles.js';
-import { GOALS, LEVELS, SENIORITY, LEVEL_OF_SENIORITY, DAYS, DURATIONS, COMMUTES, COMMUTE_MINUTES, CARDIO_MODES, STRETCH_MINUTES, INTENSITIES, FATIGUE, SLEEP, MEASURES, TEXT_MAX, getSportProfile, saveSportProfile, getGym, saveGym, missingEssentials, weightOrNull } from './sport-profile.js';
+import { GOALS, LEVELS, SENIORITY, LEVEL_OF_SENIORITY, DAYS, DURATIONS, COMMUTES, COMMUTE_MINUTES, CARDIO_MODES, STRETCH_MINUTES, STRETCH_NAME, INTENSITIES, FATIGUE, SLEEP, MEASURES, TEXT_MAX, getSportProfile, saveSportProfile, getGym, saveGym, missingEssentials, weightOrNull } from './sport-profile.js';
 import { loadCatalog } from './catalog.js';
-import { listWorkouts, getDemoProgram } from './workouts.js';
+import { listWorkouts, getDemoProgram, setDemoProgram } from './workouts.js';
 import { listBodyWeights, recordBodyWeight } from './weights.js';
 import { listPrograms, getProgram } from '../storage.js';
 import { mondayOf, importProgram, estimateDayText } from './programs.js';
@@ -266,7 +266,7 @@ export function coachSection(profile) {
     const [sport, weeks] = await Promise.all([getSportProfile(profile).catch(() => null), profile === 'demo' ? [] : listPrograms(profile).then(l => l.map(r => r.weekStart || r.data?.weekStart)).catch(() => [])]);
     if (mine !== seq) return;
     // semaine proposée : la semaine en cours si elle n'a pas encore de programme, sinon la suivante
-    if (!C.week) C.week = profile !== 'demo' && !weeks.includes(mondayOf()) ? mondayOf() : addDays(mondayOf(), 7);
+    if (!C.week) C.week = profile === 'demo' || !weeks.includes(mondayOf()) ? mondayOf() : addDays(mondayOf(), 7); // démo : semaine en cours (visible à l'accueil)
     const missing = sport ? missingEssentials(sport) : [];
     body.replaceChildren(...(missing.length ? [missingBlock(missing)] : generator(profile)));
   };
@@ -299,6 +299,7 @@ function generator(profile) {
   const dur = select(DURATIONS.map(d => [d, d + ' min']), null, 'Choisir'); dur.id = 'pm-gen-duration';
   const mode = select(CARDIO_MODES, 'normal', 'Équilibré selon mon objectif'); mode.id = 'pm-gen-cardio';
   mode.querySelector('option[value=""]').remove();
+  const stretch = select(STRETCH_MINUTES.filter(m => m).map(m => [m, m + ' min']), null, 'Aucun'); stretch.id = 'pm-gen-stretch';
   const week = select(weeks.map(([w, l]) => [w, l + ' · ' + formatDateFr(w)]), C.week, 'Semaine'); week.id = 'pm-gen-week';
   week.querySelector('option[value=""]').disabled = true;
   week.addEventListener('change', () => { C.week = week.value; });
@@ -306,10 +307,13 @@ function generator(profile) {
   let dayChecks = checks(DAYS, [], d => cap(d).slice(0, 3));
   daysBox.append(dayChecks.box);
   getSportProfile(profile).then(sp => {
-    sport = sp; goal.value = sp.mainGoal || ''; dur.value = sp.durationMin ? String(sp.durationMin) : ''; mode.value = sp.cardioMode || 'normal';
+    sport = sp; goal.value = sp.mainGoal || ''; dur.value = sp.durationMin ? String(sp.durationMin) : ''; mode.value = sp.cardioMode || 'normal'; stretch.value = sp.stretchMin ? String(sp.stretchMin) : '';
     dayChecks = checks(DAYS, sp.days || [], d => cap(d).slice(0, 3)); daysBox.replaceChildren(dayChecks.box);
   }).catch(() => {});
   const gen = btn('Générer mon programme', 'pm-validate pm-engine-calc', () => run({}));
+
+  /** Démo : programme gardé en mémoire seulement (Démarrer et l'accueil démo l'utilisent), jamais IndexedDB. */
+  const saveDemo = program => setDemoProgram({ schemaVersion: 1, weekStart: program.weekStart, profileId: 'demo', days: JSON.parse(JSON.stringify(program.programs.demo.days)) });
 
   /** Calcule, enregistre et affiche la semaine. `patch` : changements de réglages (ex. { cardioMode:'more' }). */
   async function run(patch) {
@@ -323,7 +327,7 @@ function generator(profile) {
       const sameDays = (base.days || []).length === days.length && days.every(d => (base.days || []).includes(d));
       // mêmes jours : la fréquence choisie (parfois moins de séances que de jours) est gardée ; sinon une séance par jour coché
       const frequency = sameDays && base.frequency ? Math.min(base.frequency, days.length) : days.length;
-      const next = { ...base, mainGoal: goal.value, days, frequency, durationMin: Number(dur.value), cardioMode: mode.value, ...patch };
+      const next = { ...base, mainGoal: goal.value, days, frequency, durationMin: Number(dur.value), cardioMode: mode.value, stretchMin: Number(stretch.value) || 0, ...patch };
       delete next.silent;
       if (profile !== 'demo') sport = await saveSportProfile(profile, next); else sport = next;
       mode.value = sport.cardioMode;
@@ -337,8 +341,8 @@ function generator(profile) {
         const had = await getProgram(profile, C.week).catch(() => null);
         if (had && !patch.silent && !(await confirmDialog('Un programme existe déjà pour la semaine du ' + formatDateFr(C.week) + '. Le remplacer ? Tes séances déjà faites sont conservées.', { ok: 'Remplacer' }))) { gen.disabled = false; return; }
         await importProgram(profile, program, { knownMachineIds: inp.catalog.map(m => m.id) });
-        document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile } }));
-      }
+      } else await saveDemo(program);
+      document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile } }));
       show(program, w, inp);
       say(st, 'Programme prêt ✓', 'ok');
     } catch (e) { say(st, (e.message || 'Génération impossible.'), 'error'); }
@@ -354,7 +358,9 @@ function generator(profile) {
     const nR = kinds.filter(k => k === 'r').length, nC = kinds.filter(k => k === 'c').length;
     const sum = [nR && `${nR} séance${nR > 1 ? 's' : ''} de renforcement`, nC && `${nC} séance${nC > 1 ? 's' : ''} cardio`, `${cardioMin} min de cardio prévues`].filter(Boolean).join(' · ');
     const save = async () => {
-      if (profile !== 'demo') { await importProgram(profile, program, { knownMachineIds: inp.catalog.map(m => m.id) }); document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile } })); }
+      if (profile !== 'demo') await importProgram(profile, program, { knownMachineIds: inp.catalog.map(m => m.id) });
+      else await saveDemo(program);
+      document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile } }));
       show(program, w, inp);
     };
     const cards = days.map(d => {
@@ -365,7 +371,7 @@ function generator(profile) {
       const list = el('ul', 'pm-gen-list');
       for (const a of d.activities) {
         const li = el('li', 'pm-gen-item');
-        if (a.type !== 'strength') { li.append(el('span', '', (a.type === 'warmup' ? 'Échauffement · ' : 'Cardio · ') + a.name + ' — ' + a.durationMinutes + ' min')); list.append(li); continue; }
+        if (a.type !== 'strength') { li.append(el('span', '', (a.name === STRETCH_NAME ? '' : a.type === 'warmup' ? 'Échauffement · ' : 'Cardio · ') + a.name + ' — ' + a.durationMinutes + ' min')); list.append(li); continue; }
         const kg = a.sets[0].kg > 0 ? fmtNum(a.sets[0].kg) + ' kg' : 'À régler sur la machine';
         li.append(el('span', '', (names.get(a.machineId) || a.machineId) + ' — ' + a.sets.length + ' × ' + a.sets[0].reps + ' · ' + kg));
         // changer de machine : même groupe musculaire, disponible, pas déjà dans la séance
@@ -403,6 +409,6 @@ function generator(profile) {
   }
 
   add(form, field('1. Ton objectif', goal), add(el('div', 'pm-coach-field'), el('p', 'pm-coach-label', '2. Tes jours'), daysBox),
-    field('Durée disponible par séance', dur), field('Cardio', mode), field('Semaine à préparer', week));
+    field('Durée disponible par séance', dur), field('Cardio', mode), field('Étirements / yoga en fin de séance', stretch), field('Semaine à préparer', week));
   return [form, gen, st, out];
 }

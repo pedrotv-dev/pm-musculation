@@ -138,7 +138,7 @@ await step('1.5 import d’un fichier de programme (semaine en cours) → accuei
   await page.fill('.pm-textarea', reply(programAlex));
   await page.click('.pm-action-verify');
   await page.waitForSelector('.pm-action-save:not([disabled])');
-  assert.match(await text('.pm-preview'), /Durée estimée : environ \d+ min/);
+  assert.match(await text('.pm-preview'), /Durée estimée : \d+ min au total/);
   await page.click('.pm-action-save'); await acceptReplace(page);
   await page.waitForFunction(async id => !!(await (await import('./storage.js')).getProgram(id, '2026-11-09')), alex);
   await page.click('.nav-btn[data-go="accueil"]');
