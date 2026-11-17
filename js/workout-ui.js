@@ -9,7 +9,7 @@ import {
   startWorkout, getResumableWorkout, getWorkout, listWorkouts, updateSet, addSet, removeSet, completeActivity, skipActivity,
   postponeActivity, returnToPostponed, pauseWorkout, resumeWorkout, finishWorkout, discardWorkout,
   addActivity, removeActivity, moveActivity, setCursor, setLoads, setWorkoutFeedback, getNextActivity, getWorkoutSummary,
-  getWorkoutDuration, getPostponedActivities, setActivityFeel
+  getWorkoutDuration, getPostponedActivities, setActivityFeel, deleteWorkout
 } from './workouts.js';
 import { el, btn, clear, add, dialog, confirmDialog, toast, formatClock, formatMinutes, fmtNum, parseNum, localISODate, formatDateFr } from './dom.js';
 import { lastPerformance, planLoads, programLoads, knownLoads, lastFeel, feelAdjustment, FEELS, FEEL_LABEL } from './last-loads.js';
@@ -1431,9 +1431,18 @@ async function begin(detail) {
       session = await startWorkout(profile, { dayId: detail.dayId, weekStart: detail.weekStart, free: detail.free === true, lastLoads: true });
     } catch (error) {
       if (error.code !== 'SESSION_IN_PROGRESS') throw error;
-      const pick = await dialog({ title: 'Une séance est déjà en cours', message: 'Reprends-la ou termine-la avant d’en démarrer une autre.',
-        choices: [{ label: 'Annuler', value: null }, { label: 'Reprendre la séance', value: 'resume', kind: 'primary' }] });
-      if (pick !== 'resume' || !valid(profile, rev)) return;
+      const demo = profile === 'demo'; // démo : la séance fictive en cours peut être écartée pour essayer la nouvelle
+      const pick = await dialog({ title: 'Une séance est déjà en cours', message: demo ? 'Séance de démo (fictive) : reprends-la, ou écarte-la pour démarrer celle-ci.' : 'Reprends-la ou termine-la avant d’en démarrer une autre.',
+        choices: [{ label: 'Annuler', value: null }, ...(demo ? [{ label: 'Écarter et démarrer', value: 'replace' }] : []), { label: 'Reprendre la séance', value: 'resume', kind: 'primary' }] });
+      if (!valid(profile, rev)) return;
+      if (pick === 'replace' && demo) {
+        const old = await getResumableWorkout('demo');
+        if (old) await deleteWorkout('demo', old.id);
+        session = await startWorkout('demo', { dayId: detail.dayId, weekStart: detail.weekStart, free: detail.free === true, lastLoads: true });
+        if (valid(profile, rev)) showWorkout(session);
+        return;
+      }
+      if (pick !== 'resume') return;
       S.busy = false;
       return resumeExisting();
     }

@@ -1042,5 +1042,17 @@ export async function commitDemoSession(prepared, base, { authorize } = {}) {
  */
 export async function getDemoProgram() {
   const store = await demoReady();
-  return clone([...store.programs.values()][0]);
+  return clone(store.programs.get(mondayOf()) || [...store.programs.values()][0]);
+}
+
+/**
+ * Démo : enregistre EN MÉMOIRE un programme généré (forme enregistrée, profileId 'demo') pour sa semaine, afin que
+ * « Démarrer » et l'accueil démo l'utilisent. Jamais IndexedDB ; « Réinitialiser la démo » le remet d'origine.
+ */
+export async function setDemoProgram(program) {
+  if (!isObj(program) || program.profileId !== DEMO || typeof program.weekStart !== 'string' || !Array.isArray(program.days)) {
+    throw new WorkoutError('Programme démo invalide.', 'INVALID_ARGUMENT');
+  }
+  const store = await demoReady();
+  store.programs.set(program.weekStart, clone(program));
 }
