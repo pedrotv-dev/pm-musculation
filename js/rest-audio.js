@@ -65,9 +65,10 @@ function sessionType(type) {
 }
 /** Écran maintenu allumé et page visible : le fichier « silence + bips » n'apporte rien et baisserait la musique. */
 export function restAudioNeeded() {
-  // iPhone / iPad : Safari refuse de lancer un son une fois l'écran verrouillé (page cachée) ; le fichier doit donc
-  // démarrer AU DÉBUT du repos, écran allumé, pour sonner écran verrouillé (retours 14/11)
-  if (isIOS()) return true;
+  // iPhone / iPad (retours 17/11, testés sur téléphone) : une appli web installée est mise en sourdine par iOS dès
+  // l'écran verrouillé ; le fichier « silence + bips » coupait donc la musique sans jamais sonner. Sur iOS : jamais de
+  // fichier de repos ; l'écran reste allumé (Wake Lock) et la fin du repos baisse la musique un instant (playEndChime)
+  if (isIOS()) return false;
   const visible = typeof document === 'undefined' || !document.visibilityState || document.visibilityState === 'visible';
   return !(visible && isAwakeActive());
 }

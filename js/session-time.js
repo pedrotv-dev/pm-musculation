@@ -19,3 +19,14 @@ export function activitySeconds(a) {
 }
 /** Secondes d'une journée de programme. */
 export const daySeconds = day => ((day && day.activities) || []).reduce((n, a) => n + activitySeconds(a), 0);
+
+/** Secondes de REPOS d'une journée (repos entre les séries des machines) : affichées à part dans les estimations. */
+export function dayRestSeconds(day) {
+  let rest = 0;
+  for (const a of (day && day.activities) || []) {
+    if (a.type !== 'strength') continue;
+    const n = (a.sets || []).length * (isPerSide(a.machineId, a.perSide) ? 2 : 1);
+    rest += Math.max(0, n - 1) * (Number.isFinite(a.restSeconds) ? a.restSeconds : 90);
+  }
+  return rest;
+}

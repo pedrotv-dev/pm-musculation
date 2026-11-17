@@ -3,6 +3,7 @@
  * LOT 1 : les sections existantes sont regroupées en 5 rubriques ; « Préparer ma semaine » est dans Programme.
  */
 import { LANGS } from './i18n.js';
+import { isIOS } from './rest-audio.js';
 import { getRestConfig, setRestConfig, stopRest } from './rest-timer.js';
 import { listWorkouts, resetDemoWorkouts } from './workouts.js';
 import { resetDemoWeights } from './weights.js';
@@ -91,7 +92,7 @@ function usageSection(profile, ui) {
     row('Garder l’écran allumé pendant l’entraînement', isWakeLockSupported()
       ? 'L’écran ne s’éteint pas tant que la séance est en cours sur l’écran de séance (libéré en pause, à la fin et quand l’application passe en arrière-plan). Tant que l’écran reste allumé, aucun son n’est joué pendant le repos : ta musique n’est pas baissée.'
       : 'Non disponible sur ce navigateur : l’écran s’éteindra selon les réglages du téléphone.', 'keepAwake', isWakeLockSupported()),
-    row('Alerte de fin de repos, écran verrouillé', 'Joue un son pendant le repos (silence, puis bips à la fin) pour sonner même téléphone verrouillé. Sur iPhone, ce son met en PAUSE ta musique (YouTube Music, Spotify…) pendant chaque repos et iOS ne la relance pas : décoche si tu écoutes de la musique. Décoché : écran allumé, les bips baissent la musique un instant sans la couper.', 'lockAlert'),
+    ...(isIOS() ? [el('p', 'pm-muted pm-ios-note', 'Sur iPhone, iOS coupe le son des applis web dès que l’écran est verrouillé : garde l’écran allumé (option ci-dessus). La fin du repos baisse ta musique un instant, sans la couper.')] : [row('Alerte de fin de repos, écran verrouillé', 'Joue un son pendant le repos (silence, puis bips à la fin) pour sonner même téléphone verrouillé. Suit le volume « médias ». Décoché : garde l’écran allumé, les bips de fin baissent la musique un instant sans la couper.', 'lockAlert')]),
     row('Bouton retour du téléphone', 'Revient d’un niveau dans l’application (ferme un dialogue, retourne à la machine, à l’accueil…) au lieu de la quitter. À l’accueil, « retour » quitte normalement.', 'backButton'));
 }
 
