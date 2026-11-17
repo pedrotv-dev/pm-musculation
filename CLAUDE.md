@@ -29,6 +29,6 @@ Lu automatiquement à chaque session. À tenir à jour.
 
 ## État (17/11/2026)
 - En production : 2026.11.17-566ea504 (PR #80).
-- PR #81 (durée claire, étirements dans le générateur, programme généré utilisable en Démo) : en attente du GO. Le reste du test Démo est validé par l'utilisateur.
-- À confirmer sur iPhone, en conditions réelles : musique seulement baissée en fin de repos ; pas de son écran verrouillé (limite d'iOS).
+- PR #81 (durée claire, étirements dans le générateur, programme généré utilisable en Démo) : GO donné le 17/11. Le reste du test Démo est validé par l'utilisateur.
+- iPhone : son en fin de repos confirmé par l'utilisateur (17/11).
 - Pas commencé, décision de l'utilisateur nécessaire : la fonction amis / minuteurs partagés (il faudrait des comptes et un serveur, contraire à la règle « tout sur le téléphone »), et les étirements pendant les repos.
