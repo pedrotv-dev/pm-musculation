@@ -504,3 +504,13 @@ button, summary, select, input, textarea, label { touch-action: manipulation; }
 .pm-gen-item > span { flex: 1 1 60%; min-width: 0; }
 .pm-gen-item .pm-select { flex: 0 0 auto; max-width: 42%; padding-right: 28px; }
 .pm-gen-dayhead strong { display: block; }
+
+/* décompte (étirements / yoga, cardio) */
+.pm-countdown-row { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
+.pm-countdown { font-size: 2rem; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--turq); }
+.pm-countdown-start { min-height: 44px; }
+.pm-countdown-stop { min-height: 44px; }
+.pm-ios-note { margin: 4px 0 10px; }
+/* un message ne bloque jamais l'écran dessous (ex. − de la charge à 320 px) : seul son bouton d'action est cliquable */
+.pm-toast { pointer-events: none; }
+.pm-toast-action { pointer-events: auto; }

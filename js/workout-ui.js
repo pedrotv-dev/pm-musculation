@@ -27,6 +27,7 @@ import { rewardFor, progressionStartFor } from './gamification.js';
 import { rewardCard, doneHero, celebrate } from './jeu-ui.js';
 import { fx } from './fx.js';
 import { metricsFor, metricsText } from './cardio.js';
+import { playEndChime } from './rest-audio.js';
 
 const root = document.documentElement;
 const appPages = document.getElementById('app-pages');
@@ -45,7 +46,9 @@ const valid = (profile, rev) => S.profile === profile && root.dataset.pmProfile 
 const act = (session, key) => session.activities.find(a => a.key === key);
 const nameOf = a => a.type === 'strength' ? (S.catalog.byId.get(a.machineId)?.name || a.machineId)
   : a.name || (a.type === 'warmup' ? 'Échauffement' : 'Cardio');
-const kindLabel = a => a.type === 'strength' ? 'Musculation' : a.type === 'warmup' ? 'Échauffement' : 'Cardio';
+const kindLabel = a => a.type === 'strength' ? 'Musculation' : a.type === 'warmup' ? (/tirement|yoga/i.test(a.name || '') ? 'Étirements' : 'Échauffement') : 'Cardio';
+// décompte d'une activité en minutes (cardio, échauffement, étirements / yoga) : { key, endsAt } ; un seul à la fois
+const countdown = { key: null, endsAt: 0, sessionId: null };
 const emit = (type, detail) => document.dispatchEvent(new CustomEvent(type, { detail }));
 
 /** Les ecritures d'un meme ecran sont ordonnees ; chaque appel renvoie la promesse de SON resultat. */
@@ -479,6 +482,18 @@ function tickClock() {
   const n = panel.querySelector('#pm-clock');
   if (!n || !S.session) return;
   n.textContent = formatClock(getWorkoutDuration(S.session, new Date()).seconds);
+  if (countdown.key && countdown.sessionId === S.session.id) {
+    const left = Math.max(0, Math.round((countdown.endsAt - Date.now()) / 1000));
+    const c = panel.querySelector('#pm-countdown');
+    if (c) c.textContent = formatClock(left);
+    if (!left) {
+      countdown.key = null;
+      if (!playEndChime()) fx('rest-end');
+      try { navigator.vibrate?.([130, 80, 130]); } catch (_) { /* non pris en charge */ }
+      toast('Décompte terminé ✓');
+      render();
+    }
+  }
 }
 
 function select(key, { persist = true } = {}) {
@@ -934,6 +949,21 @@ function renderMachine(a) {
       return { m, input: f.input };
     });
     card.append(grid);
+    // décompte (étirements / yoga, cardio) : discret, lancé à la demande, sonne à la fin (écran allumé)
+    const running = countdown.key === a.key && countdown.sessionId === S.session?.id;
+    const cd = el('div', 'pm-countdown-row');
+    if (running) {
+      const t = el('span', 'pm-countdown', formatClock(Math.max(0, Math.round((countdown.endsAt - Date.now()) / 1000)))); t.id = 'pm-countdown';
+      add(cd, t, btn('Arrêter', 'pm-link pm-countdown-stop', () => { countdown.key = null; render(); }));
+    } else if (a.status !== 'done') {
+      add(cd, btn('⏱ Décompte ' + fmtNum(parseNum(dur.input.value) || 0) + ' min', 'pm-secondary pm-countdown-start', () => {
+        const m = parseNum(dur.input.value);
+        if (!Number.isFinite(m) || m <= 0) { setStatus('Indique une durée en minutes.', 'error'); return; }
+        Object.assign(countdown, { key: a.key, endsAt: Date.now() + m * 60000, sessionId: S.session.id });
+        render();
+      }));
+    }
+    card.append(cd);
     card.append(el('p', 'pm-muted pm-cardio-hint', (!a.actual && a.prefill?.metrics ? 'Réglages de ta dernière fois (' + formatDateFr(a.prefill.date) + '). ' : '') + 'Réglages facultatifs : laisse vide ce que tu ne veux pas noter.'));
     const confirmDone = btn(a.status === 'done' ? 'Fait ✓ — modifier' : 'Fait ✓', 'pm-validate', () => {
       const v = parseNum(dur.input.value);

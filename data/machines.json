@@ -177,7 +177,10 @@
       "id": "elliptical",
       "name": "Vélo elliptique",
       "kind": "cardio",
-      "muscleGroup": "Cardio"
+      "muscleGroup": "Cardio",
+      "metrics": [
+        "level"
+      ]
     },
     {
       "id": "rowing-machine",
