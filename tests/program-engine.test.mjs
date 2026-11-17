@@ -258,3 +258,13 @@ test('endurance : cardio en bloc principal ; avec historique, départ = durée h
   assert.ok(cardioDays.length && cardioDays.every(d => cardioOut(d) === 25), 'départ 20 + 5 min');
   assert.ok(r.notes.some(n => /durée habituelle \(20 min\)/.test(n)));
 });
+
+test('étirements / yoga (réglage) : décompte en fin de chaque séance, pris sur la durée choisie', () => {
+  const sport = { mainGoal: 'Prise de muscle', level: 'intermediaire', days: ['lundi', 'jeudi'], frequency: 2, durationMin: 60, stretchMin: 20 };
+  const r = E.generateWeek({ profileId, weekStart: '2026-11-16', sport, gym: {}, catalog });
+  for (const d of r.program.programs[profileId].days) {
+    const last = d.activities.at(-1);
+    assert.deepEqual([last.type, last.name, last.durationMinutes], ['warmup', 'Étirements / yoga', 20]);
+    assert.ok(minutesOf(d) <= 60, d.id + ' : ' + minutesOf(d));
+  }
+});

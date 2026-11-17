@@ -26,7 +26,7 @@
 import { lastPerformance, knownLoads, isAssisted } from './last-loads.js';
 import { currentReference } from './declared-loads.js';
 import { stepWeight } from './machine-rules.js';
-import { ACTIVE_COMMUTES, INTENSITIES } from './sport-profile.js';
+import { ACTIVE_COMMUTES, INTENSITIES, STRETCH_NAME } from './sport-profile.js';
 import { activitySeconds, daySeconds } from './session-time.js';
 
 export const ENGINE_VERSION = 1;
@@ -285,7 +285,10 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
   const strengthSplit = splitFor(layout.filter(k => k === 'strength').length || 1, sport.level);
   let si = 0;
   const split = layout.map(k => (k === 'strength' ? strengthSplit[si++] : k === 'cardio' ? 'cardio' : 'cardioFull'));
-  const maxMin = Number(sport.durationMin) || 60;
+  // étirements / yoga en fin de séance (réglage) : pris sur le créneau, + 1 min de transition
+  const stretch = Number(sport.stretchMin) || 0;
+  const maxMin = (Number(sport.durationMin) || 60) - (stretch ? stretch + 1 : 0);
+  const withStretch = acts => (stretch ? [...acts, { type: 'warmup', name: STRETCH_NAME, durationMinutes: stretch }] : acts);
   const parity = weekParity(weekStart);
   const seen = new Map(); // template -> nombre d'occurrences (variante A / B au sein de la semaine)
   const warm = cardio.find(m => m.id === 'recumbent-bike') || cardio.find(m => m.id === 'elliptical') || cardio[0] || null;
@@ -313,7 +316,7 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
       const acts = [];
       if (warm) acts.push({ type: 'warmup', name: warm.name, durationMinutes: 5 });
       if (finisher) acts.push({ type: 'cardio', name: finisher.name, durationMinutes: cardioDayMin });
-      return { id: day, name: 'Cardio', activities: acts };
+      return { id: day, name: 'Cardio', activities: withStretch(acts) };
     }
     const t = TEMPLATES[key];
     const occ = seen.get(key) || 0; seen.set(key, occ + 1);
@@ -424,7 +427,7 @@ export function generateWeek({ profileId, weekStart, sport = {}, gym = {}, catal
     if (cut.length) reductions.push(`${day} : ${cut.join(', ')}`);
     trimmed += cands.length - keep.size;
     const label = kind === 'endurance' ? 'Cardio + endurance musculaire' : t.name;
-    return { id: day, name: label + (seen.get(key) > 1 || split.filter(s => s === key).length > 1 ? (variant ? ' B' : ' A') : ''), activities: acts };
+    return { id: day, name: label + (seen.get(key) > 1 || split.filter(s => s === key).length > 1 ? (variant ? ' B' : ' A') : ''), activities: withStretch(acts) };
   });
 
   // bilan factuel de la semaine : séries par muscle, travail DIRECT (machine ciblant ce muscle) et INDIRECT (muscles

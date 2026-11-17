@@ -4,12 +4,12 @@
  */
 import { el, btn, add, dialog, confirmDialog, toast, formatDateFr, fmtNum, localISODate } from './dom.js';
 import { getProfileInfo, isRealProfile, isLegacyProfile, updateProfile, deleteProfile, PROFILE_COLORS, NAME_MAX, GOAL_MAX } from './profiles.js';
-import { GOALS, LEVELS, SENIORITY, LEVEL_OF_SENIORITY, DAYS, DURATIONS, COMMUTES, COMMUTE_MINUTES, CARDIO_MODES, INTENSITIES, FATIGUE, SLEEP, MEASURES, TEXT_MAX, getSportProfile, saveSportProfile, getGym, saveGym, missingEssentials, weightOrNull } from './sport-profile.js';
+import { GOALS, LEVELS, SENIORITY, LEVEL_OF_SENIORITY, DAYS, DURATIONS, COMMUTES, COMMUTE_MINUTES, CARDIO_MODES, STRETCH_MINUTES, INTENSITIES, FATIGUE, SLEEP, MEASURES, TEXT_MAX, getSportProfile, saveSportProfile, getGym, saveGym, missingEssentials, weightOrNull } from './sport-profile.js';
 import { loadCatalog } from './catalog.js';
 import { listWorkouts, getDemoProgram } from './workouts.js';
 import { listBodyWeights, recordBodyWeight } from './weights.js';
 import { listPrograms, getProgram } from '../storage.js';
-import { mondayOf, importProgram, estimateDayMinutes } from './programs.js';
+import { mondayOf, importProgram, estimateDayText } from './programs.js';
 import { addDays } from './stats.js';
 import { getDeclaredLoads } from './declared-loads.js';
 import { generateWeek } from './program-engine.js';
@@ -111,6 +111,7 @@ export async function sportSection(profile) {
   const dur = select(DURATIONS.map(d => [d, d + ' min']), s.durationMin); dur.id = ESSENTIAL_IDS.durationMin;
   const commute = select(COMMUTES, s.commuteMode); commute.id = 'pm-sport-commute';
   const commuteMin = select(COMMUTE_MINUTES.map(m => [m, m + ' min']), s.commuteMin); commuteMin.id = 'pm-sport-commute-min';
+  const stretch = select(STRETCH_MINUTES.filter(m => m).map(m => [m, m + ' min']), s.stretchMin || '', 'Aucun'); stretch.id = 'pm-sport-stretch';
   const pace = el('input'); pace.type = 'checkbox'; pace.id = 'pm-sport-commute-moderate'; pace.checked = s.commuteModerate === true;
   const paceL = add(el('label', 'pm-check'), pace, document.createTextNode(' Allure au moins modérée (je peux parler mais pas chanter)'));
   const weightNow = input(lastW ? fmtNum(lastW.kg) : '', { inputMode: 'decimal' }); weightNow.id = 'pm-sport-weight';
@@ -135,7 +136,7 @@ export async function sportSection(profile) {
       // poids actuel : vérifié AVANT tout enregistrement (rien n'est écrit si la valeur est invalide)
       const typed = weightOrNull(weightNow.value.trim(), 'Poids actuel');
       const newWeight = typed !== null && (!lastW || typed !== lastW.kg) ? typed : null; // Progression se relit à l'ouverture
-      await saveSportProfile(profile, { mainGoal: mainGoal.value, goals: goals.values(), goalNote: goalNote.value, level: level.value, seniority: seniority.value, frequency: freq.value, days: days.values(), durationMin: dur.value, commuteMode: commute.value, commuteMin: commute.value ? commuteMin.value : '', commuteModerate: commute.value ? pace.checked : null,
+      await saveSportProfile(profile, { ...s, mainGoal: mainGoal.value, stretchMin: stretch.value || 0, goals: goals.values(), goalNote: goalNote.value, level: level.value, seniority: seniority.value, frequency: freq.value, days: days.values(), durationMin: dur.value, commuteMode: commute.value, commuteMin: commute.value ? commuteMin.value : '', commuteModerate: commute.value ? pace.checked : null,
         targetWeightKg: target.value.trim(), intensity: intensity.value, fatigue: fatigue.value, sleep: sleep.value, recoveryNote: recovery.value, measures: m, initialPerf: perf.value,
         avoid: avoid.value, constraints: constraints.value, preferences: prefs.value, health: health.value, healthInBilan: hs.checked });
       let extra = '';
@@ -156,6 +157,7 @@ export async function sportSection(profile) {
     el('h4', 'pm-coach-sub', 'Disponibilités'), field('Séances par semaine *', freq), el('p', 'pm-coach-label', 'Jours disponibles *'), days.box,
     field('Durée maximale par séance *', dur, 'Le temps dont tu disposes au maximum, pas une durée à remplir : une séance plus courte est normale.'),
     field('Trajet jusqu’à la salle (facultatif)', commute), field('Durée du trajet, aller (facultatif)', commuteMin, 'À pied ou à vélo : l’aller-retour compte dans les 150 min d’activité modérée par semaine (OMS) si l’allure est au moins modérée.'), paceL,
+    field('Étirements / yoga en fin de séance', stretch, 'Ajoute un décompte en fin de chaque séance générée (pris sur la durée de la séance).'),
     el('h4', 'pm-coach-sub', 'Intensité, fatigue et récupération'), field('Difficulté souhaitée (RPE)', intensity, 'RPE : effort ressenti de 1 à 10 ; 8 = il reste environ 2 répétitions possibles.'),
     field('Fatigue actuelle', fatigue), field('Sommeil', sleep), field('Récupération (facultatif)', recovery),
     el('h4', 'pm-coach-sub', 'Corps et performances'),
@@ -358,7 +360,7 @@ function generator(profile) {
     const cards = days.map(d => {
       const card = el('section', 'pm-gen-day'); card.dataset.day = d.id;
       const head = el('div', 'pm-gen-dayhead');
-      add(head, add(el('div', ''), el('strong', '', cap(d.id) + ' — ' + d.name), el('span', 'pm-muted pm-gen-min', ' · ' + estimateDayMinutes(d) + ' min')),
+      add(head, add(el('div', ''), el('strong', '', cap(d.id) + ' — ' + d.name), el('span', 'pm-muted pm-gen-min', ' · ' + estimateDayText(d))),
         btn('Démarrer', 'pm-validate pm-gen-start', () => document.dispatchEvent(new CustomEvent('pm:start-workout', { detail: { profileId: profile, weekStart: program.weekStart, dayId: d.id } }))));
       const list = el('ul', 'pm-gen-list');
       for (const a of d.activities) {
