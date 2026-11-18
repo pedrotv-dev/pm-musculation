@@ -28,7 +28,7 @@ Lu automatiquement à chaque session. À tenir à jour.
   - `node tests/e2e/<flow>.mjs` : Playwright, liste dans `tests/e2e/run.mjs`, helpers dans `lib.mjs` (`generateUI`, `acceptReplace`, locale fr-FR forcée).
 - Vérification du moteur sur profils fictifs : `tools/simulate-profiles.mjs` → `docs/verification-moteur.md`.
 
-## État (17/11/2026)
-- En production : 2026.11.17-a659b28e (PR #81 fusionnée le 17/11).
+## État (18/11/2026)
+- En production : 2026.11.18-22116411 (PR #82 décompte boisson, fusionnée le 18/11).
 - iPhone : son en fin de repos confirmé par l'utilisateur (17/11).
 - Pas commencé, décision de l'utilisateur nécessaire : la fonction amis / minuteurs partagés (il faudrait des comptes et un serveur, contraire à la règle « tout sur le téléphone »), et les étirements pendant les repos.
