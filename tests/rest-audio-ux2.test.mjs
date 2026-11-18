@@ -23,6 +23,7 @@ const plays = [];
 globalThis.Audio = class {
   constructor() { this.paused = true; this.volume = 1; this.currentTime = 0; this.ended = false; this.attrs = {}; }
   setAttribute(k, v) { this.attrs[k] = v; }
+  getAttribute(k) { return k === 'src' ? this.src : this.attrs[k]; }
   removeAttribute(k) { if (k === 'src') this.src = ''; }
   addEventListener() {}
   load() {}
@@ -91,4 +92,12 @@ test('alerte écran verrouillé désactivée dans Profil : jamais de lecture, av
   const before = wavPlays();
   A.syncRestAudio(view(50), { enabled: false });
   assert.equal(wavPlays(), before);
+});
+
+test('retour 18/11 (iPhone) : les bips de fin de repos se mélangent à la musique (session « ambient »), jamais « transient » ni « playback »', async () => {
+  A.unlockRestAudio(); await tick(); await tick();
+  plays.length = 0;
+  assert.equal(A.playEndChime(), true);
+  assert.equal(plays.length, 1);
+  assert.equal(plays[0].session, 'ambient');
 });
