@@ -56,7 +56,7 @@ export function buildRestWav(seconds) {
 // ------------------------------------------------------------------ lecture (navigateur seulement)
 
 // `unlocking` : amorçage (son silencieux du premier geste) en cours ; aucun son de repos n'est lancé avant sa fin.
-const S = { audio: null, url: null, endsAt: 0, beepAtMs: 0, unlocked: false, unlocking: null, enabled: true, failed: false, view: null };
+const S = { chime: false, audio: null, url: null, endsAt: 0, beepAtMs: 0, unlocked: false, unlocking: null, enabled: true, failed: false, view: null };
 
 /** Safari 16.4+ : type de session audio de la page. Sans effet ailleurs. */
 function sessionType(type) {
@@ -82,7 +82,7 @@ const SILENT_CLIP = () => URL.createObjectURL(new Blob([buildRestWav(0.05)], { t
 function release() {
   if (S.audio) { try { S.audio.pause(); } catch (_) { /* déjà arrêté */ } S.audio.removeAttribute('src'); try { S.audio.load(); } catch (_) { /* ignoré */ } }
   if (S.url) { URL.revokeObjectURL(S.url); S.url = null; }
-  S.endsAt = 0; S.beepAtMs = 0;
+  S.endsAt = 0; S.beepAtMs = 0; S.chime = false;
   setSession(null);
   sessionType('ambient');
 }
@@ -91,7 +91,13 @@ function element() {
     S.audio = new Audio();
     S.audio.preload = 'auto';
     S.audio.setAttribute('playsinline', '');
-    S.audio.addEventListener('ended', () => { if (S.url) { URL.revokeObjectURL(S.url); S.url = null; } setSession(null); sessionType('ambient'); });
+    // fin des bips (playEndChime) : la source est retirée, l'iPhone rend la main à la musique à plein volume (retour 18/11).
+    // Pas pour le fichier de repos : restAudioCovers lit `ended` pour ne pas sonner deux fois.
+    S.audio.addEventListener('ended', () => {
+      if (S.url) { URL.revokeObjectURL(S.url); S.url = null; }
+      if (S.chime) { S.chime = false; try { S.audio.removeAttribute('src'); S.audio.load(); } catch (_) { /* sans effet */ } }
+      setSession(null); sessionType('ambient');
+    });
   }
   return S.audio;
 }
@@ -192,6 +198,7 @@ export function playEndChime() {
     // Safari : « ambient » = les bips se MÉLANGENT à la musique d'une autre appli. « transient » (avant le 18/11) la
     // mettait en pause sur iPhone et YouTube Music ne reprenait pas (retour Manon). Limite : bouton silencieux = muet.
     sessionType('ambient');
+    S.chime = true;
     a.src = S.url; a.volume = 1; a.currentTime = 0;
     const p = a.play();
     if (p && typeof p.catch === 'function') p.catch(() => { sessionType('ambient'); });
