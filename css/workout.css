@@ -314,5 +314,5 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-feel-btn:focus-visible { outline:3px solid var(--turq); outline-offset:2px; }
 
 /* décompte boisson (js/drink-timer.js) : discret, chiffres seulement quand il tourne */
-.pm-drink { font-size:15px; font-variant-numeric:tabular-nums; padding:0 8px; min-width:0; white-space:nowrap; }
+.pm-drink { font-size:15px; font-variant-numeric:tabular-nums; padding:0 8px; min-width:44px; min-height:44px; white-space:nowrap; }
 .pm-drink[data-running="1"] { font-size:13px; font-weight:750; color:var(--accent, currentColor); }
