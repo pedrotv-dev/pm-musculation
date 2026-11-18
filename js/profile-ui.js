@@ -10,6 +10,7 @@ import { resetDemoWeights } from './weights.js';
 import { createBackupFile, parseBackupText, describeBackup, restoreBackup, clearProfileData, resultsCsv, saveTextFile, getBackupStatus, runBackup } from './backup.js';
 import { loadCatalog } from './catalog.js';
 import { demoToolsSection } from './demo-tools.js';
+import { DRINK_MINUTES, getDrinkMinutes, setDrinkMinutes } from './drink-timer.js';
 import { korvGuide } from './jeu-ui.js';
 import { isRealProfile as real, isKnownProfile, getProfileInfo } from './profiles.js';
 import { APP_VERSION } from './version.js';
@@ -71,8 +72,15 @@ function chronoSection(profile, config) {
   dflt.i.addEventListener('change', () => { const v = parseNum(dflt.i.value); if (Number.isInteger(v)) save({ defaultSeconds: v }); else toast('Nombre entier attendu.'); });
   step.i.addEventListener('change', () => { const v = parseNum(step.i.value); if (Number.isInteger(v)) save({ stepSeconds: v }); else toast('Nombre entier attendu.'); });
   const grid = el('div', 'pm-grid-2'); grid.append(dflt.wrap, step.wrap);
+  // décompte du distributeur de boisson (réglage de l'appareil, js/drink-timer.js)
+  const drink = el('select', 'pm-select'); drink.id = 'pm-drink-min'; drink.setAttribute('aria-label', 'Décompte boisson');
+  DRINK_MINUTES.forEach(m => drink.append(new Option(m ? m + ' min' : 'Désactivé', String(m))));
+  drink.value = String(getDrinkMinutes());
+  drink.addEventListener('change', () => { setDrinkMinutes(Number(drink.value)); toast('Réglage enregistré', { duration: 1500 }); });
+  const drinkF = el('label', 'pm-field'); drinkF.append(el('span', 'pm-field-name', 'Décompte boisson (distributeur de la salle)'), drink,
+    el('span', 'pm-muted', 'Bouton 🥤 dans la barre de séance : appuie quand tu te sers, un son te prévient quand tu peux te resservir.'));
   return section('Chronomètre de récupération', 'Réglages propres à ce profil. Le temps de repos de chaque machine vient du programme.', mode, grid,
-    chk('Son à la fin du repos', 'sound'), chk('Vibration (si disponible)', 'vibrate'));
+    chk('Son à la fin du repos', 'sound'), chk('Vibration (si disponible)', 'vibrate'), drinkF);
 }
 
 function usageSection(profile, ui) {

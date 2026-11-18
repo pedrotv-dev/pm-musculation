@@ -312,3 +312,7 @@ html.pm-workout-active .app { padding-bottom:calc(170px + env(safe-area-inset-bo
 .pm-feel-btn { min-height:44px; padding:0 12px; border-radius:999px; border:1px solid var(--ascent-rim, var(--stroke)); background:var(--surface); color:var(--text); font:inherit; font-size:14px; font-weight:720; cursor:pointer; }
 .pm-feel-btn.pm-feel-on { border-color:rgba(20,230,199,.75); background:rgba(20,230,199,.14); color:var(--turq); }
 .pm-feel-btn:focus-visible { outline:3px solid var(--turq); outline-offset:2px; }
+
+/* décompte boisson (js/drink-timer.js) : discret, chiffres seulement quand il tourne */
+.pm-drink { font-size:15px; font-variant-numeric:tabular-nums; padding:0 8px; min-width:44px; min-height:44px; white-space:nowrap; }
+.pm-drink[data-running="1"] { font-size:13px; font-weight:750; color:var(--accent, currentColor); }
