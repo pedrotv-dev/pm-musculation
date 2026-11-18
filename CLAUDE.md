@@ -21,6 +21,7 @@ Lu automatiquement à chaque session. À tenir à jour.
 - Durées de séance : `js/session-time.js`, partagé par le moteur et l'aperçu. Texte affiché : « X min au total : Y min d'exercice + Z min de repos ».
 - Génération : `js/coach-ui.js` → `generator()`. En Démo, le programme généré est gardé en mémoire via `setDemoProgram`.
 - Langue : `js/i18n.js` + `i18n/en.json` ; l'extraction des textes se fait avec `tools/i18n-extract.mjs`.
+- Décompte boisson (distributeur Yanga de la salle, demandé sur Discord ; pas du yoga) : `js/drink-timer.js`, bouton 🥤 dans la barre de séance, durée dans Réglages → Séance et chrono (20 min par défaut).
 - Guide de la démo : `js/demo-tour.js`. Éditeur de programme : `js/program-editor.js`.
 - Tests :
   - `npm test` : tests Node ;
@@ -28,7 +29,6 @@ Lu automatiquement à chaque session. À tenir à jour.
 - Vérification du moteur sur profils fictifs : `tools/simulate-profiles.mjs` → `docs/verification-moteur.md`.
 
 ## État (17/11/2026)
-- En production : 2026.11.17-566ea504 (PR #80).
-- PR #81 (durée claire, étirements dans le générateur, programme généré utilisable en Démo) : GO donné le 17/11. Le reste du test Démo est validé par l'utilisateur.
+- En production : 2026.11.17-a659b28e (PR #81 fusionnée le 17/11).
 - iPhone : son en fin de repos confirmé par l'utilisateur (17/11).
 - Pas commencé, décision de l'utilisateur nécessaire : la fonction amis / minuteurs partagés (il faudrait des comptes et un serveur, contraire à la règle « tout sur le téléphone »), et les étirements pendant les repos.
