@@ -30,5 +30,5 @@ Lu automatiquement à chaque session. À tenir à jour.
 
 ## État (18/11/2026)
 - En production : 2026.11.18-22116411 (PR #82 décompte boisson, fusionnée le 18/11).
-- iPhone : son en fin de repos confirmé par l'utilisateur (17/11).
+- iPhone : son en fin de repos confirmé (17/11). 18/11 : la musique (YouTube Music) se coupait au bip → bips en session audio « ambient » (mélangés, jamais « transient »). À reconfirmer sur l'iPhone de Manon.
 - Pas commencé, décision de l'utilisateur nécessaire : la fonction amis / minuteurs partagés (il faudrait des comptes et un serveur, contraire à la règle « tout sur le téléphone »), et les étirements pendant les repos.

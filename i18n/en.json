@@ -1540,7 +1540,6 @@
  "Supprimer la séance": "Delete workout",
  "Supprimer le profil": "Delete profile",
  "sur cet appareil ? Fais d’abord une sauvegarde. L’autre profil n’est pas touché.": "on this device? Make a backup first. The other profile won't be affected.",
- "Sur iPhone, iOS coupe le son des applis web dès que l’écran est verrouillé : garde l’écran allumé (option ci-dessus). La fin du repos baisse ta musique un instant, sans la couper.": "On iPhone, iOS mutes web apps as soon as the screen locks: keep the screen on (option above). The end of the rest lowers your music for a moment without stopping it.",
  "ta grande tante avec son sac à main": "your great-aunt with her handbag",
  "Ta progression": "Your progress",
  "Ta progression compte à partir du": "Your progress counts from",
@@ -1744,5 +1743,6 @@
  "avant de pouvoir te resservir.": "before you can refill.",
  "Encore": "Still",
  "Relancer": "Restart",
- "🥤 Tu peux te resservir au distributeur": "🥤 You can refill at the dispenser"
+ "🥤 Tu peux te resservir au distributeur": "🥤 You can refill at the dispenser",
+ "Sur iPhone, iOS coupe le son des applis web dès que l’écran est verrouillé : garde l’écran allumé (option ci-dessus). Les bips de fin de repos se jouent par-dessus ta musique, sans la couper (muets si le bouton silencieux est activé).": "On iPhone, iOS mutes web apps as soon as the screen locks: keep the screen on (option above). The end-of-rest beeps play over your music without stopping it (silent if the silent switch is on)."
 }
