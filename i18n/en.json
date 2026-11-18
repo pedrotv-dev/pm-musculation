@@ -1735,5 +1735,14 @@
  "XP, soit": "XP, or",
  "min au total": "min total",
  "min d’exercice": "min of exercise",
- "Durée estimée :": "Estimated time:"
+ "Durée estimée :": "Estimated time:",
+ "Décompte boisson": "Drink timer",
+ "Décompte boisson (distributeur de la salle)": "Drink timer (gym dispenser)",
+ "Bouton 🥤 dans la barre de séance : appuie quand tu te sers, un son te prévient quand tu peux te resservir.": "🥤 button in the workout bar: tap when you get a drink, a sound tells you when you can refill.",
+ "Décompte boisson : appuie quand tu te sers au distributeur": "Drink timer: tap when you get a drink at the dispenser",
+ "Décompte boisson lancé :": "Drink timer started:",
+ "avant de pouvoir te resservir.": "before you can refill.",
+ "Encore": "Still",
+ "Relancer": "Restart",
+ "🥤 Tu peux te resservir au distributeur": "🥤 You can refill at the dispenser"
 }

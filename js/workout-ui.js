@@ -28,6 +28,7 @@ import { rewardCard, doneHero, celebrate } from './jeu-ui.js';
 import { fx } from './fx.js';
 import { metricsFor, metricsText } from './cardio.js';
 import { playEndChime } from './rest-audio.js';
+import { drinkButton } from './drink-timer.js';
 
 const root = document.documentElement;
 const appPages = document.getElementById('app-pages');
@@ -1356,7 +1357,7 @@ function render() {
   const clock = el('span', 'pm-clock', formatClock(getWorkoutDuration(s, new Date()).seconds));
   clock.id = 'pm-clock'; clock.title = 'Durée de la séance (hors pauses)';
   const right = el('div', 'pm-bar-actions');
-  add(right, clock, btn('Quitter', 'pm-icon-btn pm-text-btn', async () => {
+  add(right, drinkButton(), clock, btn('Quitter', 'pm-icon-btn pm-text-btn', async () => {
     if (!(await resolveUnsaved(T, 'quitter la séance'))) return; // attend aussi les écritures ; jamais d'abandon silencieux
     if (!isLive(T)) return; // une autre séance (ou un autre profil) est affichée entre-temps : on ne la ferme pas
     toast('Séance conservée : tu pourras la reprendre depuis l’accueil.');
