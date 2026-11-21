@@ -1,0 +1,560 @@
+{
+  "browser": "157.0.8103.38",
+  "results": [
+    {
+      "width": 320,
+      "screen": "01-profils",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 320,
+      "screen": "02-identite-vide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 320,
+      "screen": "03-erreur-nom",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 320,
+      "screen": "04-erreur-doublon",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 320,
+      "screen": "05-identite-valide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 320,
+      "screen": "06-objectif-vide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 320,
+      "screen": "07-erreur-objectif",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 320,
+      "screen": "08-rythme-vide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 320,
+      "screen": "09-erreur-rythme",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 320,
+      "screen": "10-erreur-jours",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 320,
+      "screen": "11-rythme-valide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 320,
+      "screen": "12-materiel-vide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 320,
+      "screen": "13-erreur-materiel",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 320,
+      "screen": "14-materiel-valide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 320,
+      "screen": "15-recapitulatif",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 320,
+      "screen": "16-confirmation",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 320,
+      "screen": "17-profils-apres-creation",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 320,
+      "screen": "18-sans-programme",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 320,
+      "checks": [
+        "active selection",
+        "duplicate validation",
+        "keyboard Enter",
+        "draft back/forward",
+        "coherent gear",
+        "create once",
+        "HTML escaped",
+        "reload reset",
+        "no storage access",
+        "no service worker",
+        "no business scripts",
+        "no browser errors"
+      ],
+      "requests": [
+        "http://127.0.0.1:65056/previews/v2-prof2/",
+        "http://127.0.0.1:65056/css/base.css",
+        "http://127.0.0.1:65056/previews/v2-prof2/preview.css",
+        "http://127.0.0.1:65056/previews/v2-prof2/preview.js",
+        "http://127.0.0.1:65056/assets/icons/icon-192.png",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/mascot/stage-0.png",
+        "http://127.0.0.1:65056/assets/icons/icon-192.png",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/mascot/stage-0-happy.png",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/mascot/stage-0-cheer.png",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/previews/v2-prof2/",
+        "http://127.0.0.1:65056/css/base.css",
+        "http://127.0.0.1:65056/previews/v2-prof2/preview.css",
+        "http://127.0.0.1:65056/previews/v2-prof2/preview.js",
+        "http://127.0.0.1:65056/assets/icons/icon-192.png",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/mascot/stage-0.png",
+        "http://127.0.0.1:65056/assets/icons/icon-192.png",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg"
+      ]
+    },
+    {
+      "width": 375,
+      "screen": "01-profils",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 375,
+      "screen": "02-identite-vide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 375,
+      "screen": "03-erreur-nom",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 375,
+      "screen": "04-erreur-doublon",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 375,
+      "screen": "05-identite-valide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 375,
+      "screen": "06-objectif-vide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 375,
+      "screen": "07-erreur-objectif",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 375,
+      "screen": "08-rythme-vide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 375,
+      "screen": "09-erreur-rythme",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 375,
+      "screen": "10-erreur-jours",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 375,
+      "screen": "11-rythme-valide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 375,
+      "screen": "12-materiel-vide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 375,
+      "screen": "13-erreur-materiel",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 375,
+      "screen": "14-materiel-valide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 375,
+      "screen": "15-recapitulatif",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 375,
+      "screen": "16-confirmation",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 375,
+      "screen": "17-profils-apres-creation",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 375,
+      "screen": "18-sans-programme",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 375,
+      "checks": [
+        "active selection",
+        "duplicate validation",
+        "keyboard Enter",
+        "draft back/forward",
+        "coherent gear",
+        "create once",
+        "HTML escaped",
+        "reload reset",
+        "no storage access",
+        "no service worker",
+        "no business scripts",
+        "no browser errors"
+      ],
+      "requests": [
+        "http://127.0.0.1:65056/previews/v2-prof2/",
+        "http://127.0.0.1:65056/css/base.css",
+        "http://127.0.0.1:65056/previews/v2-prof2/preview.css",
+        "http://127.0.0.1:65056/previews/v2-prof2/preview.js",
+        "http://127.0.0.1:65056/assets/icons/icon-192.png",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/mascot/stage-0.png",
+        "http://127.0.0.1:65056/assets/icons/icon-192.png",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/mascot/stage-0-happy.png",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/mascot/stage-0-cheer.png",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/previews/v2-prof2/",
+        "http://127.0.0.1:65056/css/base.css",
+        "http://127.0.0.1:65056/previews/v2-prof2/preview.css",
+        "http://127.0.0.1:65056/previews/v2-prof2/preview.js",
+        "http://127.0.0.1:65056/assets/icons/icon-192.png",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/mascot/stage-0.png",
+        "http://127.0.0.1:65056/assets/icons/icon-192.png",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg"
+      ]
+    },
+    {
+      "width": 390,
+      "screen": "01-profils",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 390,
+      "screen": "02-identite-vide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 390,
+      "screen": "03-erreur-nom",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 390,
+      "screen": "04-erreur-doublon",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 390,
+      "screen": "05-identite-valide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 390,
+      "screen": "06-objectif-vide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 390,
+      "screen": "07-erreur-objectif",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 390,
+      "screen": "08-rythme-vide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 390,
+      "screen": "09-erreur-rythme",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 390,
+      "screen": "10-erreur-jours",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 390,
+      "screen": "11-rythme-valide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 390,
+      "screen": "12-materiel-vide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 390,
+      "screen": "13-erreur-materiel",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 390,
+      "screen": "14-materiel-valide",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 390,
+      "screen": "15-recapitulatif",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 390,
+      "screen": "16-confirmation",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 390,
+      "screen": "17-profils-apres-creation",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 390,
+      "screen": "18-sans-programme",
+      "overflow": false,
+      "touchTargets": ">=44px",
+      "imagesLoaded": true
+    },
+    {
+      "width": 390,
+      "checks": [
+        "active selection",
+        "duplicate validation",
+        "keyboard Enter",
+        "draft back/forward",
+        "coherent gear",
+        "create once",
+        "HTML escaped",
+        "reload reset",
+        "no storage access",
+        "no service worker",
+        "no business scripts",
+        "no browser errors"
+      ],
+      "requests": [
+        "http://127.0.0.1:65056/previews/v2-prof2/",
+        "http://127.0.0.1:65056/css/base.css",
+        "http://127.0.0.1:65056/previews/v2-prof2/preview.css",
+        "http://127.0.0.1:65056/previews/v2-prof2/preview.js",
+        "http://127.0.0.1:65056/assets/icons/icon-192.png",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/mascot/stage-0.png",
+        "http://127.0.0.1:65056/assets/icons/icon-192.png",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/mascot/stage-0-happy.png",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/mascot/stage-0-cheer.png",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/previews/v2-prof2/",
+        "http://127.0.0.1:65056/css/base.css",
+        "http://127.0.0.1:65056/previews/v2-prof2/preview.css",
+        "http://127.0.0.1:65056/previews/v2-prof2/preview.js",
+        "http://127.0.0.1:65056/assets/icons/icon-192.png",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg",
+        "http://127.0.0.1:65056/assets/mascot/stage-0.png",
+        "http://127.0.0.1:65056/assets/icons/icon-192.png",
+        "http://127.0.0.1:65056/assets/ascent/icones.svg"
+      ]
+    }
+  ]
+}
