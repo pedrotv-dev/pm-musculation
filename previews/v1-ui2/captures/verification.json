@@ -1,0 +1,86 @@
+[
+  {
+    "view": "exercice",
+    "width": 320,
+    "overflow": false,
+    "storage": "interdit",
+    "errors": []
+  },
+  {
+    "view": "exercice-vide",
+    "width": 320,
+    "overflow": false,
+    "storage": "interdit",
+    "errors": []
+  },
+  {
+    "view": "succes",
+    "width": 320,
+    "overflow": false,
+    "storage": "interdit",
+    "errors": []
+  },
+  {
+    "view": "succes-vide",
+    "width": 320,
+    "overflow": false,
+    "storage": "interdit",
+    "errors": []
+  },
+  {
+    "view": "exercice",
+    "width": 375,
+    "overflow": false,
+    "storage": "interdit",
+    "errors": []
+  },
+  {
+    "view": "exercice-vide",
+    "width": 375,
+    "overflow": false,
+    "storage": "interdit",
+    "errors": []
+  },
+  {
+    "view": "succes",
+    "width": 375,
+    "overflow": false,
+    "storage": "interdit",
+    "errors": []
+  },
+  {
+    "view": "succes-vide",
+    "width": 375,
+    "overflow": false,
+    "storage": "interdit",
+    "errors": []
+  },
+  {
+    "view": "exercice",
+    "width": 390,
+    "overflow": false,
+    "storage": "interdit",
+    "errors": []
+  },
+  {
+    "view": "exercice-vide",
+    "width": 390,
+    "overflow": false,
+    "storage": "interdit",
+    "errors": []
+  },
+  {
+    "view": "succes",
+    "width": 390,
+    "overflow": false,
+    "storage": "interdit",
+    "errors": []
+  },
+  {
+    "view": "succes-vide",
+    "width": 390,
+    "overflow": false,
+    "storage": "interdit",
+    "errors": []
+  }
+]
