@@ -319,7 +319,10 @@ function reuseBlock(profile, week, program) {
     } catch (error) { if (sameProfile(profile, gen)) showError(error); }
     finally { go.disabled = false; }
   });
-  add(box, node('p', 'pm-coach-label', 'Ce programme t’a plu ?'), add(node('div', 'pm-reuse-row'), pick, go),
+  const edit = btn('Modifier avant de refaire', 'pm-link pm-reuse-edit', () => {
+    document.dispatchEvent(new CustomEvent('pm:edit-program', { detail: { program: JSON.parse(JSON.stringify(program)), weekStart: pick.value } }));
+  });
+  add(box, node('p', 'pm-coach-label', 'Ce programme t’a plu ?'), add(node('div', 'pm-reuse-row'), pick, go), edit,
     node('p', 'pm-muted', 'Mêmes séances et machines ; en séance, les charges proposées restent tes dernières charges réelles.'));
   return box;
 }

@@ -49,6 +49,23 @@ await step('semaine cible déjà remplie : confirmation ; « Annuler » ne chang
   await page.waitForFunction(([i, w, b]) => import('./storage.js').then(S => S.getProgram(i, w)).then(p => p.days.map(d => d.id + ':' + d.activities.length).join(',') === b), [id, NEXT, await days(id, LAST)]);
   assert.deepEqual(errors, []);
 });
+await step('« Modifier avant de refaire » : éditeur rempli (semaine choisie) ; séries changées puis importées', async () => {
+  await page.selectOption('#pm-week-select', LAST);
+  await page.waitForSelector('.pm-reuse-edit');
+  await page.selectOption('.pm-reuse-week', THIS);
+  await page.click('.pm-reuse-edit');
+  const ed = 'details.pm-editor';
+  await page.waitForSelector(ed + '[open] .pm-ed-day');
+  assert.match(await page.locator(ed).innerText(), /Semaine du 23\/11\/2026|23 nov/i);
+  const first = page.locator(ed + ' .pm-ed-sets').first();
+  await first.fill('5'); await first.dispatchEvent('change');
+  await page.click(ed + ' .pm-ed-send');
+  await page.click('button:has-text("Importer ce programme")');
+  await page.waitForFunction(([i, w]) => import('./storage.js').then(S => S.getProgram(i, w)).then(p => p.days.flatMap(d => d.activities).find(a => a.type === 'strength')?.sets.length === 5), [id, THIS]);
+  const last = await page.evaluate(([i, w]) => import('./storage.js').then(S => S.getProgram(i, w)).then(p => p.days.flatMap(d => d.activities).find(a => a.type === 'strength').sets.length), [id, LAST]);
+  assert.notEqual(last, 5, 'semaine d’origine intacte');
+  assert.deepEqual(errors, []);
+});
 
 const failed = summary();
 await browser.close(); srv.close();

@@ -1750,5 +1750,7 @@
  "Semaine où refaire ce programme": "Week to repeat this program",
  "Mêmes séances et machines ; en séance, les charges proposées restent tes dernières charges réelles.": "Same workouts and machines; during the workout, suggested loads stay your latest real loads.",
  "Programme repris pour la semaine du": "Program repeated for the week of",
- "a déjà un programme. Le remplacer par celui-ci ? Tes séances déjà faites sont conservées.": "already has a program. Replace it with this one? Your completed workouts are kept."
+ "a déjà un programme. Le remplacer par celui-ci ? Tes séances déjà faites sont conservées.": "already has a program. Replace it with this one? Your completed workouts are kept.",
+ "Modifier avant de refaire": "Edit before repeating",
+ "Programme repris : modifie-le, puis « Vérifier et importer ».": "Program loaded: edit it, then “Check and import”."
 }
