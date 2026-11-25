@@ -10,7 +10,7 @@ import { machineHistory, isClosed } from './stats.js';
 import { confirmDialog } from './dom.js';
 import { getProgram } from '../storage.js';
 import { getDemoProgram } from './workouts.js';
-import { el as node, add, clear as wipe, btn } from './dom.js';
+import { el as node, add, clear as wipe, btn, toast } from './dom.js';
 import { loadCatalog } from './catalog.js';
 import { coachSection } from './coach-ui.js';
 import { programEditor } from './program-editor.js';
@@ -281,9 +281,50 @@ async function displayProgram() {
       state.selectedDay = day;
       displayProgram().catch(showError);
     });
+    historyView.append(reuseBlock(profile, week, program));
   } catch (error) {
     if (valid()) showError(error);
   }
+}
+/** Lundi (AAAA-MM-JJ) décalé de `n` semaines. */
+const shiftWeek = (monday, n) => { const [y, m, d] = monday.split('-').map(Number); const t = new Date(y, m - 1, d + 7 * n); return [t.getFullYear(), String(t.getMonth() + 1).padStart(2, '0'), String(t.getDate()).padStart(2, '0')].join('-'); };
+const frDate = iso => iso.split('-').reverse().join('/');
+/**
+ * « Refaire ce programme » : copie le programme affiché (une semaine qui a plu) sur la semaine en cours ou la suivante.
+ * Passe par importProgram (même validation qu'un import) ; confirmation si la semaine cible a déjà un programme.
+ * Les séances déjà faites ne sont jamais touchées ; les charges proposées en séance restent les dernières réelles.
+ */
+function reuseBlock(profile, week, program) {
+  const box = node('div', 'pm-reuse');
+  const thisWeek = mondayOf();
+  const targets = [[thisWeek, 'Semaine en cours'], [shiftWeek(thisWeek, 1), 'Semaine prochaine']].filter(([w]) => w !== week);
+  if (!targets.length) return box;
+  const pick = node('select', 'pm-select pm-reuse-week'); pick.setAttribute('aria-label', 'Semaine où refaire ce programme');
+  for (const [w, l] of targets) pick.append(new Option(l + ' · ' + frDate(w), w));
+  const go = btn('Refaire ce programme', 'pm-secondary pm-reuse-go', async () => {
+    const target = pick.value, gen = state.profileVersion;
+    try {
+      const had = await getProgram(profile, target).catch(() => null);
+      if (had && !(await confirmDialog('La semaine du ' + frDate(target) + ' a déjà un programme. Le remplacer par celui-ci ? Tes séances déjà faites sont conservées.', { title: 'Refaire ce programme', ok: 'Remplacer' }))) return;
+      if (!sameProfile(profile, gen)) return;
+      go.disabled = true;
+      const catalog = await loadCatalog();
+      const days = JSON.parse(JSON.stringify(program.days)).map(d => ({ id: d.id, name: d.name, activities: d.activities }));
+      await importProgram(profile, { schemaVersion: 1, weekStart: target, programs: { [profile]: { days } } }, { knownMachineIds: catalog.list.map(m => m.id) });
+      if (!sameProfile(profile, gen)) return;
+      state.selectedWeek = target; state.selectedDay = null;
+      if (await drawWeekOptions()) await displayProgram();
+      toast('Programme repris pour la semaine du ' + frDate(target) + ' ✓');
+      document.dispatchEvent(new CustomEvent('pm:data-changed', { detail: { profile } }));
+    } catch (error) { if (sameProfile(profile, gen)) showError(error); }
+    finally { go.disabled = false; }
+  });
+  const edit = btn('Modifier avant de refaire', 'pm-link pm-reuse-edit', () => {
+    document.dispatchEvent(new CustomEvent('pm:edit-program', { detail: { program: JSON.parse(JSON.stringify(program)), weekStart: pick.value } }));
+  });
+  add(box, node('p', 'pm-coach-label', 'Ce programme t’a plu ?'), add(node('div', 'pm-reuse-row'), pick, go), edit,
+    node('p', 'pm-muted', 'Mêmes séances et machines ; en séance, les charges proposées restent tes dernières charges réelles.'));
+  return box;
 }
 function sourceForImport() { return state.remapped || state.source || paste.value.trim(); }
 /** Source (fichier ou texte) → objet, sans rien enregistrer ; null si illisible (l'erreur détaillée vient ensuite). */
