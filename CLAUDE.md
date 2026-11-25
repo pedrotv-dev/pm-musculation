@@ -22,13 +22,14 @@ Lu automatiquement à chaque session. À tenir à jour.
 - Génération : `js/coach-ui.js` → `generator()`. En Démo, le programme généré est gardé en mémoire via `setDemoProgram`.
 - Langue : `js/i18n.js` + `i18n/en.json` ; l'extraction des textes se fait avec `tools/i18n-extract.mjs`.
 - Décompte boisson (distributeur Yanga de la salle, demandé sur Discord ; pas du yoga) : `js/drink-timer.js`, bouton 🥤 dans la barre de séance, durée dans Réglages → Séance et chrono (20 min par défaut).
+- « Refaire ce programme » (onglet Programme, sous une semaine affichée) : copie vers la semaine en cours ou la suivante via importProgram (`reuseBlock` dans `js/program-ui.js`) ; « Modifier avant de refaire » ouvre l'éditeur prérempli (événement `pm:edit-program`).
 - Guide de la démo : `js/demo-tour.js`. Éditeur de programme : `js/program-editor.js`.
 - Tests :
   - `npm test` : tests Node ;
   - `node tests/e2e/<flow>.mjs` : Playwright, liste dans `tests/e2e/run.mjs`, helpers dans `lib.mjs` (`generateUI`, `acceptReplace`, locale fr-FR forcée).
 - Vérification du moteur sur profils fictifs : `tools/simulate-profiles.mjs` → `docs/verification-moteur.md`.
 
-## État (17/11/2026)
-- En production : 2026.11.17-a659b28e (PR #81 fusionnée le 17/11).
-- iPhone : son en fin de repos confirmé par l'utilisateur (17/11).
+## État (18/11/2026)
+- En production : 2026.11.18-22116411 (PR #82 décompte boisson, fusionnée le 18/11).
+- iPhone : son en fin de repos confirmé (17/11). 18/11 : la musique (YouTube Music) se coupait au bip → bips en session audio « ambient » (mélangés, jamais « transient »). À reconfirmer sur l'iPhone de Manon.
 - Pas commencé, décision de l'utilisateur nécessaire : la fonction amis / minuteurs partagés (il faudrait des comptes et un serveur, contraire à la règle « tout sur le téléphone »), et les étirements pendant les repos.

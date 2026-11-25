@@ -182,9 +182,25 @@ export function programEditor(profile) {
   }
 
   box.addEventListener('toggle', async () => {
-    if (!box.open || S.catalog) return;
+    if (!box.open || S.catalog || S.opening) return;
     S.catalog = await loadCatalog();
     start();
   });
+  // « Modifier avant de refaire » (onglet Programme) : l'éditeur s'ouvre avec le programme d'une semaine passée,
+  // prévu pour la semaine choisie ; rien n'est enregistré avant « Importer ce programme ».
+  const onEdit = async e => {
+    if (!box.isConnected) { document.removeEventListener('pm:edit-program', onEdit); return; }
+    const { program, weekStart } = e.detail || {};
+    if (!program || !weekStart) return;
+    S.opening = true;
+    try {
+      if (!S.catalog) S.catalog = await loadCatalog();
+      if (!weeks.some(([w]) => w === weekStart)) weeks.push([weekStart, 'Semaine']);
+      S.week = weekStart; S.draft = draftFrom(program, profile);
+      box.open = true; say('Programme repris : modifie-le, puis « Vérifier et importer ».', 'ok'); draw();
+      box.scrollIntoView({ block: 'start' });
+    } finally { S.opening = false; }
+  };
+  document.addEventListener('pm:edit-program', onEdit);
   return box;
 }
