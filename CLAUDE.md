@@ -22,6 +22,7 @@ Lu automatiquement à chaque session. À tenir à jour.
 - Génération : `js/coach-ui.js` → `generator()`. En Démo, le programme généré est gardé en mémoire via `setDemoProgram`.
 - Langue : `js/i18n.js` + `i18n/en.json` ; l'extraction des textes se fait avec `tools/i18n-extract.mjs`.
 - Décompte boisson (distributeur Yanga de la salle, demandé sur Discord ; pas du yoga) : `js/drink-timer.js`, bouton 🥤 dans la barre de séance, durée dans Réglages → Séance et chrono (20 min par défaut).
+- « Refaire ce programme » (onglet Programme, sous une semaine affichée) : copie vers la semaine en cours ou la suivante via importProgram (`reuseBlock` dans `js/program-ui.js`).
 - Guide de la démo : `js/demo-tour.js`. Éditeur de programme : `js/program-editor.js`.
 - Tests :
   - `npm test` : tests Node ;

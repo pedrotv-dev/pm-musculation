@@ -1744,5 +1744,11 @@
  "Encore": "Still",
  "Relancer": "Restart",
  "🥤 Tu peux te resservir au distributeur": "🥤 You can refill at the dispenser",
- "Sur iPhone, iOS coupe le son des applis web dès que l’écran est verrouillé : garde l’écran allumé (option ci-dessus). Les bips de fin de repos se jouent par-dessus ta musique, sans la couper (muets si le bouton silencieux est activé).": "On iPhone, iOS mutes web apps as soon as the screen locks: keep the screen on (option above). The end-of-rest beeps play over your music without stopping it (silent if the silent switch is on)."
+ "Sur iPhone, iOS coupe le son des applis web dès que l’écran est verrouillé : garde l’écran allumé (option ci-dessus). Les bips de fin de repos se jouent par-dessus ta musique, sans la couper (muets si le bouton silencieux est activé).": "On iPhone, iOS mutes web apps as soon as the screen locks: keep the screen on (option above). The end-of-rest beeps play over your music without stopping it (silent if the silent switch is on).",
+ "Ce programme t’a plu ?": "Liked this program?",
+ "Refaire ce programme": "Repeat this program",
+ "Semaine où refaire ce programme": "Week to repeat this program",
+ "Mêmes séances et machines ; en séance, les charges proposées restent tes dernières charges réelles.": "Same workouts and machines; during the workout, suggested loads stay your latest real loads.",
+ "Programme repris pour la semaine du": "Program repeated for the week of",
+ "a déjà un programme. Le remplacer par celui-ci ? Tes séances déjà faites sont conservées.": "already has a program. Replace it with this one? Your completed workouts are kept."
 }
