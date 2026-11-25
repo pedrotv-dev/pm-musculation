@@ -180,7 +180,7 @@ test('amorcage automatique au premier usage (sans reset), toujours en memoire', 
   const before = dbRows();
   const fresh = await import('../js/workouts.js?fresh=1');
   const s = await fresh.getResumableWorkout('demo');
-  const today = new Date();
+  const today = new Date(Date.now() - 25 * 60000); // séance démo commencée il y a 25 min (veille juste après minuit)
   const local = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   assert.equal(s.status, 'in_progress');
   assert.equal(s.date, local);
